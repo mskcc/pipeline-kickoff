@@ -1,17 +1,20 @@
 package org.mskcc.kickoff;
 
+import org.mskcc.kickoff.util.Utils;
+
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class FailingNumberOfFilesListener implements FailingTestListener {
     private static final String FAILED_NUMBER_OF_FILES_TXT = "wrongNumberOfFiles.txt";
-    private Path failingOutputPathForCurrentRun;
+    private final Path failingOutputPathForCurrentRun;
 
     public FailingNumberOfFilesListener(Path failingOutputPathForCurrentRun) {
         this.failingOutputPathForCurrentRun = failingOutputPathForCurrentRun;
@@ -30,10 +33,10 @@ public class FailingNumberOfFilesListener implements FailingTestListener {
 
             expectedAndActualFilesList = Paths.get(String.format("%s/%s", failingOutputPathForCurrentRun, FAILED_NUMBER_OF_FILES_TXT));
             Files.createFile(expectedAndActualFilesList);
-            List<String> expectedFilesList = Arrays.stream(expectedPath.toFile().listFiles()).map(f -> f.getPath()).collect(Collectors.toList());
-            List<String> actualFilesList = Arrays.stream(actualPath.toFile().listFiles()).map(f -> f.getPath()).collect(Collectors.toList());
+            List<String> expectedFilesList = Utils.getFilesInDir(actualPath).stream().map(File::getPath).collect(Collectors.toList());
+            List<String> actualFilesList = Utils.getFilesInDir(expectedPath).stream().map(File::getPath).collect(Collectors.toList());
 
-            List<String> dirFiles = new ArrayList<>(Arrays.asList("expected files:"));
+            List<String> dirFiles = new ArrayList<>(Collections.singletonList("expected files:"));
             dirFiles.addAll(expectedFilesList);
             dirFiles.add("actual files:");
             dirFiles.addAll(actualFilesList);

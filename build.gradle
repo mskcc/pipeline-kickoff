@@ -42,7 +42,7 @@ task copyRuntimeLibs(type: Copy) {
 }
 
 run {
-    systemProperties System.getProperties()
+    systemProperties System.getProperties() as Map<String, ?>
     systemProperty "spring.profiles.default", "prod"
 }
 

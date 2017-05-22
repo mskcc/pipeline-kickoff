@@ -1,17 +1,17 @@
 package org.mskcc.kickoff.lims;
 
-//Not sure if I need ALL these for excel, but it worked when I put them in.
-
 import com.sampullara.cli.Args;
 import com.sampullara.cli.Argument;
-import com.velox.api.datamgmtserver.DataMgmtServer;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.datarecord.IoError;
 import com.velox.api.datarecord.NotFound;
 import com.velox.api.user.User;
 import com.velox.api.util.ServerException;
-import com.velox.sapioutils.client.standalone.*;
+import com.velox.sapioutils.client.standalone.VeloxConnection;
+import com.velox.sapioutils.client.standalone.VeloxStandalone;
+import com.velox.sapioutils.client.standalone.VeloxStandaloneException;
+import com.velox.sapioutils.client.standalone.VeloxTask;
 import com.velox.util.LogWriter;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -20,10 +20,12 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.*;
+import org.mskcc.kickoff.util.Utils;
 
 import java.io.*;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.rmi.RemoteException;
@@ -40,17 +42,15 @@ import java.util.regex.Pattern;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
-//These were already here or added by me as needed
-
 /**
  * This class is an example standalone program.
  *
  * @author Krista Kaz (most of the framing of this script was copied from Aaron and Dmitri's examples/scripts)
  */
-public class CreateManifestSheet {
-    public static PrintStream console = System.err;
+class CreateManifestSheet {
+    private static final PrintStream console = System.err;
+    private static final HashSet<String> runIDlist = new HashSet<>();
     private static int NewMappingScheme = 0;
-    private static HashSet<String> runIDlist = new HashSet<String>();
     private static VeloxConnection connection;
     @Argument(alias = "p", description = "Project to get samples for", required = true)
     private static String project;
@@ -74,7 +74,6 @@ public class CreateManifestSheet {
     private static String rerunReason;
     @Argument(alias = "options", description = "Pipeline files output dir")
     private static String[] pipeline_options;
-    private static Boolean draft = false;
     private final String productionProjectFilePath = "/ifs/projects/BIC";
     private final String draftProjectFilePath = "/ifs/projects/BIC/drafts";
     private final String requestTypeMappingFile = "all_impact_rnaseq_mapping_LIMS_names.txt";
@@ -85,22 +84,38 @@ public class CreateManifestSheet {
     private final String emailHost = "cbio.mskcc.org"; // putting this because that is what Aaron has in his validator
     private final String designFilePath = "/ifs/projects/CMO/targets/designs";
     private final String resultsPathPrefix = "/ifs/solres/seq";
-    private final String humanAbrevSpecies = "b37";
-    private final String mouseAbrevSpecies = "mm10";
     private final String sampleKeyExFile = "SampleKeyExamples.txt";
-    Set<PosixFilePermission> DIRperms = new HashSet<PosixFilePermission>();
-    Set<PosixFilePermission> FILEperms = new HashSet<PosixFilePermission>();
+    private final Set<PosixFilePermission> DIRperms = new HashSet<>();
+    private final Set<PosixFilePermission> FILEperms = new HashSet<>();
+    private final String manualMappingPinfoToRequestFile = "Alternate_E-mails:DeliverTo,Lab_Head:PI_Name,Lab_Head_E-mail:PI,Requestor:Investigator_Name,Requestor_E-mail:Investigator,CMO_Project_ID:ProjectName,Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
+    private final String manualMappingPatientHeader = "Pool:REQ_ID,Sample_ID:CMO_SAMPLE_ID,Collab_ID:INVESTIGATOR_SAMPLE_ID,Patient_ID:CMO_PATIENT_ID,Class:SAMPLE_CLASS,Sample_type:SPECIMEN_PRESERVATION_TYPE,Input_ng:LIBRARY_INPUT,Library_yield:LIBRARY_YIELD,Pool_input:CAPTURE_INPUT,Bait_version:BAIT_VERSION,Sex:SEX";
+    private final String manualClinicalHeader = "SAMPLE_ID:CMO_SAMPLE_ID,PATIENT_ID:CMO_PATIENT_ID,COLLAB_ID:INVESTIGATOR_SAMPLE_ID,SAMPLE_TYPE:SAMPLE_TYPE,GENE_PANEL:BAIT_VERSION,ONCOTREE_CODE:ONCOTREE_CODE,SAMPLE_CLASS:SAMPLE_CLASS,SPECIMEN_PRESERVATION_TYPE:SPECIMEN_PRESERVATION_TYPE,SEX:SEX,TISSUE_SITE:TISSUE_SITE";
+    private final List<String> hashMapHeader = Arrays.asList("MANIFEST_SAMPLE_ID", "CMO_PATIENT_ID", "INVESTIGATOR_SAMPLE_ID", "INVESTIGATOR_PATIENT_ID", "ONCOTREE_CODE", "SAMPLE_CLASS", "TISSUE_SITE", "SAMPLE_TYPE", "SPECIMEN_PRESERVATION_TYPE", "SPECIMEN_COLLECTION_YEAR", "SEX", "BARCODE_ID", "BARCODE_INDEX", "LIBRARY_INPUT", "LIBRARY_YIELD", "CAPTURE_INPUT", "CAPTURE_NAME", "CAPTURE_CONCENTRATION", "CAPTURE_BAIT_SET", "SPIKE_IN_GENES", "STATUS", "INCLUDE_RUN_ID", "EXCLUDE_RUN_ID");
+    private final String manualMappingHashMap = "LIBRARY_INPUT:LIBRARY_INPUT[ng],LIBRARY_YIELD:LIBRARY_YIELD[ng],CAPTURE_INPUT:CAPTURE_INPUT[ng],CAPTURE_CONCENTRATION:CAPTURE_CONCENTRATION[nM],MANIFEST_SAMPLE_ID:CMO_SAMPLE_ID";
+    private final String manualMappingConfigMap = "name:ProjectTitle,desc:ProjectDesc,invest:PI,invest_name:PI_Name,tumor_type:TumorType,date_of_last_update:DateOfLastUpdate,assay_type:Assay";
+    private final List<String> sampleSwapValues = Arrays.asList("IGO_ID", "INVESTIGATOR_PATIENT_ID", "INVESTIGATOR_SAMPLE_ID", "SAMPLE_CLASS", "SAMPLE_TYPE", "SPECIMEN_COLLECTION_YEAR", "SPECIMEN_PRESERVATION_TYPE", "SPECIES", "ONCOTREE_CODE", "TISSUE_SITE", "SEX", "CMO_SAMPLE_ID", "CMO_PATIENT_ID");
+    private final HashSet<File> filesCreated = new HashSet<>();
+    private final Logger logger = Logger.getLogger(CreateManifestSheet.class.getName());
+    private final ArrayList<DataRecord> passingSeqRuns = new ArrayList<>();
+    private final LinkedHashMap<String, LinkedHashMap<String, String>> SampleListToOutput = new LinkedHashMap<>();
+    private final Set<String> sampleRuns = new HashSet<>();
+    private final Map<String, Set<String>> badRuns = new HashMap<>();
+    private final Set<String> poolRuns = new HashSet<>();
+    private final ArrayList<String> log_messages = new ArrayList<>();
+    private final Map<String, Integer> readsForSample = new HashMap<>();
+    //This collects all library protocol types and Amplification protocol types
+    private final Set<String> libType = new HashSet<>();
+    private final Set<String> ampType = new HashSet<>();
+    private final Set<String> strand = new HashSet<>();
+    private final HashMap<String, String> sampleSwap = new HashMap<>();
+    private final HashMap<String, String> sampleAlias = new HashMap<>();
+    //This is exception list, these columns are OKAY if they are empty, (gets na) rather than #empty
+    private final List<String> exceptionList = Arrays.asList("TISSUE_SITE", "SPECIMEN_COLLECTION_YEAR", "SPIKE_IN_GENES");
+    private final List<String> silentList = Arrays.asList("STATUS", "EXCLUDE_RUN_ID");
     private String extraReadmeInfo = "";
     private String requestSpecies = "#EMPTY";
     private List<String> xenograftClasses = Arrays.asList("PDX", "Xenograft", "XenograftDerivedCellLine");
-    private String manualMappingPinfoToRequestFile = "Alternate_E-mails:DeliverTo,Lab_Head:PI_Name,Lab_Head_E-mail:PI,Requestor:Investigator_Name,Requestor_E-mail:Investigator,CMO_Project_ID:ProjectName,Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
-    private String manualMappingPatientHeader = "Pool:REQ_ID,Sample_ID:CMO_SAMPLE_ID,Collab_ID:INVESTIGATOR_SAMPLE_ID,Patient_ID:CMO_PATIENT_ID,Class:SAMPLE_CLASS,Sample_type:SPECIMEN_PRESERVATION_TYPE,Input_ng:LIBRARY_INPUT,Library_yield:LIBRARY_YIELD,Pool_input:CAPTURE_INPUT,Bait_version:BAIT_VERSION,Sex:SEX";
-    private String manualClinicalHeader = "SAMPLE_ID:CMO_SAMPLE_ID,PATIENT_ID:CMO_PATIENT_ID,COLLAB_ID:INVESTIGATOR_SAMPLE_ID,SAMPLE_TYPE:SAMPLE_TYPE,GENE_PANEL:BAIT_VERSION,ONCOTREE_CODE:ONCOTREE_CODE,SAMPLE_CLASS:SAMPLE_CLASS,SPECIMEN_PRESERVATION_TYPE:SPECIMEN_PRESERVATION_TYPE,SEX:SEX,TISSUE_SITE:TISSUE_SITE";
-    private List<String> hashMapHeader = Arrays.asList("MANIFEST_SAMPLE_ID", "CMO_PATIENT_ID", "INVESTIGATOR_SAMPLE_ID", "INVESTIGATOR_PATIENT_ID", "ONCOTREE_CODE", "SAMPLE_CLASS", "TISSUE_SITE", "SAMPLE_TYPE", "SPECIMEN_PRESERVATION_TYPE", "SPECIMEN_COLLECTION_YEAR", "SEX", "BARCODE_ID", "BARCODE_INDEX", "LIBRARY_INPUT", "LIBRARY_YIELD", "CAPTURE_INPUT", "CAPTURE_NAME", "CAPTURE_CONCENTRATION", "CAPTURE_BAIT_SET", "SPIKE_IN_GENES", "STATUS", "INCLUDE_RUN_ID", "EXCLUDE_RUN_ID");
-    private String manualMappingHashMap = "LIBRARY_INPUT:LIBRARY_INPUT[ng],LIBRARY_YIELD:LIBRARY_YIELD[ng],CAPTURE_INPUT:CAPTURE_INPUT[ng],CAPTURE_CONCENTRATION:CAPTURE_CONCENTRATION[nM],MANIFEST_SAMPLE_ID:CMO_SAMPLE_ID";
     private List<String> portalConfigFields = Arrays.asList("cna_seg", "cna_seg_desc", "cna", "maf", "maf_desc", "name", "invest", "invest_name", "project", "tumor_type", "inst", "date_of_last_update", "groups", "data_clinical", "assay_type", "desc");
-    private String manualMappingConfigMap = "name:ProjectTitle,desc:ProjectDesc,invest:PI,invest_name:PI_Name,tumor_type:TumorType,date_of_last_update:DateOfLastUpdate,assay_type:Assay";
-    private List<String> sampleSwapValues = Arrays.asList("IGO_ID", "INVESTIGATOR_PATIENT_ID", "INVESTIGATOR_SAMPLE_ID", "SAMPLE_CLASS", "SAMPLE_TYPE", "SPECIMEN_COLLECTION_YEAR", "SPECIMEN_PRESERVATION_TYPE", "SPECIES", "ONCOTREE_CODE", "TISSUE_SITE", "SEX", "CMO_SAMPLE_ID", "CMO_PATIENT_ID");
     private Boolean force = false;
     private Boolean mappingIssue = false;
     private int runNum;
@@ -108,49 +123,25 @@ public class CreateManifestSheet {
     private String pi;
     private String invest;
     private User user;
-    private HashSet<File> filesCreated = new HashSet<File>();
-    private DataRecordManager dataRecordManager;
-    private DataMgmtServer dataMgmtServer;
     private DecimalFormat four = new DecimalFormat("#0.0000");
-    private VeloxStandaloneManagerContext managerContext;
-    private Map<String, String> RunID_and_PoolName = new LinkedHashMap<String, String>();
+    private Map<String, String> RunID_and_PoolName = new LinkedHashMap<>();
     private LogWriter deadLog;
-    private Logger logger = Logger.getLogger(CreateManifestSheet.class.getName());
-    private FileHandler log_fh = null;
     private File outLogDir = null;
     private String ReqType = "";
     private String recipe = "";
-    private ArrayList<DataRecord> passingSeqRuns = new ArrayList<DataRecord>();
     private Boolean exitLater = false;
-    private LinkedHashMap<String, LinkedHashMap<String, String>> SampleListToOutput = new LinkedHashMap<String, LinkedHashMap<String, String>>();
     private String poolQCWarnings = "";
-    private Set<String> sampleRuns = new HashSet<String>();
-    private Map<String, Set<String>> badRuns = new HashMap<String, Set<String>>();
-    private Set<String> poolRuns = new HashSet<String>();
-    private ArrayList<String> log_messages = new ArrayList<String>();
-    private Map<String, Integer> readsForSample = new HashMap<String, Integer>();
-    private Map<String, String> manualOverrides = new HashMap<String, String>();
-    //This collects all library protocol types and Amplification protocol types
-    private Set<String> libType = new HashSet<String>();
-    private Set<String> ampType = new HashSet<String>();
-    private Set<String> strand = new HashSet<String>();
     // This is for sample renames and sample swaps
-    private HashMap<String, String> sampleRenames = new HashMap<String, String>();
-    private HashMap<String, String> sampleSwap = new HashMap<String, String>();
-    private HashMap<String, String> sampleAlias = new HashMap<String, String>();
-    //This is exception list, these columns are OKAY if they are empty, (gets na) rather than #empty
-    private List<String> exceptionList = Arrays.asList("TISSUE_SITE", "SPECIMEN_COLLECTION_YEAR", "SPIKE_IN_GENES");
-    private List<String> silentList = Arrays.asList("STATUS", "EXCLUDE_RUN_ID");
+    private HashMap<String, String> sampleRenames = new HashMap<>();
 
     public static void main(String[] args) throws ServerException {
-
         CreateManifestSheet qe = new CreateManifestSheet();
 
         if (args.length == 0) {
             Args.usage(qe);
         } else {
             try {
-                List<String> extra = Args.parse(qe, args);
+                Args.parse(qe, args);
             } catch (IllegalArgumentException e) {
                 Args.usage(qe);
             }
@@ -203,7 +194,7 @@ public class CreateManifestSheet {
                 file.setReadable(true, false);
             }
             //PrintWriter printWriter = new PrintWriter(new FileWriter(file, true), true);
-            log_fh = new FileHandler(logsDir + "/" + filename, true);
+            FileHandler log_fh = new FileHandler(logsDir + "/" + filename, true);
             log_fh.setFormatter(new SimpleFormatter());
             logger.addHandler(log_fh);
             logger.setUseParentHandlers(false);
@@ -217,7 +208,6 @@ public class CreateManifestSheet {
             }
 
             try {
-                //LogWriter.setPrintWriter("kristakaz", printWriter);
                 connection = new VeloxConnection("Connection.txt");
                 System.setErr(console);
                 try {
@@ -225,17 +215,12 @@ public class CreateManifestSheet {
 
                     if (connection.isConnected()) {
                         user = connection.getUser();
-                        dataRecordManager = connection.getDataRecordManager();
-                        dataMgmtServer = connection.getDataMgmtServer();
                     }
                     // Execute the program
                     VeloxStandalone.run(connection, new VeloxTask<Object>() {
                         @Override
                         public Object performTask() throws VeloxStandaloneException {
-                            try {
-                                queryProjectInfo(user, dataRecordManager, project);
-                            } catch (IOException e) {
-                            }
+                            queryProjectInfo(user, dataRecordManager, project);
                             return new Object();
                         }
                     });
@@ -250,7 +235,6 @@ public class CreateManifestSheet {
         } catch (com.velox.sapioutils.client.standalone.VeloxConnectionException e) {
             System.err.println("com.velox.sapioutils.client.standalone.VeloxConnectionException: Connection refused for all users.1 ");
             e.printStackTrace(console);
-            //print("[ERROR] There was an issue connecting with LIMs. Someone or something else may be using this connection. Please try again in a minute or two.");
             System.exit(0);
         } catch (Throwable e) {
             logger.log(Level.SEVERE, "Exception thrown: ", e);
@@ -258,8 +242,7 @@ public class CreateManifestSheet {
         }
     }
 
-    // Main script.
-    private void queryProjectInfo(User apiUser, DataRecordManager drm, String requestID) throws IOException {
+    private void queryProjectInfo(User apiUser, DataRecordManager drm, String requestID) {
         initializeFilePermissions();
         // If request ID includes anything besides A-Za-z_0-9 exit
         Pattern reqPattern = Pattern.compile("^[0-9]{5,}[A-Z_]*$");
@@ -268,7 +251,7 @@ public class CreateManifestSheet {
             return;
         }
         // this is to set up if production or draft (depreciated, everything goes to the draft project file path)
-        draft = !prod;
+        Boolean draft = !prod;
         // Sets up project file path
         String projectFilePath = productionProjectFilePath + "/" + ReqType + "/Proj_" + requestID;
         if (draft) {
@@ -316,7 +299,7 @@ public class CreateManifestSheet {
                 try {
                     autoGenAble = request.getBooleanVal("BicAutorunnable", apiUser);
                     manualDemux = request.getBooleanVal("ManualDemux", apiUser);
-                } catch (NullPointerException e) {
+                } catch (NullPointerException ignored) {
                 }
                 if (!autoGenAble) {
                     // get reason why if there is one. Found in readme of request with field "NOT_AUTORUNNABLE"
@@ -335,19 +318,17 @@ public class CreateManifestSheet {
                 }
 
                 // Maps that link samples, pools, and run IDs
-                Map<String, Set<String>> SamplesAndRuns = new LinkedHashMap<String, Set<String>>();
-                Set<String> RunSet = new HashSet<String>();
+                Map<String, Set<String>> SamplesAndRuns;
 
                 //Pull sample specific QC for this Request:
                 Map<String, Set<String>> TempSamplesAndRuns = getSampSpecificQC(requestID, drm, user);
-                SamplesAndRuns = getPoolSpecificQC(request, drm, user);
+                SamplesAndRuns = getPoolSpecificQC(request, user);
 
                 Map<String, Set<String>> pool_samp_comparison = compareSamplesAndRuns(SamplesAndRuns, poolRuns, TempSamplesAndRuns, sampleRuns, requestID, manualDemux);
 
                 SamplesAndRuns.clear();
-                //SamplesAndRuns.putAll(pool_samp_comparison);
 
-                SamplesAndRuns = checkPostSeqQC(apiUser, drm, request, pool_samp_comparison);
+                SamplesAndRuns = checkPostSeqQC(apiUser, request, pool_samp_comparison);
 
                 if (SamplesAndRuns.size() == 0) {
                     if (!forced && !manualDemux) {
@@ -400,9 +381,7 @@ public class CreateManifestSheet {
                 }
 
                 // Get Samples that are supposed to be output, put them in this list!
-
                 for (DataRecord child : request.getChildrenOfType("Plate", apiUser)) {
-                    String ChildName = child.getName(apiUser);
                     for (DataRecord wells : child.getChildrenOfType("Sample", apiUser)) {
                         String wellStat = wells.getSelectionVal("ExemplarSampleStatus", apiUser);
                         if (wellStat.length() > 0) {
@@ -415,11 +394,11 @@ public class CreateManifestSheet {
                             if ((SamplesAndRuns.containsKey(sid)) || (force)) {
                                 if (wells.getParentsOfType("Sample", apiUser).size() > 0) {
                                     print("This sample is a tranfer from another request!");
-                                    LinkedHashMap<String, String> tempHashMap = getSampleInfoMap(apiUser, drm, wells, SamplesAndRuns, RunID_and_PoolName, false, true);
+                                    LinkedHashMap<String, String> tempHashMap = getSampleInfoMap(apiUser, drm, wells, SamplesAndRuns, false, true);
                                     tempHashMap.put("REQ_ID", "Proj_" + requestID);
                                     SampleListToOutput.put(sid, tempHashMap);
                                 } else {
-                                    LinkedHashMap<String, String> tempHashMap = getSampleInfoMap(apiUser, drm, wells, SamplesAndRuns, RunID_and_PoolName, false, false);
+                                    LinkedHashMap<String, String> tempHashMap = getSampleInfoMap(apiUser, drm, wells, SamplesAndRuns, false, false);
                                     tempHashMap.put("REQ_ID", "Proj_" + requestID);
                                     SampleListToOutput.put(sid, tempHashMap);
                                 }
@@ -447,20 +426,18 @@ public class CreateManifestSheet {
                     if ((SamplesAndRuns.containsKey(sid)) || (force)) {
                         if (child.getParentsOfType("Sample", apiUser).size() > 0) {
                             print("This sample is a tranfer from another request!");
-                            LinkedHashMap<String, String> tempHashMap = getSampleInfoMap(apiUser, drm, child, SamplesAndRuns, RunID_and_PoolName, false, true);
+                            LinkedHashMap<String, String> tempHashMap = getSampleInfoMap(apiUser, drm, child, SamplesAndRuns, false, true);
                             tempHashMap.put("REQ_ID", "Proj_" + requestID);
                             SampleListToOutput.put(sid, tempHashMap);
                         } else {
-                            LinkedHashMap<String, String> tempHashMap = getSampleInfoMap(apiUser, drm, child, SamplesAndRuns, RunID_and_PoolName, false, false);
+                            LinkedHashMap<String, String> tempHashMap = getSampleInfoMap(apiUser, drm, child, SamplesAndRuns, false, false);
                             tempHashMap.put("REQ_ID", "Proj_" + requestID);
                             SampleListToOutput.put(sid, tempHashMap);
                         }
-
-                        //return;  // FOR TESTING PURPOSES ( printTree)
                     }
                 }// end of sample loop
 
-                if (ReqType == "impact" && runAsExome) {
+                if (Objects.equals(ReqType, "impact") && runAsExome) {
                     ReqType = "exome";
                 }
 
@@ -477,12 +454,12 @@ public class CreateManifestSheet {
                     // for each pooled normal, get the run ID from the pool, then add the sample and runID to that one variable.
                     SamplesAndRuns = addPooledNormalstoSampleList(SamplesAndRuns, RunID_and_PoolName, PooledNormalSamples, apiUser);
 
-                    HashSet<DataRecord> keyCopy = new HashSet<DataRecord>(PooledNormalSamples.keySet());
+                    HashSet<DataRecord> keyCopy = new HashSet<>(PooledNormalSamples.keySet());
 
                     // Here go through the control samples, and get the info needed
                     for (DataRecord PNorms : keyCopy) {
                         String pNorm_name = PNorms.getStringVal("OtherSampleId", apiUser);
-                        LinkedHashMap<String, String> tempHashMap = getSampleInfoMap(apiUser, drm, PNorms, SamplesAndRuns, RunID_and_PoolName, true, false);
+                        LinkedHashMap<String, String> tempHashMap = getSampleInfoMap(apiUser, drm, PNorms, SamplesAndRuns, true, false);
                         tempHashMap.put("REQ_ID", "Proj_" + requestID);
 
                         // If include run ID is 'null' skip.
@@ -498,9 +475,9 @@ public class CreateManifestSheet {
 
                             print("Combining Two Pooled Normals: " + pNorm_name);
                             LinkedHashMap<String, String> originalPooledNormalSample = SampleListToOutput.get(pNorm_name);
-                            Set<String> currIncludeRuns = new HashSet<String>(Arrays.asList(originalPooledNormalSample.get("INCLUDE_RUN_ID").split(";")));
+                            Set<String> currIncludeRuns = new HashSet<>(Arrays.asList(originalPooledNormalSample.get("INCLUDE_RUN_ID").split(";")));
                             print("OLD include runs: " + originalPooledNormalSample.get("INCLUDE_RUN_ID")); //StringUtils.join(currIncludeRuns, ";"));
-                            Set<String> currExcludeRuns = new HashSet<String>(Arrays.asList(originalPooledNormalSample.get("EXCLUDE_RUN_ID").split(";")));
+                            Set<String> currExcludeRuns = new HashSet<>(Arrays.asList(originalPooledNormalSample.get("EXCLUDE_RUN_ID").split(";")));
 
                             currIncludeRuns.addAll(Arrays.asList(tempHashMap.get("INCLUDE_RUN_ID").split(";")));
                             currExcludeRuns.addAll(Arrays.asList(originalPooledNormalSample.get("EXCLUDE_RUN_ID").split(";")));
@@ -511,7 +488,7 @@ public class CreateManifestSheet {
                         }
 
                         // Make sure SamplesAndRuns has the corrected RUN IDs
-                        SamplesAndRuns.put(pNorm_name, new HashSet<String>(Arrays.asList(tempHashMap.get("INCLUDE_RUN_ID").split(";"))));
+                        SamplesAndRuns.put(pNorm_name, new HashSet<>(Arrays.asList(tempHashMap.get("INCLUDE_RUN_ID").split(";"))));
 
                         // If bait set does not contain comma, the add. Comma means that the pooled normal has two different bait sets. This shouldn't happen, So I'm not adding them.
                         String thisBait = tempHashMap.get("CAPTURE_BAIT_SET");
@@ -538,10 +515,9 @@ public class CreateManifestSheet {
 
                     // Grab Sample Renames
                     sampleRenames = SampleInfo.getSampleRenames();
-                    //SampleListToOutput = checkForSampleSwaps( SampleListToOutput);
 
                     // Grab sample information form queryProjectInfo
-                    ArrayList<String> pInfo = new ArrayList<String>(Arrays.asList(queryProjInfo(apiUser, drm, requestID)));
+                    ArrayList<String> pInfo = new ArrayList<>(Arrays.asList(queryProjInfo(apiUser, drm, requestID)));
 
                     if (!pi.equals("null") && !invest.equals("null")) {
                         runNum = getRunNumber(requestID, pi, invest);
@@ -561,15 +537,15 @@ public class CreateManifestSheet {
                     pInfo.add("NumberOfSamples: " + String.valueOf(numSamples));
 
                     // Only grab values from SampleListToOutput to make an array (You don't need sample) (easier to iterate?)
-                    ArrayList<LinkedHashMap<String, String>> sampInfo = new ArrayList<LinkedHashMap<String, String>>(SampleListToOutput.values());
+                    ArrayList<LinkedHashMap<String, String>> sampInfo = new ArrayList<>(SampleListToOutput.values());
                     assignProjectSpecificInfo(sampInfo);
                     pInfo.add("Species: " + requestSpecies);
 
                     // This is done for the *smart* pairing (if necessary) and the grouping file (if necessary)
-                    LinkedHashMap<String, Set<String>> patientSampleMap = new LinkedHashMap<String, Set<String>>();
+                    LinkedHashMap<String, Set<String>> patientSampleMap;
 
                     // make arrayListof hashmaps of sampleInfo, but only if they are !SAMPLE_CLASS.contains(Normal)
-                    ArrayList<LinkedHashMap<String, String>> tumorSampInfo = new ArrayList<LinkedHashMap<String, String>>();
+                    ArrayList<LinkedHashMap<String, String>> tumorSampInfo = new ArrayList<>();
                     for (LinkedHashMap<String, String> tempSamp : sampInfo) {
                         if (!tempSamp.get("SAMPLE_CLASS").contains("Normal")) {
                             tumorSampInfo.add(tempSamp);
@@ -596,16 +572,14 @@ public class CreateManifestSheet {
                         }
 
                         printRequestFile(pInfo, ampType, libType, strand, requestID, projDir);
-                        //sendCompletionEmail(requestID, projDir.getAbsolutePath());
                         printReadmeFile(readmeInfo, requestID, projDir);
 
                         // criteria for making sample key excel
                         if (ReqType.equals("rnaseq") && !libType.contains("TruSeq Fusion Discovery") && sampInfo.size() > 1) {
                             createSampleKeyExcel(requestID, projDir, SampleListToOutput);
                             // send sample key excel in an e-mail.
-                            //emailSampKeyComparisons(requestID, projDir, pInfo);
                         }
-                    } else { //if(ReqType.equals("impact")) {   OR EXOME
+                    } else {
                         patientSampleMap = createPatientSampleMapping(SampleListToOutput);
 
                         File manDir = new File("manifests/Proj_" + requestID);
@@ -636,7 +610,7 @@ public class CreateManifestSheet {
                                 pInfo.add("AssayPath: " + findDesignFile(baitVersion));
                             }
                             if (!baitVersion.equals("#EMPTY")) {
-                                if (ReqType == "exome") {
+                                if (Objects.equals(ReqType, "exome")) {
                                     pInfo.add("Assay: " + baitVersion);
                                 } else {
                                     pInfo.add("Assay: ");
@@ -646,7 +620,7 @@ public class CreateManifestSheet {
                             }
 
                             // Grab tumor type!
-                            HashSet<String> tType = new HashSet<String>();
+                            HashSet<String> tType = new HashSet<>();
                             for (LinkedHashMap<String, String> tempSamp : sampInfo) {
                                 String t = tempSamp.get("ONCOTREE_CODE");
                                 if (!t.equals("Tumor") && !t.equals("Normal") && !t.equals("na") && !t.equals("Unknown") && !t.equals("#EMPTY")) {
@@ -657,7 +631,8 @@ public class CreateManifestSheet {
                                 print("[WARNING] I can't figure out the tumor type of this project. ");
 
                             } else if (tType.size() == 1) {
-                                pInfo.add("TumorType: " + new ArrayList(tType).get(0));
+                                ArrayList<String> tumorTypes = new ArrayList<>(tType);
+                                pInfo.add("TumorType: " + tumorTypes.get(0));
                             } else if (tType.size() > 1) {
                                 pInfo.add("TumorType: mixed");// + tType);
                             } else {
@@ -666,7 +641,6 @@ public class CreateManifestSheet {
                         }
 
 
-                        String mapping_filename = manDir + "/Proj_" + requestID + "_sample_mapping.txt";
                         String Manifest_filename = manDir + "/Proj_" + requestID + "_sample_manifest.txt";
                         String pairing_filename = manDir + "/Proj_" + requestID + "_sample_pairing.txt";
                         String grouping_filename = manDir + "/Proj_" + requestID + "_sample_grouping.txt";
@@ -677,7 +651,7 @@ public class CreateManifestSheet {
                             printMappingFile(SamplesAndRuns, requestID, manDir, baitVersion);
                         }
 
-                        printRequestFile(pInfo, requestSpecies, requestID, manDir);
+                        printRequestFile(pInfo, requestID, manDir);
                         printHashMap(sampInfo, Manifest_filename);
                         printFileType(sampInfo, patient_filename, "patient");
                         printFileType(tumorSampInfo, clinical_filename, "data_clinical");
@@ -704,7 +678,6 @@ public class CreateManifestSheet {
                                 }
                             }
                             if (!f.getName().endsWith("sample_mapping.txt") && !f.getName().endsWith("request.txt")) {
-                                //System.out.println("DELETING: " + f.getName());
                                 f.delete();
                             }
                         }
@@ -739,7 +712,6 @@ public class CreateManifestSheet {
             File f = new File(projectFilePath);
             setPermissions(f);
         }
-        return;
     }
 
     private ArrayList<LinkedHashMap<String, String>> getManualOverrides(String readmeInfo, ArrayList<LinkedHashMap<String, String>> sampInfo) {
@@ -758,8 +730,8 @@ public class CreateManifestSheet {
         return sampInfo;
     }
 
-    private ArrayList<LinkedHashMap<String, String>> setNewBaitSet(ArrayList<LinkedHashMap<String, String>> sampInfo) {
-        String newBaitset = "#EMPTY";
+    private void setNewBaitSet(ArrayList<LinkedHashMap<String, String>> sampInfo) {
+        String newBaitset;
         String newSpikein = "na";
         if (baitVersion.contains("+")) {
             String[] bv_split = baitVersion.split("\\+");
@@ -774,7 +746,6 @@ public class CreateManifestSheet {
             tempSamp.put("CAPTURE_BAIT_SET", newBaitset);
             tempSamp.put("SPIKE_IN_GENES", newSpikein);
         }
-        return sampInfo;
     }
 
     private void initializeFilePermissions() {
@@ -799,7 +770,6 @@ public class CreateManifestSheet {
         //add others permissions
         FILEperms.add(PosixFilePermission.OTHERS_READ);
 
-        return;
     }
 
     private void setPermissions(File f) {
@@ -808,21 +778,19 @@ public class CreateManifestSheet {
                 try {
                     Files.setPosixFilePermissions(f.toPath(), DIRperms);
                 } catch (AccessDeniedException e) {
-                    //System.out.println("Access Denied Exception: You probably don't own " + f.toString() + " and cannot change the permissions");
                 }
-                for (File x : f.listFiles()) {
-                    if (x.isDirectory()) {
+                for (Path path : Files.newDirectoryStream(f.toPath())) {
+                    File file = path.toFile();
+                    if (file.isDirectory()) {
                         try {
-                            Files.setPosixFilePermissions(Paths.get(x.getAbsolutePath()), DIRperms);
+                            Files.setPosixFilePermissions(Paths.get(file.getAbsolutePath()), DIRperms);
                         } catch (AccessDeniedException e) {
-                            //System.out.println("Access Denied Exception: You probably don't own " + x.toString() + " and cannot change the permissions");
                         }
-                        setPermissions(x);
+                        setPermissions(file);
                     } else {
                         try {
-                            Files.setPosixFilePermissions(Paths.get(x.getAbsolutePath()), FILEperms);
+                            Files.setPosixFilePermissions(Paths.get(file.getAbsolutePath()), FILEperms);
                         } catch (AccessDeniedException e) {
-                            //System.out.println("Access Denied Exception: You probably don't own " + x.toString() + " and cannot change the permissions");
                         }
                     }
                 }
@@ -831,13 +799,12 @@ public class CreateManifestSheet {
             logger.log(Level.SEVERE, "Exception thrown: ", e);
             e.printStackTrace(console);
         }
-        return;
     }
 
     private String getRecipe(DataRecordManager drm, User apiUser, DataRecord request) {
         //this will get the recipe for all sampels under request
-        List<DataRecord> samples = new ArrayList<DataRecord>();
-        List<Object> recipe = new ArrayList<Object>();
+        List<DataRecord> samples;
+        List<Object> recipe = new ArrayList<>();
         try {
             samples = Arrays.asList(request.getChildrenOfType("Sample", apiUser));
             recipe = drm.getValueList(samples, "Recipe", apiUser);
@@ -847,17 +814,16 @@ public class CreateManifestSheet {
             e.printStackTrace(console);
         }
 
-        Set<String> recipes = new HashSet<String>();
+        Set<String> recipes = new HashSet<>();
         for (Object val : recipe) {
             recipes.add((String) val);
         }
 
-        String uniqRecipes = StringUtils.join(recipes, ",");
-        return uniqRecipes;
+        return StringUtils.join(recipes, ",");
 
     }
 
-    private Map<String, Set<String>> checkPostSeqQC(User apiUser, DataRecordManager drm, DataRecord request, Map<String, Set<String>> SampleRunHash) {
+    private Map<String, Set<String>> checkPostSeqQC(User apiUser, DataRecord request, Map<String, Set<String>> SampleRunHash) {
         // This will look through all post seq QC records
         // For each, if sample AND run is in map
         // then check the value of PostSeqQCStatus
@@ -867,7 +833,7 @@ public class CreateManifestSheet {
 
         // I'm going to add Sample ID and run ID here when I'm done yo! That way I can check and see if any
         // Don't have PostSeqAnalysisQC
-        Map<String, Set<String>> finalList = new HashMap<String, Set<String>>();
+        Map<String, Set<String>> finalList = new HashMap<>();
 
         try {
             List<DataRecord> postQCs = request.getDescendantsOfType("PostSeqAnalysisQC", apiUser);
@@ -888,7 +854,7 @@ public class CreateManifestSheet {
                             print("[WARNING] Sample " + sampID + " in run " + runID + " did not pass POST Sequencing QC(" + status + "). The note attached says: " + note + ". This will not be included in manifest.");
                         } else {
                             if (!finalList.containsKey(sampID)) {
-                                Set<String> temp = new HashSet<String>();
+                                Set<String> temp = new HashSet<>();
                                 temp.add(runID);
                                 finalList.put(sampID, temp);
                             } else {
@@ -907,17 +873,15 @@ public class CreateManifestSheet {
 
             }
 
-        } catch (RemoteException ioe) {
+        } catch (RemoteException | NotFound ioe) {
             ioe.printStackTrace(console);
-        } catch (NotFound nf) {
-            nf.printStackTrace(console);
         }
         if (!SampleRunHash.isEmpty()) {
             for (String sampID : SampleRunHash.keySet()) {
                 Set<String> runIDs = SampleRunHash.get(sampID);
                 print("[WARNING] Sample " + sampID + " has runs that do not have POST Sequencing QC. We won't be able to tell if they are failed or not: " + Arrays.toString(runIDs.toArray()) + ". They will still be added to the sample list.");
                 if (!finalList.containsKey(sampID)) {
-                    Set<String> temp = new HashSet<String>();
+                    Set<String> temp = new HashSet<>();
                     temp.addAll(runIDs);
                     finalList.put(sampID, temp);
                 } else {
@@ -942,7 +906,6 @@ public class CreateManifestSheet {
                 print("[WARNING] sample " + sample + " has less than 1M total reads: " + numReads);
             }
         }
-        return;
     }
 
     private String[] queryProjInfo(User apiUser, DataRecordManager drm, String requestID) {
@@ -966,71 +929,9 @@ public class CreateManifestSheet {
         return pInfo;
     }
 
-    private LinkedHashMap<String, LinkedHashMap<String, String>> checkForSampleSwaps(LinkedHashMap<String, LinkedHashMap<String, String>> SampleListToOutput) {
-        Set<String> oldNames = sampleRenames.keySet();
-        for (String on : sampleRenames.keySet()) {
-            if (sampleRenames.containsKey(sampleRenames.get(on)) && sampleRenames.containsValue(on) && sampleRenames.containsKey(sampleRenames.get(sampleRenames.get(on)))) {
-                // This means a sample swap is happening.
-                if (on == sampleRenames.get(on)) {
-                    continue;
-                }
-
-                if (sampleSwap.containsKey(on)) {
-                    print("[ERROR] Sample is being swapped twice, this doesn't make sense. Nothing has been swapped!");
-                    sampleSwap.clear();
-                    return SampleListToOutput;
-                } else if (!SampleListToOutput.containsKey(on)) {
-                    print("[ERROR] Sample Swap detected, but old name: " + on + " not found in Sample List. Nothing has been swapped!");
-                    sampleSwap.clear();
-                    return SampleListToOutput;
-                } else if (!SampleListToOutput.containsKey(sampleRenames.get(on))) {
-                    print("[ERROR] Sample Swap detected, but new name: " + on + " not found in Sample List. Nothing has been swapped!");
-                    sampleSwap.clear();
-                    return SampleListToOutput;
-                } else {
-                    sampleSwap.put(on, sampleRenames.get(on));
-                }
-            }
-        }
-
-        if (sampleSwap.size() > 0) {
-            LinkedHashMap<String, LinkedHashMap<String, String>> NewSampleInfos = performSampleSwap(SampleListToOutput);
-
-        }
-
-
-        return SampleListToOutput;
-    }
-
-    private LinkedHashMap<String, LinkedHashMap<String, String>> performSampleSwap(LinkedHashMap<String, LinkedHashMap<String, String>> SampleListToOutput) {
-        LinkedHashMap<String, LinkedHashMap<String, String>> tempSampInfoList = new LinkedHashMap<String, LinkedHashMap<String, String>>();
-
-        // This will get the NEW sample's cmo info, and put it with the old sample's QC info.
-        for (String on : sampleSwap.keySet()) {
-            // first REMOVE from sampleRenames:
-            sampleRenames.remove(on);
-
-            print("[INFO] Performing sample swap from " + on + " to " + sampleSwap.get(on));
-            LinkedHashMap<String, String> swappedInfo = new LinkedHashMap<String, String>(SampleListToOutput.get(on));
-            LinkedHashMap<String, String> newInfo = new LinkedHashMap<String, String>(SampleListToOutput.get(sampleSwap.get(on)));
-            for (String val : sampleSwapValues) {
-                swappedInfo.put(val, newInfo.get(val));
-            }
-
-            tempSampInfoList.put(sampleSwap.get(on), swappedInfo);
-        }
-
-        // Now just replace whatever was in SampleListToOutput with the temp overlap
-        for (String name : tempSampInfoList.keySet()) {
-            SampleListToOutput.put(name, tempSampInfoList.get(name));
-        }
-
-        return SampleListToOutput;
-    }
-
     private Map<String, Set<String>> addPooledNormalstoSampleList(Map<String, Set<String>> SamplesAndRuns, Map<String, String> RunID_and_PoolName, HashMap<DataRecord, HashSet<String>> PooledNormalSamples, User apiUser) {
 
-        HashSet<String> runs = new HashSet<String>();
+        HashSet<String> runs = new HashSet<>();
         for (DataRecord rec : PooledNormalSamples.keySet()) {
             try {
                 String sampName = rec.getStringVal("OtherSampleId", apiUser);
@@ -1042,7 +943,7 @@ public class CreateManifestSheet {
                         }
                     }
                 }
-                Set<String> t = new HashSet<String>();
+                Set<String> t = new HashSet<>();
                 if (SamplesAndRuns.containsKey(sampName)) {
                     t.addAll(SamplesAndRuns.get(sampName));
                 }
@@ -1058,7 +959,7 @@ public class CreateManifestSheet {
         return SamplesAndRuns;
     }
 
-    private String assignProjectSpecificInfo(ArrayList<LinkedHashMap<String, String>> sampInfo) {
+    private void assignProjectSpecificInfo(ArrayList<LinkedHashMap<String, String>> sampInfo) {
         // This will iterate the samples, grab the species, and if it is not the same and it
         // is not xenograft warning will be put.
         // If the species has been set to xenograft, it will give a warning if species is not human or xenograft
@@ -1072,13 +973,13 @@ public class CreateManifestSheet {
 
             String sp = tempSamp.get("SPECIES");
             // SPECIES CHECKING:
-            if (!sp.isEmpty() && sp != null) {
-                if (requestSpecies == "xenograft") {
+            if (!sp.isEmpty()) {
+                if (Objects.equals(requestSpecies, "xenograft")) {
                     // Xenograft projects may only have samples of species human or xenograft
-                    if (!sp.equals("Human") && sp != "xenograft") {
+                    if (!sp.equals("Human") && !Objects.equals(sp, "xenograft")) {
                         print("[ERROR] Request species has been determined as xenograft, but this sample is neither xenograft or human: " + sp);
                     }
-                } else if (requestSpecies == "#EMPTY") {
+                } else if (Objects.equals(requestSpecies, "#EMPTY")) {
                     requestSpecies = sp;
                 } else if (!requestSpecies.equals(sp)) {
                     // Requests that are not xenograft must have 100% the same species for each sample. If that is not true, it will output issue here:
@@ -1087,12 +988,12 @@ public class CreateManifestSheet {
             }
 
             //baitVerison - sometimes bait version needs to be changed. If so, the CAPTURE_BAIT_SET must also be changed
-            if (ReqType == "rnaseq" || ReqType == "other") {
+            if (Objects.equals(ReqType, "rnaseq") || Objects.equals(ReqType, "other")) {
                 baitVersion = "#EMPTY";
             } else {
                 String bv = tempSamp.get("BAIT_VERSION");
                 if (bv != null && !bv.isEmpty()) {
-                    if (ReqType == "exome") {
+                    if (Objects.equals(ReqType, "exome")) {
                         // First check xenograft, if yes, then if bait version is Agilent (manual bait version for exomes) change to xenograft version of Agilent
                         if (requestSpecies.equals("xenograft") && bv.equals("AgilentExon_51MB_b37_v3")) {
                             bv = "AgilentExon_51MB_b37_mm10_v3";
@@ -1100,8 +1001,10 @@ public class CreateManifestSheet {
                         }
                         String bv_sp = bv;
                         // Test Bait version.
-                        if (findDesignFile(bv) == "NA") {
+                        if (Objects.equals(findDesignFile(bv), "NA")) {
                             // Add species to end of bv
+                            String humanAbrevSpecies = "b37";
+                            String mouseAbrevSpecies = "mm10";
                             if (requestSpecies.toLowerCase().equals("human")) {
                                 bv_sp = bv + "_" + humanAbrevSpecies;
                             } else if (requestSpecies.toLowerCase().equals("mouse")) {
@@ -1109,7 +1012,7 @@ public class CreateManifestSheet {
                             } else if (requestSpecies.toLowerCase().equals("xenograft")) {
                                 bv_sp = bv + "_" + humanAbrevSpecies + "_" + mouseAbrevSpecies;
                             }
-                            if (bv_sp != bv && findDesignFile(bv_sp) != "NA") {
+                            if (!Objects.equals(bv_sp, bv) && !Objects.equals(findDesignFile(bv_sp), "NA")) {
                                 baitVersion = bv_sp;
                                 bv = bv_sp;
                                 //setNewBaitSet should be called
@@ -1129,7 +1032,6 @@ public class CreateManifestSheet {
         if (bvChanged) {
             setNewBaitSet(sampInfo);
         }
-        return baitVersion;
     }
 
     private void getLibTypes(ArrayList<DataRecord> passingSeqRuns, DataRecordManager drm, User apiUser, DataRecord request) {
@@ -1140,10 +1042,10 @@ public class CreateManifestSheet {
             // TWO: Get decendants of type sample from the request
             List<DataRecord> samplesFromRequest = request.getDescendantsOfType("Sample", apiUser);
 
-            Set<DataRecord> finalSampleList = new HashSet<DataRecord>();
+            Set<DataRecord> finalSampleList = new HashSet<>();
             // THREE: Get the overlap
             for (List<DataRecord> sampList : samplesFromSeqRun) {
-                ArrayList<DataRecord> temp = new ArrayList<DataRecord>(sampList);
+                ArrayList<DataRecord> temp = new ArrayList<>(sampList);
                 temp.retainAll(samplesFromRequest);
                 finalSampleList.addAll(temp);
             }
@@ -1153,29 +1055,15 @@ public class CreateManifestSheet {
             }
 
             // Try finalSampleList FIRST. If this doesn't have any library types, just try samples from seq run.
-            checkSamplesForLibTypes(finalSampleList, drm, apiUser, request);
-
-            //if(ReqType.length() == 0) {
-            //    finalSampleList.clear();
-            //    for(List<DataRecord> seqLine : samplesFromSeqRun){
-            //        finalSampleList.addAll(seqLine);
-            //   }
-            //    checkSamplesForLibTypes(finalSampleList, drm, apiUser, request);
-
-            //    if(ReqType.length() > 1){
-            //        print("[ERROR] Unable to correctly resolve request type. No request type protocols found in request, and while searching parent request, multiple request types were found." + StringUtils.join(ReqType, ", "));
-            //    }
-            // }
-
+            checkSamplesForLibTypes(finalSampleList, drm, apiUser);
         } catch (Throwable e) {
             logger.log(Level.SEVERE, "Exception thrown: ", e);
             e.printStackTrace(console);
         }
-        return;
     }
 
 
-    private void checkSamplesForLibTypes(Set<DataRecord> finalSampleList, DataRecordManager drm, User apiUser, DataRecord request) {
+    private void checkSamplesForLibTypes(Set<DataRecord> finalSampleList, DataRecordManager drm, User apiUser) {
         try {
             // This is where I have to check all the overlapping samples for children of like 5 different types.
             for (DataRecord rec : finalSampleList) {
@@ -1247,9 +1135,6 @@ public class CreateManifestSheet {
             logger.log(Level.SEVERE, "Exception thrown: ", e);
             e.printStackTrace(console);
         }
-        return;
-
-
     }
 
     private Boolean checkValidBool(List<DataRecord> recs, DataRecordManager drm, User apiUser) {
@@ -1273,33 +1158,26 @@ public class CreateManifestSheet {
         return false;
     }
 
-    private LinkedHashMap<String, String> getSampleInfoMap(User apiUser, DataRecordManager drm, DataRecord rec, Map<String, Set<String>> SamplesAndRuns, Map RunID_and_PoolName, boolean poolNormal, boolean transfer) {
-        LinkedHashMap<String, String> RequestInfo = new LinkedHashMap<String, String>();
-        try {
-            // Latest attempt at refactoring the code. Why does species come up so much?
-            Map<String, Object> fieldMap = rec.getFields(apiUser);
+    private LinkedHashMap<String, String> getSampleInfoMap(User apiUser, DataRecordManager drm, DataRecord rec, Map<String, Set<String>> SamplesAndRuns, boolean poolNormal, boolean transfer) {
+        LinkedHashMap<String, String> RequestInfo = new LinkedHashMap<>();
+        // Latest attempt at refactoring the code. Why does species come up so much?
+        SampleInfo LS2;
+        if (ReqType.equals("impact") || poolNormal) {
+            LS2 = new SampleInfoImpact(ReqType, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer, deadLog);
+        } else if (ReqType.equals("exome")) {
+            LS2 = new SampleInfoExome(ReqType, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer, deadLog);
+        } else {
+            LS2 = new SampleInfo(ReqType, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer, deadLog);
+        }
+        RequestInfo = LS2.SendInfoToMap();
 
-            SampleInfo LS2;
-            if (ReqType.equals("impact") || poolNormal) {
-                LS2 = new SampleInfoImpact(ReqType, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer, deadLog);
-            } else if (ReqType.equals("exome")) {
-                LS2 = new SampleInfoExome(ReqType, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer, deadLog);
-            } else {
-                LS2 = new SampleInfo(ReqType, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer, deadLog);
-            }
-            RequestInfo = LS2.SendInfoToMap();
+        if (sampleAlias.keySet().contains(RequestInfo.get("CMO_SAMPLE_ID"))) {
+            RequestInfo.put("MANIFEST_SAMPLE_ID", sampleAlias.get(RequestInfo.get("CMO_SAMPLE_ID")));
+        }
 
-            if (sampleAlias.keySet().contains(RequestInfo.get("CMO_SAMPLE_ID"))) {
-                RequestInfo.put("MANIFEST_SAMPLE_ID", sampleAlias.get(RequestInfo.get("CMO_SAMPLE_ID")));
-            }
-
-            if (badRuns.keySet().contains(RequestInfo.get("CMO_SAMPLE_ID"))) {
-                String excludeRuns = StringUtils.join(badRuns.get(RequestInfo.get("CMO_SAMPLE_ID")), ";");
-                RequestInfo.put("EXCLUDE_RUN_ID", excludeRuns);
-            }
-
-        } catch (RemoteException ioe) {
-            ioe.printStackTrace(console);
+        if (badRuns.keySet().contains(RequestInfo.get("CMO_SAMPLE_ID"))) {
+            String excludeRuns = StringUtils.join(badRuns.get(RequestInfo.get("CMO_SAMPLE_ID")), ";");
+            RequestInfo.put("EXCLUDE_RUN_ID", excludeRuns);
         }
 
         return RequestInfo;
@@ -1310,7 +1188,7 @@ public class CreateManifestSheet {
         // Here I will grab all Sample Speicfic QC that have request XXXX.
         // I will then populate a thing that will have all the samples as well as the runs they passed in.
 
-        Map<String, Set<String>> x = new HashMap<String, Set<String>>();
+        Map<String, Set<String>> x = new HashMap<>();
 
         try {
             List<DataRecord> SampleQCList = drm.queryDataRecords("SeqAnalysisSampleQC", "Request = '" + requestID + "'", apiUser);
@@ -1346,7 +1224,7 @@ public class CreateManifestSheet {
                 // Here I am going to pull the read count!
                 try {
                     totalReads = (int) (long) rec.getLongVal("TotalReads", apiUser);
-                } catch (NullPointerException e) {
+                } catch (NullPointerException ignored) {
                 }
                 if (readsForSample.containsKey(SampleID)) {
                     Integer tempReads = readsForSample.get(SampleID) + totalReads;
@@ -1368,14 +1246,11 @@ public class CreateManifestSheet {
                     temp.add(RunID);
                     x.put(SampleID, temp);
                 } else {
-                    Set<String> temp = new HashSet<String>();
+                    Set<String> temp = new HashSet<>();
                     temp.add(RunID);
                     x.put(SampleID, temp);
                 }
-
             }
-
-
         } catch (Throwable e) {
             logger.log(Level.SEVERE, "Exception thrown: ", e);
             e.printStackTrace(console);
@@ -1389,11 +1264,10 @@ public class CreateManifestSheet {
             temp.add(run);
             badRuns.put(sample, temp);
         } else {
-            Set<String> temp = new HashSet<String>();
+            Set<String> temp = new HashSet<>();
             temp.add(run);
             badRuns.put(sample, temp);
         }
-
     }
 
     private Map<String, Set<String>> compareSamplesAndRuns(Map<String, Set<String>> pool, Set<String> poolRuns, Map<String, Set<String>> sample, Set<String> sampleRuns, String requestID, boolean manualDemux) {
@@ -1402,7 +1276,7 @@ public class CreateManifestSheet {
         //     write warning about it
         // If sample has more run IDs than pool, send an error out because that should never happen.
 
-        Map<String, Set<String>> FinalSamplesAndRuns = new HashMap<String, Set<String>>();
+        Map<String, Set<String>> FinalSamplesAndRuns = new HashMap<>();
         FinalSamplesAndRuns.putAll(sample);
 
         if (FinalSamplesAndRuns.size() == 0) {
@@ -1419,7 +1293,7 @@ public class CreateManifestSheet {
         }
 
         // Start with sample data, go through pool and add any run Ids for samples that don't have them...
-        Set<String> TempRunList = new HashSet<String>();
+        Set<String> TempRunList = new HashSet<>();
         TempRunList.addAll(poolRuns);
 
         for (String run : sampleRuns) {
@@ -1431,10 +1305,9 @@ public class CreateManifestSheet {
             String msg = "[SAMPLE_QC_INFO] Sample specific QC is missing run(s) that pool QC contains for Project: " + requestID + " Runs: " + StringUtils.join(TempRunList, ", ");
             logger.log(Level.INFO, msg);
 
-            int added = 0;
             for (String samp : pool.keySet()) {
                 // get run ids from pool sample that overlap with the ones sample qc is missing.
-                Set<String> Temp2 = new HashSet<String>();
+                Set<String> Temp2 = new HashSet<>();
                 Temp2.addAll(pool.get(samp));
                 Temp2.retainAll(TempRunList);
 
@@ -1444,7 +1317,7 @@ public class CreateManifestSheet {
                         temp.addAll(Temp2);
                         FinalSamplesAndRuns.put(samp, temp);
                     } else {
-                        Set<String> temp = new HashSet<String>();
+                        Set<String> temp = new HashSet<>();
                         temp.addAll(Temp2);
                         FinalSamplesAndRuns.put(samp, temp);
                     }
@@ -1461,24 +1334,20 @@ public class CreateManifestSheet {
             TempRunList.remove(run);
         }
 
-        if (TempRunList.size() > 0) {
-            //print("[POOL_QC_ERROR] Run(s) were found in sample level QC that are not in pool level QC: " + StringUtils.join(TempRunList, ", " ));
-        }
-
         return FinalSamplesAndRuns;
 
     }
 
-    private Map<String, Set<String>> getPoolSpecificQC(DataRecord request, DataRecordManager drm, User apiUser) {
-        Map<String, Set<String>> SamplesAndRuns = new HashMap<String, Set<String>>();
+    private Map<String, Set<String>> getPoolSpecificQC(DataRecord request, User apiUser) {
+        Map<String, Set<String>> SamplesAndRuns = new HashMap<>();
         try {
             String reqID = request.getStringVal("RequestId", apiUser);
             // Get the first sample data records for the request
-            ArrayList<DataRecord> originalSampRec = new ArrayList<DataRecord>();
-            ArrayList<DataRecord> samp = new ArrayList<DataRecord>(request.getDescendantsOfType("Sample", apiUser));
+            ArrayList<DataRecord> originalSampRec = new ArrayList<>();
+            ArrayList<DataRecord> samp = new ArrayList<>(request.getDescendantsOfType("Sample", apiUser));
             for (DataRecord s : samp) {
-                ArrayList<DataRecord> reqs = new ArrayList<DataRecord>(s.getParentsOfType("Request", apiUser));
-                ArrayList<DataRecord> plates = new ArrayList<DataRecord>(s.getParentsOfType("Plate", apiUser));
+                ArrayList<DataRecord> reqs = new ArrayList<>(s.getParentsOfType("Request", apiUser));
+                ArrayList<DataRecord> plates = new ArrayList<>(s.getParentsOfType("Plate", apiUser));
                 if (!reqs.isEmpty()) {
                     originalSampRec.add(s);
                 } else if (!plates.isEmpty()) {
@@ -1492,7 +1361,7 @@ public class CreateManifestSheet {
             }
 
             // For each run qc, find the sample
-            ArrayList<DataRecord> sequencingRuns = new ArrayList<DataRecord>(request.getDescendantsOfType("SeqAnalysisQC", apiUser));
+            ArrayList<DataRecord> sequencingRuns = new ArrayList<>(request.getDescendantsOfType("SeqAnalysisQC", apiUser));
             for (DataRecord seqrun : sequencingRuns) {
 
                 if (!verifySeqRun(seqrun, reqID, apiUser)) {
@@ -1505,7 +1374,7 @@ public class CreateManifestSheet {
                 }
 
                 // Try to get RunID, if not try to get pool name, if not again, then error!
-                String RunID = "null";
+                String RunID;
                 String runPath = seqrun.getStringVal("SequencerRunFolder", apiUser).replaceAll("/$", "");
                 if (runPath.length() > 0) {
                     String[] pathList = runPath.split("/");
@@ -1537,7 +1406,7 @@ public class CreateManifestSheet {
                 }
                 passingSeqRuns.add(seqrun);
 
-                if (RunID == "null") {
+                if (Objects.equals(RunID, "null")) {
                     poolQCWarnings += "[POOL_QC_ERROR] Unable to find run path or related sample ID for this sequencing run.\n";
                     exitLater = true;
                     mappingIssue = true;
@@ -1557,7 +1426,7 @@ public class CreateManifestSheet {
                         temp.add(RunID);
                         SamplesAndRuns.put(sname, temp);
                     } else {
-                        Set<String> temp = new HashSet<String>();
+                        Set<String> temp = new HashSet<>();
                         temp.add(RunID);
                         SamplesAndRuns.put(sname, temp);
                     }
@@ -1623,7 +1492,6 @@ public class CreateManifestSheet {
     private void createSampleKeyExcel(String requestID, File projDir, LinkedHashMap<String, LinkedHashMap<String, String>> sampleHashMap) {
         // sample info
         File sampleKeyExcel = new File(projDir.getAbsolutePath() + "/Proj_" + requestID + "_sample_key.xlsx");
-        char[] alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
 
         //create the workbook
         XSSFWorkbook wb = new XSSFWorkbook();
@@ -1647,14 +1515,14 @@ public class CreateManifestSheet {
                 "- Do not change any of the information in columns A or B.\n        - Do not rename the samples IDs (InvestigatorSampleID or FASTQFileID). If you have a question about the sample names, please email " +
                 "bic-request@cbio.mskcc.org.\n        - Do not reorder or rename the columns.\n        - Do not use the GroupName column to communicate any other information (such as instructions, comments, etc)";
 
-        sampleKey = addRowToSheet(wb, sampleKey, new ArrayList<String>(Arrays.asList(instructs)), rowNum, "instructions");
+        sampleKey = addRowToSheet(wb, sampleKey, new ArrayList<>(Collections.singletonList(instructs)), rowNum, "instructions");
         rowNum++;
 
         //header
-        sampleKey = addRowToSheet(wb, sampleKey, new ArrayList<String>(Arrays.asList("FASTQFileID", "InvestigatorSampleID", "GroupName")), rowNum, "header");
+        sampleKey = addRowToSheet(wb, sampleKey, new ArrayList<>(Arrays.asList("FASTQFileID", "InvestigatorSampleID", "GroupName")), rowNum, "header");
         rowNum++;
 
-        ArrayList<String> sids = new ArrayList(sampleHashMap.keySet());
+        ArrayList<String> sids = new ArrayList<>(sampleHashMap.keySet());
         Collections.sort(sids);
 
         // add each sample
@@ -1667,15 +1535,11 @@ public class CreateManifestSheet {
             }
 
             String sampName1 = hash.get("CMO_SAMPLE_ID");
-            if (sampName1 == null || sampName1.startsWith("#")) {
-
-            }
-
             String cmoSamp = sampName1 + "_IGO_" + seqIGOid;
-            if (cmoSamp == null || cmoSamp.startsWith("#")) {
+            if (cmoSamp.startsWith("#")) {
                 cmoSamp = sampName1 + "_IGO_" + seqIGOid;
             }
-            sampleKey = addRowToSheet(wb, sampleKey, new ArrayList<String>(Arrays.asList(cmoSamp, investSamp)), rowNum, null);
+            sampleKey = addRowToSheet(wb, sampleKey, new ArrayList<>(Arrays.asList(cmoSamp, investSamp)), rowNum, null);
 
             // Unlock this rows third cell
             Row thisRow = sampleKey.getRow(rowNum);
@@ -1718,7 +1582,7 @@ public class CreateManifestSheet {
         // grab them from a tab-delim text file, and row by row add them to the excel.
 
         try {
-            FileInputStream exStream = new FileInputStream(sampleKeyExFile);
+            InputStream exStream = ClassLoader.getSystemResourceAsStream(sampleKeyExFile);
             DataInputStream in = new DataInputStream(exStream);
             BufferedReader br = new BufferedReader(new InputStreamReader(in));
             String exLine;
@@ -1733,7 +1597,7 @@ public class CreateManifestSheet {
 
                 String[] cellVals = exLine.split("\t");
 
-                exampleSheet = addRowToSheet(wb, exampleSheet, new ArrayList<String>(Arrays.asList(cellVals)), rowNum, type);
+                exampleSheet = addRowToSheet(wb, exampleSheet, new ArrayList<>(Arrays.asList(cellVals)), rowNum, type);
                 rowNum++;
             }
 
@@ -1759,28 +1623,26 @@ public class CreateManifestSheet {
         }
 
 
-        return;
     }
 
     private void printPairingExcel(String pairing_filename, LinkedHashMap<String, String> pair_Info, ArrayList<String> exome_normal_list) {
         File pairingExcel = new File(pairing_filename.substring(0, pairing_filename.lastIndexOf('.')) + ".xlsx");
-        char[] alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
 
         XSSFWorkbook wb = new XSSFWorkbook();
         XSSFSheet pairingInfo = wb.createSheet("PairingInfo");
         int rowNum = 0;
 
-        pairingInfo = addRowToSheet(wb, pairingInfo, new ArrayList<String>(Arrays.asList("Tumor", "MatchedNormal", "SampleRename")), rowNum, "header");
+        pairingInfo = addRowToSheet(wb, pairingInfo, new ArrayList<>(Arrays.asList("Tumor", "MatchedNormal", "SampleRename")), rowNum, "header");
         rowNum++;
 
         for (String tum : pair_Info.keySet()) {
             String norm = pair_Info.get(tum);
-            if (ReqType == "exome" && exome_normal_list.contains(tum)) {
+            if (Objects.equals(ReqType, "exome") && exome_normal_list.contains(tum)) {
                 norm = tum;
                 tum = "na";
             }
 
-            pairingInfo = addRowToSheet(wb, pairingInfo, new ArrayList<String>(Arrays.asList(tum, norm)), rowNum, null);
+            pairingInfo = addRowToSheet(wb, pairingInfo, new ArrayList<>(Arrays.asList(tum, norm)), rowNum, null);
             rowNum++;
         }
 
@@ -1794,27 +1656,24 @@ public class CreateManifestSheet {
             logger.log(Level.SEVERE, "Exception thrown: ", e);
             e.printStackTrace(console);
         }
-        return;
     }
 
     private void printHashMap(ArrayList<LinkedHashMap<String, String>> Hmap, String filename) {
         try {
             char[] alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
             String ExcelFileName = filename.substring(0, filename.lastIndexOf('.')) + ".xlsx";
-            File manifest = new File(filename);
-            //PrintWriter pW = new PrintWriter(new FileWriter(manifest, false), false);
             XSSFWorkbook wb = new XSSFWorkbook();
             XSSFSheet sampleInfo = wb.createSheet("SampleInfo");
             int rowNum = 0;
 
             // Quickly make SampleRenames sheet, fill in correctly with NOTHing in it
             XSSFSheet sampleRenames = wb.createSheet("SampleRenames");
-            sampleRenames = addRowToSheet(wb, sampleRenames, new ArrayList<String>(Arrays.asList("OldName", "NewName")), rowNum, "header");
+            sampleRenames = addRowToSheet(wb, sampleRenames, new ArrayList<>(Arrays.asList("OldName", "NewName")), rowNum, "header");
 
             if (NewMappingScheme == 1) {
                 for (LinkedHashMap<String, String> row : Hmap) {
                     rowNum++;
-                    ArrayList<String> replaceNames = new ArrayList<String>(Arrays.asList(row.get("MANIFEST_SAMPLE_ID"), row.get("CORRECTED_CMO_ID")));
+                    ArrayList<String> replaceNames = new ArrayList<>(Arrays.asList(row.get("MANIFEST_SAMPLE_ID"), row.get("CORRECTED_CMO_ID")));
                     sampleRenames = addRowToSheet(wb, sampleRenames, replaceNames, rowNum, null);
                 }
             }
@@ -1822,10 +1681,10 @@ public class CreateManifestSheet {
             rowNum = 0;
 
             String[] header0 = hashMapHeader.toArray(new String[hashMapHeader.size()]);
-            ArrayList<String> header = new ArrayList<String>(Arrays.asList(header0));
+            ArrayList<String> header = new ArrayList<>(Arrays.asList(header0));
 
             // Fixing header names
-            ArrayList<String> replace = new ArrayList<String>(Arrays.asList(manualMappingHashMap.split(",")));
+            ArrayList<String> replace = new ArrayList<>(Arrays.asList(manualMappingHashMap.split(",")));
             for (String fields : replace) {
                 String[] parts = fields.split(":");
                 int indexHeader = header.indexOf(parts[0]);
@@ -1834,15 +1693,12 @@ public class CreateManifestSheet {
 
             try {
                 // Print header:
-                //pW.println(StringUtils.join(header, "\t"));
                 sampleInfo = addRowToSheet(wb, sampleInfo, header, rowNum, "header");
                 rowNum++;
 
                 // output each line, in order!
                 for (LinkedHashMap<String, String> row : Hmap) {
-                    ArrayList<String> vals = new ArrayList<String>(row.values());
-                    //pW.println(StringUtils.join(vals, "\t"));
-                    sampleInfo = addRowToSheet(wb, sampleInfo, row, rowNum, null);
+                    sampleInfo = addRowToSheet(sampleInfo, row, rowNum);
                     rowNum++;
                 }
 
@@ -1856,7 +1712,7 @@ public class CreateManifestSheet {
 
                 //Make a range that is at least the dimensions of the Hmap
                 // do the header.size() divided by 26. That is how many blah. Then get the remainder, and that is the second letter.
-                String lastSpot = "";
+                String lastSpot;
                 if (header.size() > 26) {
                     int firstLetter = header.size() / 26;
                     int remainder = header.size() - (26 * firstLetter);
@@ -1877,16 +1733,11 @@ public class CreateManifestSheet {
             } catch (Throwable e) {
                 logger.log(Level.SEVERE, "Exception thrown: ", e);
                 e.printStackTrace(console);
-            } //finally {
-            //if (pW != null) {
-            //    pW.close();
-            //}
-            //}
+            }
         } catch (Throwable e) {
             e.printStackTrace(console);
             logger.log(Level.SEVERE, "Exception thrown: ", e);
         }
-        return;
     }
 
     private XSSFSheet addRowToSheet(XSSFWorkbook wb, XSSFSheet sheet, ArrayList<String> list, int rowNum, String type) {
@@ -1939,9 +1790,9 @@ public class CreateManifestSheet {
         return sheet;
     }
 
-    private XSSFSheet addRowToSheet(XSSFWorkbook wb, XSSFSheet sheet, LinkedHashMap<String, String> map, int rowNum, String type) {
+    private XSSFSheet addRowToSheet(XSSFSheet sheet, LinkedHashMap<String, String> map, int rowNum) {
         try {
-            ArrayList<String> header = new ArrayList<String>(hashMapHeader);
+            ArrayList<String> header = new ArrayList<>(hashMapHeader);
             // If this is the old mapping scheme, don't make the CMO Sample ID include IGO ID.
             if (NewMappingScheme == 0) {
                 int indexHeader = header.indexOf("MANIFEST_SAMPLE_ID");
@@ -1953,7 +1804,7 @@ public class CreateManifestSheet {
                 if (map.get(key) == null || map.get(key).isEmpty()) {
                     if (exceptionList.contains(key)) {
                         map.put(key, "na");
-                        if (key == "SPECIMEN_COLLECTION_YEAR") {
+                        if (Objects.equals(key, "SPECIMEN_COLLECTION_YEAR")) {
                             map.put(key, "000");
                         }
                     } else if (silentList.contains(key)) {
@@ -1963,7 +1814,7 @@ public class CreateManifestSheet {
                     }
                 }
 
-                row.createCell(cellNum++).setCellValue((String) map.get(key));
+                row.createCell(cellNum++).setCellValue(map.get(key));
             }
         } catch (Throwable e) {
             logger.log(Level.SEVERE, "Exception thrown: ", e);
@@ -1973,22 +1824,21 @@ public class CreateManifestSheet {
     }
 
     private String findDesignFile(String assay) {
-        if (ReqType == "impact" || ReqType == "exome") {
+        if (Objects.equals(ReqType, "impact") || Objects.equals(ReqType, "exome")) {
             File dir = new File(designFilePath + "/" + assay);
             if (dir.isDirectory()) {
-                if (ReqType == "impact") {
+                if (Objects.equals(ReqType, "impact")) {
                     File berger = new File(dir.getAbsolutePath() + "/" + assay + "__DESIGN__LATEST.berger");
                     if (berger.isFile()) {
                         try {
                             return berger.getCanonicalPath();
-                        } catch (Throwable e) {
+                        } catch (Throwable ignored) {
                         }
-                    } else if (ReqType == "impact" && !runAsExome) {
+                    } else if (Objects.equals(ReqType, "impact") && !runAsExome) {
                         print("[ERROR] Cannot find design file for assay " + assay);
                     }
                 } else { // exome
-                    List<File> dir_contents = Arrays.asList(dir.listFiles());
-                    for (File iterDirContents : dir_contents) {
+                    for (File iterDirContents : Utils.getFilesInDir(dir)) {
                         if (iterDirContents.toString().endsWith("targets.ilist")) {
                             return dir.toString();
                         }
@@ -2005,16 +1855,15 @@ public class CreateManifestSheet {
     private void printMappingFile(Map<String, Set<String>> SamplesAndRuns, String requestID, File projDir, String baitVersion) {
         try {
 
-            HashSet<String> runsWithMultipleFolders = new HashSet<String>();
+            HashSet<String> runsWithMultipleFolders = new HashSet<>();
 
             String mappingFileContents = "";
-            for (String sample : new ArrayList<String>(SamplesAndRuns.keySet())) {
+            for (String sample : new ArrayList<>(SamplesAndRuns.keySet())) {
                 Set<String> runIDs = SamplesAndRuns.get(sample);
-                ArrayList<String> path = new ArrayList<String>();
-                HashSet<String> sample_pattern = new HashSet<String>();
+                HashSet<String> sample_pattern = new HashSet<>();
 
                 if (sampleAlias.keySet().contains(sample)) {
-                    ArrayList<String> aliasSampleNames = new ArrayList<String>(Arrays.asList(sampleAlias.get(sample).split(";")));
+                    ArrayList<String> aliasSampleNames = new ArrayList<>(Arrays.asList(sampleAlias.get(sample).split(";")));
                     for (String aliasName : aliasSampleNames) {
                         print("[WARNING] Sample " + sample + " has alias " + aliasName);
                         sample_pattern.add(aliasName.replaceAll("[_-]", "[-_]"));
@@ -2030,17 +1879,12 @@ public class CreateManifestSheet {
                 // This takes the best guess for the run id, and has bash fill out the missing parts!
                 for (String id : runIDs) {
                     final String id2 = id;
-                    String RunIDFull = "";
+                    String RunIDFull;
 
                     //Iterate through fastq_path
                     File dir = new File(fastq_path + "/hiseq/FASTQ/");
 
-                    File[] files = dir.listFiles(new FilenameFilter() {
-                        @Override
-                        public boolean accept(File dir, String name) {
-                            return name.startsWith(id2);
-                        }
-                    });
+                    File[] files = dir.listFiles((dir1, name) -> name.startsWith(id2));
 
                     // find out how many run IDs came back
                     if (files == null) {
@@ -2053,7 +1897,7 @@ public class CreateManifestSheet {
                         return;
                     } else if (files.length > 1) {
                         // Here I will remove any directories that do NOT have the project as a folder in the directory.
-                        ArrayList<File> runsWithProjectDir = new ArrayList<File>();
+                        ArrayList<File> runsWithProjectDir = new ArrayList<>();
                         for (File runDir : files) {
                             File requestPath = new File(runDir.getAbsoluteFile().toString() + "/Project_" + requestID);
                             //print("TESTING this path: " + requestPath.toString());
@@ -2077,19 +1921,19 @@ public class CreateManifestSheet {
                                 print("[WARNING] More than one sequencing run folder found for Run ID " + id + ": " + foundFiles + " I will be picking the newest folder.");
                                 runsWithMultipleFolders.add(id);
                             }
-                            RunIDFull = files[files.length - 1].getAbsoluteFile().getName().toString();
+                            RunIDFull = files[files.length - 1].getAbsoluteFile().toString();
                         } else {
-                            RunIDFull = files[0].getAbsoluteFile().getName().toString();
+                            RunIDFull = files[0].getAbsoluteFile().getName();
                         }
                     } else {
-                        RunIDFull = files[0].getAbsoluteFile().getName().toString();
+                        RunIDFull = files[0].getAbsoluteFile().getName();
                     }
 
                     // Grab RUN ID, save it for the request file.
                     runIDlist.add(RunIDFull);
 
                     for (String S_Pattern : sample_pattern) {
-                        String pattern = "";
+                        String pattern;
                         if (!sample.equals("FFPEPOOLEDNORMAL") && !sample.equals("FROZENPOOLEDNORMAL") && !sample.equals("MOUSEPOOLEDNORMAL")) {
                             pattern = dir.toString() + "/" + RunIDFull + "*/Proj*" + requestID.replaceFirst("^0+(?!$)", "") + "/Sample_" + S_Pattern;
                         } else {
@@ -2098,7 +1942,6 @@ public class CreateManifestSheet {
 
                         String cmd = "ls -d " + pattern;
 
-                        //String cmd = "readlink -nv -f " + pattern;
                         Process pr = new ProcessBuilder("/bin/bash", "-c", cmd).start();
                         pr.waitFor();
 
@@ -2211,15 +2054,15 @@ public class CreateManifestSheet {
 
     private void printPairingFile(LinkedHashMap<String, LinkedHashMap<String, String>> SampleListToOutput, DataRecordManager drm, User apiUser, String pairing_filename, LinkedHashMap<String, Set<String>> patientSampleMap) {
         try {
-            LinkedHashMap<String, String> igo_tumor_info = new LinkedHashMap<String, String>();
-            LinkedHashMap<String, String> pair_Info = new LinkedHashMap<String, String>();
+            LinkedHashMap<String, String> igo_tumor_info = new LinkedHashMap<>();
+            LinkedHashMap<String, String> pair_Info = new LinkedHashMap<>();
             String warnings = "";
-            ArrayList<String> exome_normal_list = new ArrayList<String>();
+            ArrayList<String> exome_normal_list = new ArrayList<>();
 
-            HashSet<String> CorrectedCMOids = new HashSet<String>();
+            HashSet<String> CorrectedCMOids = new HashSet<>();
 
             // Make a list of IGO ids to give to printPairingFile script
-            ArrayList<String> igoIDs = new ArrayList<String>();
+            ArrayList<String> igoIDs = new ArrayList<>();
             for (String samp : SampleListToOutput.keySet()) {
                 igoIDs.add(SampleListToOutput.get(samp).get("IGO_ID"));
                 igo_tumor_info.put(SampleListToOutput.get(samp).get("IGO_ID"), samp);
@@ -2253,7 +2096,7 @@ public class CreateManifestSheet {
                         System.err.println("[WARNING] Normal matching with this tumor is NOT a valid sample in this request: Tumor: " + tum + " Normal: " + norm + " The normal will be changed to na.");
                         norm = "na";
                     }
-                    if (pair_Info.containsKey(tum) && pair_Info.get(tum) != norm) {
+                    if (pair_Info.containsKey(tum) && !Objects.equals(pair_Info.get(tum), norm)) {
                         print("[ERROR] Tumor is matched with two different normals. I have no idea how this happened! Tumor: " + tum + " Normal: " + norm);
 
                         System.out.print(warnings);
@@ -2292,13 +2135,10 @@ public class CreateManifestSheet {
                 filesCreated.add(pairing_file);
                 for (String tum : pair_Info.keySet()) {
                     String norm = pair_Info.get(tum);
-                    if (ReqType == "exome" && exome_normal_list.contains(tum)) {
+                    if (Objects.equals(ReqType, "exome") && exome_normal_list.contains(tum)) {
                         norm = tum;
                         tum = "na";
                     }
-                    //if(norm.equals("na") && // HERE ADD A THING THAT CHECKS OUT NormalPool SAMPLES){
-                    //    norm = pickPooledNormal(SampleListToOutput, tum, // normal pool samples);
-                    //}
                     pW.write(sampleNormalization(norm) + "\t" + sampleNormalization(tum) + "\n");
                 }
                 pW.close();
@@ -2319,10 +2159,10 @@ public class CreateManifestSheet {
         // for each tumor, match with the first normal.
         // no normal? put na
         // no tumor? don't add to pair_Info
-        LinkedHashMap<String, String> pair_Info = new LinkedHashMap<String, String>();
+        LinkedHashMap<String, String> pair_Info = new LinkedHashMap<>();
         for (String patient : patientSampleMap.keySet()) {
-            ArrayList<String> tumors = new ArrayList<String>();
-            ArrayList<String> allNormals = new ArrayList<String>();
+            ArrayList<String> tumors = new ArrayList<>();
+            ArrayList<String> allNormals = new ArrayList<>();
             // populating the tumors and normals for this patient
             for (String s : patientSampleMap.get(patient)) {
                 LinkedHashMap<String, String> samp = SampleListToOutput.get(s);
@@ -2339,12 +2179,10 @@ public class CreateManifestSheet {
                 String corrected_t = tum.get("CORRECTED_CMO_ID");
                 String PRESERVATION = tum.get("SPECIMEN_PRESERVATION_TYPE");
                 String SITE = tum.get("TISSUE_SITE");
-                //print("Tumor: " + t + " Preservation: " + PRESERVATION + " Site: " + SITE);
                 if (allNormals.size() > 0) {
-                    //print("Number or normals to choose from: " + String.valueOf(allNormals.size()));
-                    ArrayList<String> normals = new ArrayList<String>(allNormals);
-                    ArrayList<String> preservationNormals = new ArrayList<String>();
-                    ArrayList<String> useTheseNormals = new ArrayList<String>();
+                    ArrayList<String> normals = new ArrayList<>(allNormals);
+                    ArrayList<String> preservationNormals = new ArrayList<>();
+                    ArrayList<String> useTheseNormals = new ArrayList<>();
                     // cycle through and find out if you have normal with same tumor sample preservation type
                     for (String n : allNormals) {
                         LinkedHashMap<String, String> norm = SampleListToOutput.get(n);
@@ -2355,7 +2193,7 @@ public class CreateManifestSheet {
                     // Now if any match preservation type, use those normals to continue matching
                     if (preservationNormals.size() > 0) {
                         //print("Number that matched preservation: " + String.valueOf(preservationNormals.size()));
-                        normals = new ArrayList<String>(preservationNormals);
+                        normals = new ArrayList<>(preservationNormals);
                         //print("New Normals to choose from " + normals);
                     }
                     // go through and see if any of the normals have the same tissue site.
@@ -2366,7 +2204,7 @@ public class CreateManifestSheet {
                         }
                     }
                     // If there are more than one, just pick the first.
-                    String n = "";
+                    String n;
                     if (useTheseNormals.size() > 0) {
                         n = useTheseNormals.get(0);
                     } else {
@@ -2402,22 +2240,20 @@ public class CreateManifestSheet {
     }
 
     private LinkedHashMap<String, Set<String>> createPatientSampleMapping(LinkedHashMap<String, LinkedHashMap<String, String>> SampleList) {
-        LinkedHashMap<String, Set<String>> tempMap = new LinkedHashMap<String, Set<String>>();
+        LinkedHashMap<String, Set<String>> tempMap = new LinkedHashMap<>();
         for (String sid : SampleList.keySet()) {
             LinkedHashMap<String, String> rec = SampleList.get(sid);
             String pid = rec.get("CMO_PATIENT_ID");
-            String s = rec.get("IGO_ID");
-            //print("CMO_PATIENT_ID: " + pid + " SAMPLE: " + s + " SID: " + sid);
             if (pid.startsWith("#")) {
                 print("[WARNING] Cannot make smart mapping because Patient ID is emtpy or has an issue: " + pid);
-                return new LinkedHashMap<String, Set<String>>();
+                return new LinkedHashMap<>();
             }
             if (tempMap.containsKey(pid)) {
                 Set<String> tempSet = tempMap.get(pid);
                 tempSet.add(sid);
                 tempMap.put(pid, tempSet);
             } else {
-                Set<String> tempSet = new HashSet<String>();
+                Set<String> tempSet = new HashSet<>();
                 tempSet.add(sid);
                 tempMap.put(pid, tempSet);
             }
@@ -2430,15 +2266,15 @@ public class CreateManifestSheet {
         String outputText = "";
         String manualHeader = "";
 
-        if (fileType == "data_clinical") {
+        if (Objects.equals(fileType, "data_clinical")) {
             manualHeader = manualClinicalHeader;
-        } else if (fileType == "patient") {
+        } else if (Objects.equals(fileType, "patient")) {
             manualHeader = manualMappingPatientHeader;
         }
 
         // Create map for maping
-        LinkedHashMap<String, String> fieldMapping = new LinkedHashMap<String, String>();
-        ArrayList<String> fieldList = new ArrayList<String>(Arrays.asList(manualHeader.split(",")));
+        LinkedHashMap<String, String> fieldMapping = new LinkedHashMap<>();
+        ArrayList<String> fieldList = new ArrayList<>(Arrays.asList(manualHeader.split(",")));
         for (String fields : fieldList) {
             String[] parts = fields.split(":");
             fieldMapping.put(parts[0], parts[1]);
@@ -2450,7 +2286,7 @@ public class CreateManifestSheet {
         outputText = filterToAscii(outputText);
 
         for (LinkedHashMap<String, String> samp : sampInfo) {
-            ArrayList<String> line = new ArrayList<String>();
+            ArrayList<String> line = new ArrayList<>();
             for (String key : fieldMapping.values()) {
                 String val = samp.get(key);
 
@@ -2484,7 +2320,6 @@ public class CreateManifestSheet {
                 e.printStackTrace(console);
             }
         }
-        return;
     }
 
     private void printGroupingFile(LinkedHashMap<String, LinkedHashMap<String, String>> SampleListToOutput, LinkedHashMap<String, Set<String>> patientSampleMap, String outputFilename) {
@@ -2516,13 +2351,11 @@ public class CreateManifestSheet {
                 e.printStackTrace(console);
             }
         }
-        return;
     }
 
-    private void printRequestFile(ArrayList<String> pInfo, String reqSpecies, String requestID, File projDir) {
-        Set<String> placeholder = new HashSet<String>();
+    private void printRequestFile(ArrayList<String> pInfo, String requestID, File projDir) {
+        Set<String> placeholder = new HashSet<>();
         printRequestFile(pInfo, placeholder, placeholder, placeholder, requestID, projDir);
-        return;
     }
 
     private void printRequestFile(ArrayList<String> pInfo, Set<String> ampType, Set<String> libType, Set<String> strand, String requestID, File projDir) {
@@ -2547,7 +2380,7 @@ public class CreateManifestSheet {
         }
 
         // This is quickly generating a map from old name to new name (validator takes old name)
-        Map<String, String> convertFieldNames = new LinkedHashMap<String, String>();
+        Map<String, String> convertFieldNames = new LinkedHashMap<>();
         for (String conv : manualMappingPinfoToRequestFile.split(",")) {
             String[] parts = conv.split(":", 2);
             convertFieldNames.put(parts[0], parts[1]);
@@ -2558,7 +2391,7 @@ public class CreateManifestSheet {
             if (splitLine.length == 1) {
                 continue;
                 //splitLine = new String[] {splitLine[0], "NA"};
-            } else if (splitLine[1].isEmpty() || splitLine[1] == "#EMPTY") {
+            } else if (splitLine[1].isEmpty() || Objects.equals(splitLine[1], "#EMPTY")) {
                 splitLine[1] = "NA";
             }
 
@@ -2616,11 +2449,11 @@ public class CreateManifestSheet {
 
         requestFileContents += "Institution: cmo\n";
 
-        if (ReqType == "other") {
+        if (Objects.equals(ReqType, "other")) {
             requestFileContents += "Recipe: " + recipe + "\n";
         }
 
-        if (ReqType == "rnaseq") {
+        if (Objects.equals(ReqType, "rnaseq")) {
             //Now print the rest of the information
             String[] ampTypes = ampType.toArray(new String[0]);
             requestFileContents += "AmplificationTypes: " + StringUtils.join(ampTypes, ", ") + "\n";
@@ -2651,14 +2484,12 @@ public class CreateManifestSheet {
             requestFileContents += "Strand: NA\n";
         }
 
-
         // adding projectFolder back
         if (ReqType.equals("impact") || ReqType.equals("exome")) {
             requestFileContents += "ProjectFolder: " + String.valueOf(projDir).replaceAll("BIC/drafts", "CMO") + "\n";
         } else {
             requestFileContents += "ProjectFolder: " + String.valueOf(projDir).replaceAll("drafts", ReqType) + "\n";
         }
-
 
         // Date of last update
         DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -2686,7 +2517,7 @@ public class CreateManifestSheet {
     private void printPortalConfig(File projDir, String requestFileContents, String requestID) {
         // First make map from request to portal config
         // THen create final map of portal config with values.
-        Map<String, String> configRequestMap = new LinkedHashMap<String, String>();
+        Map<String, String> configRequestMap = new LinkedHashMap<>();
         for (String conv : manualMappingConfigMap.split(",")) {
             String[] parts = conv.split(":", 2);
             configRequestMap.put(parts[1], parts[0]);
@@ -2709,7 +2540,7 @@ public class CreateManifestSheet {
                     groups += parts[1].toUpperCase();
                 }
                 if (parts[0].equals("Assay")) {
-                    if (ReqType == "impact") {
+                    if (Objects.equals(ReqType, "impact")) {
                         assay = parts[1].toUpperCase();
                     } else {
                         assay = parts[1];
@@ -2752,29 +2583,16 @@ public class CreateManifestSheet {
             logger.log(Level.SEVERE, "Exception thrown: ", e);
             e.printStackTrace(console);
         }
-
-
     }
 
     private int getRunNumber(String requestID, String pi, String invest) {
         final String req = requestID;
-        File resultDir = new File(resultsPathPrefix + "/" + pi + "/" + invest);
+        File resultDir = new File(String.format("%s/%s/%s", resultsPathPrefix, pi, invest));
 
-        //print("resultDir: " + String.valueOf(resultDir));
-        File[] files = resultDir.listFiles(new FilenameFilter() {
-            @Override
-            public boolean accept(File dir, String name) {
-                return name.endsWith(req.replaceFirst("^0+(?!$)", ""));
-            }
-        });
+        File[] files = resultDir.listFiles((dir, name) -> name.endsWith(req.replaceFirst("^0+(?!$)", "")));
         if (files != null && files.length == 1) {
             File projectResultDir = files[0];
-            File[] files2 = projectResultDir.listFiles(new FilenameFilter() {
-                @Override
-                public boolean accept(File dir, String name) {
-                    return name.startsWith("r_");
-                }
-            });
+            File[] files2 = projectResultDir.listFiles((dir, name) -> name.startsWith("r_"));
             if (files2.length > 0) {
                 int[] runs = new int[files2.length];
                 int index = 0;
@@ -2785,15 +2603,13 @@ public class CreateManifestSheet {
                 }
 
                 Arrays.sort(runs);
-                int nextRun = runs[runs.length - 1] + 1;
 
-                return nextRun;
+                return runs[runs.length - 1] + 1;
             }
         }
         print("[WARNING] Could not determine PIPELINE RUN NUMBER from delivery directory. Setting to: 1. If this is incorrect, email cmo-project-start@cbio.mskcc.org");
 
         return 1;
-
     }
 
     private void print(String message) {
@@ -2846,7 +2662,6 @@ public class CreateManifestSheet {
             logger.log(Level.SEVERE, "Exception thrown: ", e);
             e.printStackTrace(console);
         }
-        return;
     }
 
     private void printLogMessages(File logFile) {
@@ -2863,12 +2678,7 @@ public class CreateManifestSheet {
     }
 /*
 
-
-
  This is where all functions that happen after printing project files.
-
-
-
 */
 
     private void copyToArchive(String fromPath, String requestID, String dateDir) {
@@ -2877,16 +2687,15 @@ public class CreateManifestSheet {
 
     private void copyToArchive(String fromPath, String requestID, String dateDir, String suffix) {
         File curDir = new File(fromPath);
-        File projDir = new File(archivePath + "/Proj_" + requestID + "/" + dateDir);
+        File projDir = new File(String.format("%s/Proj_%s/%s", archivePath, requestID, dateDir));
 
         try {
-            if (curDir.exists() && curDir.isDirectory() && curDir.listFiles().length > 0) {
+            if (curDir.exists() && curDir.isDirectory() && Utils.getFilesInDir(curDir).size() > 0) {
                 if (!projDir.exists()) {
                     projDir.mkdirs();
                 }
-                File[] projFiles = curDir.listFiles();
-                for (File f : projFiles) {
-                    File to = new File(projDir + "/" + f.getName() + suffix);
+                for (File f : Utils.getFilesInDir(curDir)) {
+                    File to = new File(String.format("%s/%s%s", projDir, f.getName(), suffix));
                     if (f.isDirectory()) {
                         FileUtils.copyDirectory(f, to);
                         continue;
@@ -2920,7 +2729,6 @@ public class CreateManifestSheet {
 
         }
 
-        return;
     }
 
     private Map<String, String> linkPoolToRunID(Map<String, String> RunID_and_PoolName, String RunID, String poolName) {
@@ -2933,7 +2741,7 @@ public class CreateManifestSheet {
         return RunID_and_PoolName;
     }
 
-    public String filterToAscii(String highUnicode) {
+    private String filterToAscii(String highUnicode) {
         String lettersAdded = highUnicode.replaceAll("ß", "ss").replaceAll("æ", "ae").replaceAll("Æ", "Ae");
         return Normalizer.normalize(lettersAdded, Normalizer.Form.NFD).replaceAll("[^\\p{ASCII}]", "");
     }
@@ -2951,8 +2759,6 @@ public class CreateManifestSheet {
         @Override
         public void run() {
             CreateManifestSheet.closeConnection();
-
-            return;
         }
     }
 }

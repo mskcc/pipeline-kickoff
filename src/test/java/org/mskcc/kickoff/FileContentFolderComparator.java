@@ -20,11 +20,11 @@ class FileContentFolderComparator implements FolderComparator {
     private static final Logger LOGGER = Logger.getLogger(FileContentFolderComparator.class);
     private static final String LOGS_FOLDER = "logs";
 
-    private List<FailingTestListener> failingComparisonListeners = new ArrayList<>();
-    private List<FailingTestListener> failingNumberOfFilesListeners = new ArrayList<>();
+    private final List<FailingTestListener> failingComparisonListeners = new ArrayList<>();
+    private final List<FailingTestListener> failingNumberOfFilesListeners = new ArrayList<>();
 
-    private BiPredicate<String, String> areLinesEqualPredicate;
-    private BooleanSupplier shouldCompareLogFilePredicate;
+    private final BiPredicate<String, String> areLinesEqualPredicate;
+    private final BooleanSupplier shouldCompareLogFilePredicate;
 
     private FileContentFolderComparator(BiPredicate<String, String> areLinesEqualPredicate, BooleanSupplier shouldCompareLogFilePredicate) {
         this.areLinesEqualPredicate = areLinesEqualPredicate;
@@ -126,8 +126,8 @@ class FileContentFolderComparator implements FolderComparator {
         LOGGER.info(String.format("Comparing number of files in directories: %s = %d and %s = %d", actualPath, actualFileNumberOfFiles, expectedPath, expectedFileNumberOfFiles));
 
         if (expectedFileNumberOfFiles != actualFileNumberOfFiles) {
-            String actualFilesList = Stream.of(actualFile.listFiles()).map(f -> f.toString() + "\n").collect(Collectors.joining());
-            String expectedFilesList = Stream.of(expectedFile.listFiles()).map(f -> f.toString() + "\n").collect(Collectors.joining());
+            String actualFilesList = Utils.getFilesInDir(actualFile).stream().map(f -> f.toString() + "\n").collect(Collectors.joining());
+            String expectedFilesList = Utils.getFilesInDir(expectedFile).stream().map(f -> f.toString() + "\n").collect(Collectors.joining());
             LOGGER.error(String.format("Number of files in directories: %s and %s is different!\nexpected (%d):\n%s\nactual(%d):\n%s",
                     expectedPath, actualPath, expectedFileNumberOfFiles, expectedFilesList, actualFileNumberOfFiles, actualFilesList));
             return false;
@@ -138,7 +138,7 @@ class FileContentFolderComparator implements FolderComparator {
 
     private int getNumberOfRelevantProjectFiles(File actualFile) {
         RelevantProjectFileFilter filter = new RelevantProjectFileFilter();
-        return actualFile.listFiles(filter).length;
+        return Utils.getFilesInDir(actualFile, filter).size();
     }
 
     private boolean isLogFolder(Path directoryFile) {
@@ -193,7 +193,7 @@ class FileContentFolderComparator implements FolderComparator {
     }
 
     public static class Builder {
-        private BiPredicate<String, String> areLinesEqualPredicate = (actualLine, expectedLine) -> actualLine.equals(expectedLine);
+        private BiPredicate<String, String> areLinesEqualPredicate = String::equals;
         private BooleanSupplier shouldCompareLogFile = () -> true;
 
         public Builder setAreLinesEqualPredicate(BiPredicate<String, String> areLinesEqualPredicate) {

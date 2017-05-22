@@ -1,26 +1,15 @@
 package org.mskcc.kickoff.lims;
 
-//These were already here or added by me as needed
-import java.io.*;
 import java.rmi.RemoteException;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.text.DecimalFormat;
 import java.lang.reflect.Field;
 import org.apache.commons.lang3.StringUtils;
-import java.io.FileOutputStream;
-import com.velox.api.datamgmtserver.DataMgmtServer;
 import com.velox.api.datarecord.*;
 import com.velox.api.user.User;
-import com.velox.api.util.ServerException;
-import com.velox.sapioutils.client.standalone.VeloxConnection;
-import com.velox.sapioutils.client.standalone.VeloxStandalone;
-import com.velox.sapioutils.client.standalone.VeloxStandaloneException;
-import com.velox.sapioutils.client.standalone.VeloxStandaloneManagerContext;
-import com.velox.sapioutils.client.standalone.VeloxTask;
 import com.velox.util.LogWriter;
-import com.sampullara.cli.*;
+import org.mskcc.kickoff.util.Constants;
 
 /**
  * SampleInfo.java
@@ -30,58 +19,51 @@ import com.sampullara.cli.*;
  *
  * @author Krista Kazmierkiewicz
  */
-public class SampleInfo
+class SampleInfo
 {
     // Keeping a list of all the fields seems like a good idea
-    private static List <String> base_fields = new ArrayList(Arrays.asList("IGO_ID", "EXCLUDE_RUN_ID", "INCLUDE_RUN_ID", "INVESTIGATOR_PATIENT_ID", "INVESTIGATOR_SAMPLE_ID", "SAMPLE_CLASS", "SAMPLE_TYPE", "SPECIMEN_PRESERVATION_TYPE", "SPECIES", "STATUS", "MANIFEST_SAMPLE_ID", "CORRECTED_CMO_ID", "CMO_SAMPLE_ID"));
+    private static final List <String> base_fields = new ArrayList<>(Arrays.asList("IGO_ID", "EXCLUDE_RUN_ID", "INCLUDE_RUN_ID", "INVESTIGATOR_PATIENT_ID", "INVESTIGATOR_SAMPLE_ID", "SAMPLE_CLASS", "SAMPLE_TYPE", "SPECIMEN_PRESERVATION_TYPE", "SPECIES", "STATUS", "MANIFEST_SAMPLE_ID", "CORRECTED_CMO_ID", "CMO_SAMPLE_ID"));
 
     /** List of xenograft acceptable sample types. Used to change flag xenograftProject **/
-    protected static List<String> xenograftClasses = Arrays.asList("PDX", "Xenograft", "XenograftDerivedCellLine");
+    private static final List<String> xenograftClasses = Arrays.asList("PDX", "Xenograft", "XenograftDerivedCellLine");
     /** Flag in order to signify that this request contains xenografts. When a request contains xenografts, it becomes a xenograft request **/
-    protected static Boolean xenograftProject = false;
+    private static Boolean xenograftProject = false;
     /** Map of field defualts that were decided based on what the validator would accept **/ 
-    protected static HashMap<String, String> fieldDefaults = new HashMap<String,String>();
-
-    /** Map of data records and strings that collect the pooled normals **/
-    protected static HashMap<DataRecord, HashSet<String>> pooledNormals = new HashMap<DataRecord,HashSet<String>>();
+    static final HashMap<String, String> fieldDefaults = new HashMap<>();
 
     /** Sample renames (old name -> new name) Old name is the name found on the fastq, new name is the corrected CMO Sample ID **/
-    protected static HashMap<String, String> sampleRenames = new HashMap<String, String>();
+    static final HashMap<String, String> sampleRenames = new HashMap<>();
 
     /** If there is an error during this step, we want the CreateManifestSheet instance to know that it needs to exit unsucessfully **/
-    protected static Boolean exitLater = false;
+    static Boolean exitLater = false;
     /** Not sure if this is where the log messages go, or if this is a place holder because the program wouldn't work without it **/
-    protected static HashSet<String> log_messages = new HashSet<String>();
+    static final HashSet<String> log_messages = new HashSet<>();
     /** yyyy-MM-dd **/
-    protected SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+    final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
  
     /** Placeholder because the script won't work without it :( **/
-    protected LogWriter logger;
+    final LogWriter logger;
      
-    protected String IGO_ID = "#EMPTY";
-    protected String SEQ_IGO_ID = "#EMPTY";
-    protected String REQ_TYPE = "uninit";
-    protected String BARCODE_ID = "#EMPTY";
-    protected String CMO_SAMPLE_ID;
-    protected String BARCODE_INDEX = "#EMPTY";
-    protected String EXCLUDE_RUN_ID = "";
-    protected String INCLUDE_RUN_ID = "";
-    protected String INVESTIGATOR_PATIENT_ID;
-    protected String INVESTIGATOR_SAMPLE_ID;
-    protected String SAMPLE_CLASS;
-    protected String SAMPLE_TYPE;
-    protected String SPECIMEN_COLLECTION_YEAR;
-    protected String SPECIMEN_PRESERVATION_TYPE;
-    protected String MANIFEST_SAMPLE_ID = "#EMPTY";
-    protected List<String> valid_fields = new ArrayList<String>();
-    protected String SPECIES;
-    protected String STATUS = "";
-    protected String CORRECTED_CMO_ID;
-    protected String REQUEST_ID = "#EMPTY";
-    
-    protected DecimalFormat four = new DecimalFormat("#0.00");
+    String IGO_ID = Constants.EMPTY;
+    String SEQ_IGO_ID = Constants.EMPTY;
+    String BARCODE_ID = Constants.EMPTY;
+    String CMO_SAMPLE_ID;
+    String BARCODE_INDEX = Constants.EMPTY;
+    final String EXCLUDE_RUN_ID = "";
+    String INCLUDE_RUN_ID = "";
+    String INVESTIGATOR_PATIENT_ID;
+    String INVESTIGATOR_SAMPLE_ID;
+    String SAMPLE_CLASS;
+    String SAMPLE_TYPE;
+    String SPECIMEN_PRESERVATION_TYPE;
+    String MANIFEST_SAMPLE_ID = Constants.EMPTY;
+    private final List<String> valid_fields = new ArrayList<>();
+    String SPECIES;
+    final String STATUS = "";
+    String CORRECTED_CMO_ID;
+    String REQUEST_ID = Constants.EMPTY;
 
-    /** This is the method that is called by CreateManifestSheet. <p>Features Of this Method:<p> - Populate the default fields<br> - Assign all possible 
+    /** This is the method that is called by CreateManifestSheet. <p>Features Of this Method:<p> - Populate the default fields<br> - Assign all possible
      * information based on Sample Data record (rec)<br> - Check Sample Level CMO Info Data records to see if there are any fields present there. **NOTE**
      * All fields of CMO Sample Level Info supersede sample data record fields<br> - Check to see if project is Xenograft and flag accordingly<br> - Add to
      * sample renames if necessary<br> - Check for genetically modified data record (*** More things need to be done if this is found, but have not yet been done***)
@@ -90,8 +72,7 @@ public class SampleInfo
         // Save logger
         this.logger = l;
         this.valid_fields.addAll(base_fields);
-        this.REQ_TYPE = req;
-        
+
         populateDefaultFields();
 
         List<List<Map<String,Object>>> CMOInfoMap = null;
@@ -99,7 +80,7 @@ public class SampleInfo
         try{
             // Make field map of all Sample fields
             fieldMap = rec.getFields(apiUser);
-        } catch (RemoteException ioe){
+        } catch (RemoteException ignored){
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -108,7 +89,7 @@ public class SampleInfo
 
         try{
             // Also get all CMO Sample Info data record info.
-            List<DataRecord> drList = new ArrayList<DataRecord>();
+            List<DataRecord> drList = new ArrayList<>();
             drList.add(rec);
             CMOInfoMap = drm.getFieldsForChildrenOfType(drList,"SampleCMOInfoRecords", apiUser);
             if(transfer && CMOInfoMap.get(0).size() == 0) {
@@ -128,7 +109,7 @@ public class SampleInfo
                     }
                 } 
             }
-        } catch (RemoteException ioe){
+        } catch (RemoteException ignored){
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -180,19 +161,18 @@ public class SampleInfo
     }
 
     /** Assigns default values for hash map keys that are necessary for this request type **/
-    protected void populateDefaultFields(){
-        fieldDefaults.put("SampleId", "#EMPTY");
-        fieldDefaults.put("OtherSampleId", "#EMPTY");
-        fieldDefaults.put("PatientId", "#EMPTY");
-        fieldDefaults.put("UserSampleID", "#EMPTY");
+    void populateDefaultFields(){
+        fieldDefaults.put("SampleId", Constants.EMPTY);
+        fieldDefaults.put("OtherSampleId", Constants.EMPTY);
+        fieldDefaults.put("PatientId", Constants.EMPTY);
+        fieldDefaults.put("UserSampleID", Constants.EMPTY);
         fieldDefaults.put("SpecimenType", "na");
-        fieldDefaults.put("Preservation", "#EMPTY");
+        fieldDefaults.put("Preservation", Constants.EMPTY);
         fieldDefaults.put("Species", "#UNKNOWN");
-        fieldDefaults.put("CorrectedCMOID", "#EMPTY");
-        fieldDefaults.put("RequestId", "#EMPTY");
-        fieldDefaults.put("TumorOrNormal", "#EMPTY");
+        fieldDefaults.put("CorrectedCMOID", Constants.EMPTY);
+        fieldDefaults.put("RequestId", Constants.EMPTY);
+        fieldDefaults.put("TumorOrNormal", Constants.EMPTY);
         fieldDefaults.put("CollectionYear", "000");
-        return;
     }
     
     /** This will take all fields from LIMS data records and assign them to hashmap using setFromMap function it then goes to grabRequestSpecificValues method, which doesn't
@@ -203,12 +183,12 @@ public class SampleInfo
         
         // REQ ID: Because the CMO Sample Level info will have ONE request ID stored, and
         // Is not necessarily the correct one for THIS request, ignore if the class field is not emtpy.
-        if(this.REQUEST_ID.isEmpty() || this.REQUEST_ID=="#EMPTY"){ 
+        if(this.REQUEST_ID.isEmpty() || Objects.equals(this.REQUEST_ID, Constants.EMPTY)){
             this.REQUEST_ID = setFromMap(this.REQUEST_ID, "RequestId", fieldMap);
         }
         // IGO ID: Because the CMO Sample Level info will have an IGO ID stored, and
         // Is not necessarily the correct one for THIS request, ignore if the class field is not emtpy.
-        if(this.IGO_ID.isEmpty() || this.IGO_ID=="#EMPTY"){
+        if(this.IGO_ID.isEmpty() || Objects.equals(this.IGO_ID, Constants.EMPTY)){
             this.IGO_ID = setFromMap(this.IGO_ID, "SampleId", fieldMap);
         }
         String OLD_sampleID = this.CMO_SAMPLE_ID;
@@ -229,32 +209,30 @@ public class SampleInfo
         this.CORRECTED_CMO_ID = setFromMap(this.CMO_SAMPLE_ID, "CorrectedCMOID", fieldMap);
 
         grabRequestSpecificValues(fieldMap);
-        
-        return;
+
     }
 
     /** Search downstream to find "mouse genetically modified" data type. As of right now this method doesn't do anything. I need to figure out exactly:<br>
      * - If the info in the gen mod is a gene that should be added to the genome<br> - if so, I have to find a way to get the information to Mono
      **/
-    protected void checkForMouseGenModified(DataRecord rec, User apiUser, DataRecordManager drm, Boolean transfer ){
-        List<DataRecord> genModList = new ArrayList<DataRecord>();
+    private void checkForMouseGenModified(DataRecord rec, User apiUser, DataRecordManager drm, Boolean transfer){
+        List<DataRecord> genModList = new ArrayList<>();
         try{
             genModList = rec.getDescendantsOfType("MouseGeneticModification", apiUser);
-        } catch (RemoteException ioe){ 
+        } catch (RemoteException ignored){
         } catch (Throwable e) {
             e.printStackTrace();
         }
 
         if(genModList != null && genModList.size() > 0){
             print("[WARNING] Sample " + this.IGO_ID + " contains a 'mouse genetic modified' data record! We need to figure out if we need to create a new genome");
-            return;
         } else if (transfer){
-            List<DataRecord> sampleAncestors =  new ArrayList<DataRecord>();
+            List<DataRecord> sampleAncestors;
             List<List<DataRecord>> genModList2 = null;
             try{
                 sampleAncestors = rec.getAncestorsOfType("Sample", apiUser);
                 genModList2 = drm.getChildrenOfType(sampleAncestors, "MouseGeneticModification", apiUser);
-            } catch (RemoteException ioe){ 
+            } catch (RemoteException ignored){
             } catch (Throwable e) {
                 e.printStackTrace();
             }
@@ -275,28 +253,23 @@ public class SampleInfo
     /** 
      * This is specific to to the RNASeq/ Ambiguous request type. Other request will be using differnet values in this.
      **/
-    protected void grabRequestSpecificValues(Map<String, Object>fieldMap){    //Changes between ReqTypes
+    void grabRequestSpecificValues(Map<String, Object> fieldMap){    //Changes between ReqTypes
         // This is specific to this rnaseq/ambiguous request.
         // Other requests will be using a different key
         this.SAMPLE_CLASS = setFromMap(this.SAMPLE_CLASS, "TumorOrNormal", fieldMap);
-        
-        return;
+
     }
      
     /**
      * Returns either value in map m with key LIMS_field or a default value (LS_Default/fieldDefaults value/#EMPTY). LS_Default is the default value to return. If it is null, method checks fieldDefaults hash to see if there is a default value there.<br>Then it gets value from key LIMS_field in map m. 
      * if the value is NOT empty, return the value, if it is empty, return the LS_Default value. Probably should explain this better... 
-     **/   
-    protected String setFromMap(String LS_default, String LIMS_field, Map m){
+     **/
+    String setFromMap(String LS_default, String LIMS_field, Map<String, Object> m){
         // Grabs values from map, makes sure that the value is not null
         String val0 = LS_default;
         String val;
-        if(val0 == null || String.valueOf(val0) == "null")  {
-            if(fieldDefaults.containsKey(LIMS_field)){
-                val0 = fieldDefaults.get(LIMS_field);
-            } else {
-                val0 = "#EMPTY";
-            }
+        if(val0 == null || Objects.equals(String.valueOf(val0), Constants.NULL))  {
+            val0 = fieldDefaults.getOrDefault(LIMS_field, Constants.EMPTY);
         }
 
         try{
@@ -304,7 +277,7 @@ public class SampleInfo
         } catch(NullPointerException f){
             return val0;
         }
-        if(val.isEmpty() || val == "null" || val == null){
+        if(val.isEmpty() || val == Constants.NULL){
             return val0;
         }
         return val;
@@ -314,7 +287,7 @@ public class SampleInfo
      * Beautiful print function. If message starts with square brakect, assume it is error/warning/log and should be added to log_messages. Then message is printed to stdout <br>
      * If print starts with "[ERROR]", change exitLater to true!
      **/
-    protected void print(String message){
+    void print(String message){
         // Log and print to stdout
         if(message.startsWith("[")){
             if(message.startsWith("[ERROR]")){
@@ -324,13 +297,7 @@ public class SampleInfo
         }
         System.out.println(message);
     }
-    
-    /** No pooled normals in rnaseq/unknonw request type, so this doesn't do anything **/
-    public static HashMap<DataRecord,HashSet<String>> getPooledNormals(){
-        return null;
-    }
 
- 
     public static HashMap<String, String> getSampleRenames(){
         return sampleRenames;
     }
@@ -340,8 +307,7 @@ public class SampleInfo
     }
     
     public static ArrayList<String> getLogMessages(){
-        ArrayList<String>messagesToReturn = new ArrayList<String>(log_messages);
-        return messagesToReturn;
+        return new ArrayList<String>(log_messages);
     }
 
     public static Boolean exitLater(){
@@ -352,10 +318,9 @@ public class SampleInfo
      * Adds and returns all declared fields in hashmap (does this work??)
      **/
     public LinkedHashMap<String, String> SendInfoToMap(){
-        LinkedHashMap<String, String> myMap = new LinkedHashMap<String, String>();
+        LinkedHashMap<String, String> myMap = new LinkedHashMap<>();
         for (String field : this.valid_fields){
             String val = "";
-            //System.out.println("FIELD: " + field);
             try{
                 Field f = this.getClass().getDeclaredField(field);
                 val = String.valueOf(f.get(this));
@@ -363,15 +328,8 @@ public class SampleInfo
                 logger.logError(a);
                 a.printStackTrace();
             }
-            //print("FIELD: " + field + "\t\tVALUE: " + val);
             myMap.put(field, val);
         }
         return myMap;
     } 
-    
-    
-    
-    
-    
- 
 }

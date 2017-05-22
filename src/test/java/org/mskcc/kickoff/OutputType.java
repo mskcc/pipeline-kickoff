@@ -5,7 +5,7 @@ public enum OutputType {
     EXPECTED("expected"),
     ARCHIVE("archive");
 
-    private String typeName;
+    private final String typeName;
 
     OutputType(String typeName) {
         this.typeName = typeName;

@@ -6,7 +6,7 @@ import java.io.File;
 import java.nio.file.Path;
 
 public class ActualOutputFailingTestListener implements FailingTestListener {
-    private Path failingOutputPath;
+    private final Path failingOutputPath;
 
     public ActualOutputFailingTestListener(Path failingOutputPathForCurrentRun, String project) {
         failingOutputPath = Utils.getFailingOutputPathForType(failingOutputPathForCurrentRun, OutputType.ACTUAL.getTypeName(), project);

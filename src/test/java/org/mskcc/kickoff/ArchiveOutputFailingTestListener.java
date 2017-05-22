@@ -6,7 +6,7 @@ import java.io.File;
 import java.nio.file.Path;
 
 public class ArchiveOutputFailingTestListener implements FailingTestListener {
-    private Path failingOutputPath;
+    private final Path failingOutputPath;
 
     public ArchiveOutputFailingTestListener(Path failingOutputPathForCurrentRun, String project) {
         failingOutputPath = Utils.getFailingOutputPathForType(failingOutputPathForCurrentRun, OutputType.ARCHIVE.getTypeName(), project);

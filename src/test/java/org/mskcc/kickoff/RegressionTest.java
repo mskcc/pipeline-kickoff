@@ -15,6 +15,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.function.BiPredicate;
@@ -45,7 +46,7 @@ public class RegressionTest {
     private Path failingOutputPathForCurrentRun;
     private String fullProjectName;
     private String failingOutputPath = "testResults/failing";
-    private String archivePath = "/home/reza/testIfs/projects/BIC/archive";
+    private final String archivePath = "/home/reza/testIfs/projects/BIC/archive";
 
     private String arg;
 
@@ -62,7 +63,7 @@ public class RegressionTest {
         if (System.getProperty(FAILING_OUTPUT_PATH) != null)
             failingOutputPath = System.getProperty(FAILING_OUTPUT_PATH);
         arg = System.getProperty(ARG);
-        isShiny = "-s".equals(arg) ? true : false;
+        isShiny = "-s".equals(arg);
 
         failingOutputPathForCurrentRun = Paths.get(String.format("%s/%s", failingOutputPath, DATE_AND_TIME_FORMAT.format(testStartTime)));
         fullProjectName = Utils.getFullProjectNameFromRequestId(project);
@@ -151,7 +152,7 @@ public class RegressionTest {
             Path succeeded = Paths.get(succeededProjectsListPath);
             try {
                 createFileIfNeeded(succeeded);
-                List<String> succeededProject = Arrays.asList(String.format("%s%s", project, arg));
+                List<String> succeededProject = Collections.singletonList(String.format("%s%s", project, arg));
                 Files.write(succeeded, succeededProject, StandardOpenOption.APPEND);
             } catch (IOException e) {
                 throw new RuntimeException(String.format("Unable to create file: %s", succeeded.toString()), e);
@@ -174,7 +175,7 @@ public class RegressionTest {
         }
 
         private void writeToFile(Path failedProjectsList) throws IOException {
-            List<String> failedInfo = Arrays.asList(project);
+            List<String> failedInfo = Collections.singletonList(project);
             Files.write(failedProjectsList, failedInfo, StandardOpenOption.APPEND);
         }
 

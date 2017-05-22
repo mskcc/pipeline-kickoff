@@ -4,10 +4,12 @@ import org.mskcc.kickoff.util.Constants;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.nio.file.Path;
+import java.util.function.Predicate;
 
-public class RelevantProjectFileFilter implements FilenameFilter {
+class RelevantProjectFileFilter implements Predicate<Path> {
     @Override
-    public boolean accept(File dir, String name) {
-        return !Constants.RUN_INFO_PATH.equals(name);
+    public boolean test(Path path) {
+        return !Constants.RUN_INFO_PATH.equals(path);
     }
 }

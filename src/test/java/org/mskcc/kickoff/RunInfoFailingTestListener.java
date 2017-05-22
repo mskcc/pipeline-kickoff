@@ -6,9 +6,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class RunInfoFailingTestListener implements FailingTestListener {
-    private FileCopier fileCopier;
-    private Path actualOutputPath;
-    private Path failingOutputPathForCurrentRun;
+    private final FileCopier fileCopier;
+    private final Path actualOutputPath;
+    private final Path failingOutputPathForCurrentRun;
 
     public RunInfoFailingTestListener(Path actualOutputPath, Path failingOutputPathForCurrentRun) {
         fileCopier = new FileCopier();
@@ -18,6 +18,6 @@ public class RunInfoFailingTestListener implements FailingTestListener {
 
     @Override
     public void update(Path actualSubPath, Path expectedSubPath) {
-        fileCopier.copy(Paths.get(Utils.getRunInfoPath(actualOutputPath)), failingOutputPathForCurrentRun);
+        FileCopier.copy(Paths.get(Utils.getRunInfoPath(actualOutputPath)), failingOutputPathForCurrentRun);
     }
 }
