@@ -1,0 +1,41 @@
+Correct Example - group names are properly formatted:		
+FASTQFileID	InvestigatorSampleID	GroupName
+DS_001_N_01234_1	DS-001-N	normal
+DS_001_T_01234_2	DS-001-T	tumor
+DS_002_N_01234_3	DS-002-N	normal
+DS_002_T_01234_4	DS-002-T	tumor
+DS_003_N_01234_5	DS-003-N	normal
+DS_003_T_01234_6	DS-003-T	tumor
+		
+Correct Complex Example - group names are properly formatted:		
+FASTQFileID	InvestigatorSampleID	GroupName
+WT_1_01234_1	WT_1	WT
+WT_2_01234_2	WT_2	WT
+WT_3_01234_3	WT_3	WT
+WT_stat1_01234_4	WT_stat1	Treated
+WT_stat2_01234_5	WT_stat2	Treated
+WT_stat3_01234_6	WT_stat3	Treated
+PBS_1_01234_7	PBS_1	KO_Unt
+PBS_2_01234_8	PBS_2	KO_Unt
+PBS_3_01234_9	PBS_3_01234_9	KO_Unt
+Stat1_01234_10	Stat1	KO_T
+Stat2_01234_11	Stat2	KO_T
+Stat3_01234_12	Stat3	KO_T
+		
+Incorrect Example - group names are improperly formatted:		
+FASTQFileID	InvestigatorSampleID	GroupName
+DS_001_N_01234_1	DS-001-N	Normal
+DS_001_T_01234_2	DS-001-T	tumor
+DS_002_N_01234_3	DS-002-N	NORMAL
+DS_002_T_01234_4	DS-002-T	*tumor
+DS_003_N_01234_5	DS-003-N	normal
+DS_003_T_01234_6	DS-003-T	tumor
+		
+Incorrect Example - group names are improperly formatted because GroupName field contains extra information:		
+FASTQFileID	InvestigatorSampleID	GroupName
+DS_001_N_01234_1	DS-001-N	normal
+DS_001_T_01234_2	DS-001-T	tumor (from xenograft)
+DS_002_N_01234_3	DS-002-N	normal
+DS_002_T_01234_4	DS-002-T	tumor
+DS_003_N_01234_5	DS-003-N	normal
+DS_003_T_01234_6	DS-003-T	tumor
