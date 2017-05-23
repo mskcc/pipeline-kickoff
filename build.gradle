@@ -1,7 +1,6 @@
 group 'org.mskcc.kickoff.lims'
 version '1.0-SNAPSHOT'
 
-apply plugin: 'java'
 apply plugin: 'application'
 
 mainClassName = "org.mskcc.kickoff.lims.CreateManifestSheet"
@@ -42,7 +41,10 @@ task copyRuntimeLibs(type: Copy) {
 }
 
 run {
-    systemProperties System.getProperties() as Map<String, ?>
-    systemProperty "spring.profiles.default", "prod"
+    if(project.hasProperty('programArgs')){
+        args(programArgs.split(','))
+    }
+    systemProperties = System.properties
+    environment SPRING_PROFILES_ACTIVE: environment.SPRING_PROFILES_ACTIVE ?: "prod,igo"
 }
 

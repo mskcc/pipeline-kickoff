@@ -20,7 +20,12 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.*;
+import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.ComponentScan;
 
 import java.io.*;
 import java.nio.file.AccessDeniedException;
@@ -47,6 +52,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
  *
  * @author Krista Kaz (most of the framing of this script was copied from Aaron and Dmitri's examples/scripts)
  */
+@ComponentScan(basePackages = "org.mskcc.kickoff")
 class CreateManifestSheet {
     private static final PrintStream console = System.err;
     private static final HashSet<String> runIDlist = new HashSet<>();
@@ -74,17 +80,26 @@ class CreateManifestSheet {
     private static String rerunReason;
     @Argument(alias = "options", description = "Pipeline files output dir")
     private static String[] pipeline_options;
-    private final String productionProjectFilePath = "/ifs/projects/BIC";
-    private final String draftProjectFilePath = "/ifs/projects/BIC/drafts";
-    private final String requestTypeMappingFile = "all_impact_rnaseq_mapping_LIMS_names.txt";
-    private final String archivePath = "/home/reza/testIfs/projects/BIC/archive";
-    private final String fastq_path = "/ifs/archive/GCL";
-    private final String emailTo = "kristakaz@cbio.mskcc.org";
-    private final String emailFrom = "bic-request@cbio.mskcc.org";
-    private final String emailHost = "cbio.mskcc.org"; // putting this because that is what Aaron has in his validator
-    private final String designFilePath = "/ifs/projects/CMO/targets/designs";
-    private final String resultsPathPrefix = "/ifs/solres/seq";
-    private final String sampleKeyExFile = "SampleKeyExamples.txt";
+
+    @Value("${productionProjectFilePath}")
+    private String productionProjectFilePath;
+    @Value("${draftProjectFilePath}")
+    private String draftProjectFilePath;
+    @Value("${archivePath}")
+    private String archivePath;
+    @Value("${fastq_path}")
+    private String fastq_path;
+    @Value("${designFilePath}")
+    private String designFilePath;
+    @Value("${resultsPathPrefix}")
+    private String resultsPathPrefix;
+
+    @Value("${sampleKeyExamplesPath}")
+    private String sampleKeyExamplesPath;
+
+    @Value("${limsConnectionFilePath}")
+    private String limsConnectionFilePath;
+
     private final Set<PosixFilePermission> DIRperms = new HashSet<>();
     private final Set<PosixFilePermission> FILEperms = new HashSet<>();
     private final String manualMappingPinfoToRequestFile = "Alternate_E-mails:DeliverTo,Lab_Head:PI_Name,Lab_Head_E-mail:PI,Requestor:Investigator_Name,Requestor_E-mail:Investigator,CMO_Project_ID:ProjectName,Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
@@ -93,7 +108,6 @@ class CreateManifestSheet {
     private final List<String> hashMapHeader = Arrays.asList("MANIFEST_SAMPLE_ID", "CMO_PATIENT_ID", "INVESTIGATOR_SAMPLE_ID", "INVESTIGATOR_PATIENT_ID", "ONCOTREE_CODE", "SAMPLE_CLASS", "TISSUE_SITE", "SAMPLE_TYPE", "SPECIMEN_PRESERVATION_TYPE", "SPECIMEN_COLLECTION_YEAR", "SEX", "BARCODE_ID", "BARCODE_INDEX", "LIBRARY_INPUT", "LIBRARY_YIELD", "CAPTURE_INPUT", "CAPTURE_NAME", "CAPTURE_CONCENTRATION", "CAPTURE_BAIT_SET", "SPIKE_IN_GENES", "STATUS", "INCLUDE_RUN_ID", "EXCLUDE_RUN_ID");
     private final String manualMappingHashMap = "LIBRARY_INPUT:LIBRARY_INPUT[ng],LIBRARY_YIELD:LIBRARY_YIELD[ng],CAPTURE_INPUT:CAPTURE_INPUT[ng],CAPTURE_CONCENTRATION:CAPTURE_CONCENTRATION[nM],MANIFEST_SAMPLE_ID:CMO_SAMPLE_ID";
     private final String manualMappingConfigMap = "name:ProjectTitle,desc:ProjectDesc,invest:PI,invest_name:PI_Name,tumor_type:TumorType,date_of_last_update:DateOfLastUpdate,assay_type:Assay";
-    private final List<String> sampleSwapValues = Arrays.asList("IGO_ID", "INVESTIGATOR_PATIENT_ID", "INVESTIGATOR_SAMPLE_ID", "SAMPLE_CLASS", "SAMPLE_TYPE", "SPECIMEN_COLLECTION_YEAR", "SPECIMEN_PRESERVATION_TYPE", "SPECIES", "ONCOTREE_CODE", "TISSUE_SITE", "SEX", "CMO_SAMPLE_ID", "CMO_PATIENT_ID");
     private final HashSet<File> filesCreated = new HashSet<>();
     private final Logger logger = Logger.getLogger(CreateManifestSheet.class.getName());
     private final ArrayList<DataRecord> passingSeqRuns = new ArrayList<>();
@@ -114,8 +128,6 @@ class CreateManifestSheet {
     private final List<String> silentList = Arrays.asList("STATUS", "EXCLUDE_RUN_ID");
     private String extraReadmeInfo = "";
     private String requestSpecies = "#EMPTY";
-    private List<String> xenograftClasses = Arrays.asList("PDX", "Xenograft", "XenograftDerivedCellLine");
-    private List<String> portalConfigFields = Arrays.asList("cna_seg", "cna_seg_desc", "cna", "maf", "maf_desc", "name", "invest", "invest_name", "project", "tumor_type", "inst", "date_of_last_update", "groups", "data_clinical", "assay_type", "desc");
     private Boolean force = false;
     private Boolean mappingIssue = false;
     private int runNum;
@@ -123,7 +135,6 @@ class CreateManifestSheet {
     private String pi;
     private String invest;
     private User user;
-    private DecimalFormat four = new DecimalFormat("#0.0000");
     private Map<String, String> RunID_and_PoolName = new LinkedHashMap<>();
     private LogWriter deadLog;
     private File outLogDir = null;
@@ -134,8 +145,11 @@ class CreateManifestSheet {
     // This is for sample renames and sample swaps
     private HashMap<String, String> sampleRenames = new HashMap<>();
 
+
     public static void main(String[] args) throws ServerException {
-        CreateManifestSheet qe = new CreateManifestSheet();
+        ConfigurableApplicationContext context = configureSpringContext();
+
+        CreateManifestSheet qe = context.getBean(CreateManifestSheet.class);
 
         if (args.length == 0) {
             Args.usage(qe);
@@ -153,6 +167,13 @@ class CreateManifestSheet {
             qe.connectServer();
 
         }
+    }
+
+    private static ConfigurableApplicationContext configureSpringContext() {
+        ConfigurableApplicationContext context = new AnnotationConfigApplicationContext(CreateManifestSheet.class);
+        context.getEnvironment().setDefaultProfiles("prod, igo");
+        context.registerShutdownHook();
+        return context;
     }
 
     private static void closeConnection() {
@@ -208,7 +229,7 @@ class CreateManifestSheet {
             }
 
             try {
-                connection = new VeloxConnection("Connection.txt");
+                connection = new VeloxConnection(limsConnectionFilePath);
                 System.setErr(console);
                 try {
                     connection.openFromFile();
@@ -519,7 +540,7 @@ class CreateManifestSheet {
                     // Grab sample information form queryProjectInfo
                     ArrayList<String> pInfo = new ArrayList<>(Arrays.asList(queryProjInfo(apiUser, drm, requestID)));
 
-                    if (!pi.equals("null") && !invest.equals("null")) {
+                    if (!pi.equals(Constants.NULL) && !invest.equals(Constants.NULL)) {
                         runNum = getRunNumber(requestID, pi, invest);
                         if (runNum > 1 && ReqType.equals("rnaseq")) {
                             // Mono wants me to archive these, because sometimes Nick manually changes them.
@@ -527,7 +548,7 @@ class CreateManifestSheet {
                             // IF request file is there, search for date of last update
                             // Then copy to archive
                             String finalDir = String.valueOf(projectFilePath).replaceAll("drafts", ReqType);
-                            File oldReqFile = new File(finalDir + "/Proj_" + requestID + "_request.txt");
+                            File oldReqFile = new File(String.format("%s/Proj_%s_request.txt", finalDir, requestID));
                             if (oldReqFile.exists() && !force) {
                                 String lastUpdated = getPreviousDateOfLastUpdate(oldReqFile);
                                 copyToArchive(finalDir, requestID, lastUpdated, "_old");
@@ -1406,7 +1427,7 @@ class CreateManifestSheet {
                 }
                 passingSeqRuns.add(seqrun);
 
-                if (Objects.equals(RunID, "null")) {
+                if (Objects.equals(RunID, Constants.NULL)) {
                     poolQCWarnings += "[POOL_QC_ERROR] Unable to find run path or related sample ID for this sequencing run.\n";
                     exitLater = true;
                     mappingIssue = true;
@@ -1582,7 +1603,7 @@ class CreateManifestSheet {
         // grab them from a tab-delim text file, and row by row add them to the excel.
 
         try {
-            InputStream exStream = ClassLoader.getSystemResourceAsStream(sampleKeyExFile);
+            InputStream exStream = ClassLoader.getSystemResourceAsStream(sampleKeyExamplesPath);
             DataInputStream in = new DataInputStream(exStream);
             BufferedReader br = new BufferedReader(new InputStreamReader(in));
             String exLine;
