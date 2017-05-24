@@ -66,7 +66,7 @@ public class RegressionTest {
         isShiny = "-s".equals(arg);
 
         failingOutputPathForCurrentRun = Paths.get(String.format("%s/%s", failingOutputPath, DATE_AND_TIME_FORMAT.format(testStartTime)));
-        fullProjectName = Utils.getFullProjectNameFromRequestId(project);
+        fullProjectName = Utils.getFullProjectNameWithPrefix(project);
     }
 
     @Test
@@ -143,7 +143,8 @@ public class RegressionTest {
     }
 
     private Path getProjectOutputPath(Path path) {
-        return Paths.get(String.format("%s/%s", path, Utils.getFullProjectNameFromRequestId(project)));
+        return Paths.get(String.format("%s/%s", path, Utils.getFullProjectNameWithPrefix(
+                    project)));
     }
 
     private class WriteToTestReportOnFailure extends TestWatcher {

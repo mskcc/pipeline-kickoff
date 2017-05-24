@@ -16,6 +16,8 @@ import com.velox.sapioutils.client.standalone.VeloxTask;
 import com.velox.util.LogWriter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
+import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.velox.util.VeloxConstants;
 
 import java.io.*;
 import java.rmi.RemoteException;
@@ -62,15 +64,14 @@ class QueryImpactProjectInfo {
      */
     private void connectServer() {
         try {
-
             File logsDir = new File("logs");
             if (!logsDir.exists()) {
                 logsDir.mkdir();
             }
 
-            DateFormat dateFormat = new SimpleDateFormat("dd-MMM-yy");
+            DateFormat logDateFormat = new SimpleDateFormat("dd-MMM-yy");
 
-            String filename = "Log_" + dateFormat.format(new Date()) + ".txt";
+            String filename = "Log_" + logDateFormat.format(new Date()) + ".txt";
             File file = new File(logsDir, filename);
             PrintWriter printWriter = new PrintWriter(new FileWriter(file, true), true);
             try {
@@ -115,14 +116,14 @@ class QueryImpactProjectInfo {
         if (ProjectInfoMap.containsKey("Lab_Head_E-mail")) {
             return ProjectInfoMap.get("Lab_Head_E-mail");
         }
-        return "null";
+        return Constants.NULL;
     }
 
     public String getInvest() {
         if (ProjectInfoMap.containsKey("Requestor_E-mail")) {
             return ProjectInfoMap.get("Requestor_E-mail");
         }
-        return "null";
+        return Constants.NULL;
     }
 
     public void queryProjectInfo(User apiUser, DataRecordManager drm, String requestID, String reqType) {
@@ -155,20 +156,20 @@ class QueryImpactProjectInfo {
 
                 // Sample Preservation Types
                 // Get samples - get their sample preservation
-                List<DataRecord> Samps = Arrays.asList(request.getChildrenOfType("Sample", apiUser));
+                List<DataRecord> Samps = Arrays.asList(request.getChildrenOfType(VeloxConstants.SAMPLE, apiUser));
                 HashSet<String> preservations = new HashSet<>();
                 if (Samps.size() > 0) {
-                    List<Object> pres = drm.getValueList(Samps, "Preservation", apiUser);
+                    List<Object> pres = drm.getValueList(Samps, VeloxConstants.PRESERVATION, apiUser);
                     for (Object pre : pres) {
                         String p = String.valueOf(pre).toUpperCase();
                         preservations.add(p);
                     }
                 }
                 // Get Samples that are in Plates
-                for (DataRecord child : request.getChildrenOfType("Plate", apiUser)) {
-                    List<DataRecord> Samps2 = Arrays.asList(child.getChildrenOfType("Sample", apiUser));
+                for (DataRecord child : request.getChildrenOfType(VeloxConstants.PLATE, apiUser)) {
+                    List<DataRecord> Samps2 = Arrays.asList(child.getChildrenOfType(VeloxConstants.SAMPLE, apiUser));
                     if (Samps2.size() > 0) {
-                        List<Object> pres = drm.getValueList(Samps, "Preservation", apiUser);
+                        List<Object> pres = drm.getValueList(Samps, VeloxConstants.PRESERVATION, apiUser);
                         for (Object pre : pres) {
                             String p = String.valueOf(pre).toUpperCase();
                             preservations.add(p);
@@ -180,10 +181,10 @@ class QueryImpactProjectInfo {
                 if (!platforms.isEmpty()) {
                     ProjectInfoMap.put("Platform", StringUtils.join(platforms, ","));
                 } else {
-                    ProjectInfoMap.put("Platform", request.getPickListVal("RequestName", apiUser));
+                    ProjectInfoMap.put("Platform", request.getPickListVal(VeloxConstants.REQUEST_NAME, apiUser));
                 }
                 // ## Get Project Associated with it, print out necessary details
-                List<DataRecord> parents = request.getParentsOfType("Project", apiUser);
+                List<DataRecord> parents = request.getParentsOfType(VeloxConstants.PROJECT, apiUser);
                 if (parents != null && parents.size() > 0) {
                     DataRecord p = parents.get(0);
 
@@ -264,24 +265,24 @@ class QueryImpactProjectInfo {
     }
 
     private String figureOutReqType(DataRecord request, User apiUser, DataRecordManager drm) {
-        String reqType = "null";
+        String reqType = Constants.NULL;
         try {
-            List<DataRecord> nymList = request.getDescendantsOfType("NimbleGenHybProtocol", apiUser);
-            if (request.getPickListVal("RequestName", apiUser).contains("PACT") || nymList.size() != 0) {
-                reqType = "impact";
+            List<DataRecord> nymList = request.getDescendantsOfType(VeloxConstants.NIMBLE_GEN_HYB_PROTOCOL, apiUser);
+            if (request.getPickListVal(VeloxConstants.REQUEST_NAME, apiUser).contains("PACT") || nymList.size() != 0) {
+                reqType = Constants.IMPACT;
 
                 // For each Nimb record in nymb list, get capture bait set and spike in
                 if (nymList.size() > 0) {
-                    List<Object> baitSets = drm.getValueList(nymList, "Recipe", apiUser);
-                    List<Object> spikeIn = drm.getValueList(nymList, "SpikeInGenes", apiUser);
+                    List<Object> baitSets = drm.getValueList(nymList, VeloxConstants.RECIPE, apiUser);
+                    List<Object> spikeIn = drm.getValueList(nymList, VeloxConstants.SPIKE_IN_GENES, apiUser);
 
                     for (int i = 0; i < baitSets.size(); i++) {
                         String b = String.valueOf(baitSets.get(i));
-                        if (b.equals("null") || b.isEmpty()) {
+                        if (b.equals(Constants.NULL) || b.isEmpty()) {
                             continue;
                         }
                         String s = String.valueOf(spikeIn.get(i));
-                        if (s.equals("null") || s.isEmpty()) {
+                        if (s.equals(Constants.NULL) || s.isEmpty()) {
                             platforms.add(b);
                         } else {
                             platforms.add(b + "+" + s);
@@ -289,15 +290,15 @@ class QueryImpactProjectInfo {
                     }
                 }
             } else {
-                List<DataRecord> kapaList = request.getDescendantsOfType("KAPAAgilentCaptureProtocol1", apiUser);
-                String requestName = request.getPickListVal("RequestName", apiUser);
+                List<DataRecord> kapaList = request.getDescendantsOfType(VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_1, apiUser);
+                String requestName = request.getPickListVal(VeloxConstants.REQUEST_NAME, apiUser);
                 if (requestName.contains("Exome") || requestName.equals("WES") || kapaList.size() != 0) {
-                    reqType = "exome";
+                    reqType = Constants.EXOME;
                     // For each kapa record, grab the capture type
-                    List<Object> baitSets = drm.getValueList(kapaList, "AgilentCaptureKit", apiUser);
+                    List<Object> baitSets = drm.getValueList(kapaList, VeloxConstants.AGILENT_CAPTURE_KIT, apiUser);
                     for (Object baitSet : baitSets) {
                         String b = String.valueOf(baitSet);
-                        if (b.equals("null") || b.isEmpty()) {
+                        if (b.equals(Constants.NULL) || b.isEmpty()) {
                             continue;
                         }
                         platforms.add(b);
@@ -317,7 +318,7 @@ class QueryImpactProjectInfo {
     private void printMap(Map<String, String> hm) {
         for (String key : hm.keySet()) {
             String val = hm.get(key);
-            if (val.equals("null") || val.isEmpty()) {
+            if (val.equals(Constants.NULL) || val.isEmpty()) {
                 val = "NA";
             }
             System.out.println(filterToAscii(key + ": " + val));

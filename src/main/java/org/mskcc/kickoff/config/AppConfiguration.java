@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.config;
 
+import org.mskcc.kickoff.util.Constants;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -8,8 +9,9 @@ import org.springframework.core.io.ClassPathResource;
 
 @Configuration
 public class AppConfiguration {
+
     @Bean
-    @Profile("prod")
+    @Profile(Constants.PROD_PROFILE)
     public static PropertySourcesPlaceholderConfigurer propertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/application.properties"));
@@ -17,7 +19,7 @@ public class AppConfiguration {
     }
 
     @Bean
-    @Profile("dev")
+    @Profile(Constants.DEV_PROFILE)
     public static PropertySourcesPlaceholderConfigurer devPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/application-dev.properties"));
@@ -25,7 +27,7 @@ public class AppConfiguration {
     }
 
     @Bean
-    @Profile("igo")
+    @Profile(Constants.IGO_PROFILE)
     public static PropertySourcesPlaceholderConfigurer igoPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/lims-igo.properties"));
@@ -33,7 +35,7 @@ public class AppConfiguration {
     }
 
     @Bean
-    @Profile("tango")
+    @Profile(Constants.TANGO_PROFILE)
     public static PropertySourcesPlaceholderConfigurer tangoPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/lims-tango.properties"));

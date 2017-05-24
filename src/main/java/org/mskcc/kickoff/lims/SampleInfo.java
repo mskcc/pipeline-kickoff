@@ -10,6 +10,7 @@ import com.velox.api.datarecord.*;
 import com.velox.api.user.User;
 import com.velox.util.LogWriter;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.velox.util.VeloxConstants;
 
 /**
  * SampleInfo.java
@@ -96,7 +97,7 @@ class SampleInfo
                 print("[WARNING] Checking the parent samples of " + this.IGO_ID + " for SampleCMOInfoRecords.");
                 // Find all ancestors of type sample
                 // For each look for children for type Sample CMO Info Records
-                List<DataRecord> parentSamples = rec.getAncestorsOfType("Sample", apiUser);
+                List<DataRecord> parentSamples = rec.getAncestorsOfType(VeloxConstants.SAMPLE, apiUser);
                 for(DataRecord parSam : parentSamples){
                     List<DataRecord> cmoI = Arrays.asList(parSam.getChildrenOfType("SampleCMOInfoRecords", apiUser));
                     if(cmoI.size() > 0 ){
@@ -145,7 +146,7 @@ class SampleInfo
         
         
         // Manifest sample ID must match the fastq sample name
-        this.CMO_SAMPLE_ID=setFromMap(this.CMO_SAMPLE_ID, "OtherSampleId",fieldMap);
+        this.CMO_SAMPLE_ID=setFromMap(this.CMO_SAMPLE_ID, VeloxConstants.OTHER_SAMPLE_ID,fieldMap);
         this.MANIFEST_SAMPLE_ID=this.CMO_SAMPLE_ID + "_IGO_" + strippedIGO;
         // Check for gen modified
         if(this.SPECIES.equals("Mouse")){
@@ -166,7 +167,7 @@ class SampleInfo
         fieldDefaults.put("OtherSampleId", Constants.EMPTY);
         fieldDefaults.put("PatientId", Constants.EMPTY);
         fieldDefaults.put("UserSampleID", Constants.EMPTY);
-        fieldDefaults.put("SpecimenType", "na");
+        fieldDefaults.put("SpecimenType", Constants.NA_LOWER_CASE);
         fieldDefaults.put("Preservation", Constants.EMPTY);
         fieldDefaults.put("Species", "#UNKNOWN");
         fieldDefaults.put("CorrectedCMOID", Constants.EMPTY);
@@ -192,16 +193,15 @@ class SampleInfo
             this.IGO_ID = setFromMap(this.IGO_ID, "SampleId", fieldMap);
         }
         String OLD_sampleID = this.CMO_SAMPLE_ID;
-        this.CMO_SAMPLE_ID = setFromMap(this.CMO_SAMPLE_ID, "OtherSampleId", fieldMap);
+        this.CMO_SAMPLE_ID = setFromMap(this.CMO_SAMPLE_ID, VeloxConstants.OTHER_SAMPLE_ID, fieldMap);
         this.SAMPLE_TYPE = setFromMap(this.SAMPLE_TYPE, "SpecimenType", fieldMap);
         this.INVESTIGATOR_SAMPLE_ID = setFromMap(this.INVESTIGATOR_SAMPLE_ID, "UserSampleID", fieldMap);
         this.INVESTIGATOR_PATIENT_ID = setFromMap(this.INVESTIGATOR_PATIENT_ID,"PatientId", fieldMap);
-        this.SPECIMEN_PRESERVATION_TYPE = setFromMap(this.SPECIMEN_PRESERVATION_TYPE,"Preservation", fieldMap);
+        this.SPECIMEN_PRESERVATION_TYPE = setFromMap(this.SPECIMEN_PRESERVATION_TYPE,VeloxConstants.PRESERVATION, fieldMap);
         this.SPECIES = setFromMap(this.SPECIES, "Species", fieldMap);
        
         // If the CMO Sample ID is different between sample data record and  
         if( OLD_sampleID != null && !OLD_sampleID.startsWith("#") && this.CMO_SAMPLE_ID != null && !this.CMO_SAMPLE_ID.startsWith("#") && !OLD_sampleID.equals(this.CMO_SAMPLE_ID)){
-            //print("[ERROR] CMO_SAMPLE_ID differs between Sample record and Sample Level CMO Info recrod: Sample: " + OLD_sampleID + " , CMOInfo: " + this.CMO_SAMPLE_ID);
             this.CMO_SAMPLE_ID = OLD_sampleID;
         } 
         
@@ -209,7 +209,6 @@ class SampleInfo
         this.CORRECTED_CMO_ID = setFromMap(this.CMO_SAMPLE_ID, "CorrectedCMOID", fieldMap);
 
         grabRequestSpecificValues(fieldMap);
-
     }
 
     /** Search downstream to find "mouse genetically modified" data type. As of right now this method doesn't do anything. I need to figure out exactly:<br>
@@ -230,7 +229,7 @@ class SampleInfo
             List<DataRecord> sampleAncestors;
             List<List<DataRecord>> genModList2 = null;
             try{
-                sampleAncestors = rec.getAncestorsOfType("Sample", apiUser);
+                sampleAncestors = rec.getAncestorsOfType(VeloxConstants.SAMPLE, apiUser);
                 genModList2 = drm.getChildrenOfType(sampleAncestors, "MouseGeneticModification", apiUser);
             } catch (RemoteException ignored){
             } catch (Throwable e) {
@@ -247,7 +246,6 @@ class SampleInfo
                 }
             }
         }
-       
     }
    
     /** 
@@ -307,7 +305,7 @@ class SampleInfo
     }
     
     public static ArrayList<String> getLogMessages(){
-        return new ArrayList<String>(log_messages);
+        return new ArrayList<>(log_messages);
     }
 
     public static Boolean exitLater(){

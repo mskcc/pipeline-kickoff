@@ -7,6 +7,8 @@ import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
 import com.velox.util.LogWriter;
 import org.apache.commons.lang3.StringUtils;
+import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.velox.util.VeloxConstants;
 
 import java.text.DecimalFormat;
 import java.util.*;
@@ -154,7 +156,7 @@ public class SampleInfoImpact extends SampleInfo {
     }
 
     String optionallySetDefault(String currentVal, String defaultVal) {
-        if (currentVal == null || currentVal.startsWith("#") || Objects.equals(currentVal, "null")) {
+        if (currentVal == null || currentVal.startsWith("#") || Objects.equals(currentVal, Constants.NULL)) {
             return defaultVal;
         }
         return currentVal;
@@ -181,7 +183,7 @@ public class SampleInfoImpact extends SampleInfo {
         // OnocTree Code
         this.ONCOTREE_CODE = optionallySetDefault(this.ONCOTREE_CODE, "#UNKNOWN");
         String tumorLong = setFromMap(this.ONCOTREE_CODE, "TumorType", fieldMap);
-        if (!Objects.equals(tumorLong, "null") && tumorLong.length() > 0) {
+        if (!Objects.equals(tumorLong, Constants.NULL) && tumorLong.length() > 0) {
             String[] tumor_type = tumorLong.split("[()]");
             if (tumor_type.length == 2) {
                 this.ONCOTREE_CODE = tumor_type[1];
@@ -204,19 +206,19 @@ public class SampleInfoImpact extends SampleInfo {
 
     @Override
     protected void populateDefaultFields() {
-        fieldDefaults.put("SampleId", "#EMPTY");
-        fieldDefaults.put("OtherSampleId", "#EMPTY");
-        fieldDefaults.put("PatientId", "#EMPTY");
-        fieldDefaults.put("UserSampleID", "#EMPTY");
+        fieldDefaults.put("SampleId", Constants.EMPTY);
+        fieldDefaults.put("OtherSampleId", Constants.EMPTY);
+        fieldDefaults.put("PatientId", Constants.EMPTY);
+        fieldDefaults.put("UserSampleID", Constants.EMPTY);
         fieldDefaults.put("SpecimenType", "na");
-        fieldDefaults.put("Preservation", "#EMPTY");
+        fieldDefaults.put("Preservation", Constants.EMPTY);
         fieldDefaults.put("Species", "#UNKNOWN");
-        fieldDefaults.put("CorrectedCMOID", "#EMPTY");
-        fieldDefaults.put("RequestId", "#EMPTY");
-        fieldDefaults.put("TumorOrNormal", "#EMPTY");
+        fieldDefaults.put("CorrectedCMOID", Constants.EMPTY);
+        fieldDefaults.put("RequestId", Constants.EMPTY);
+        fieldDefaults.put("TumorOrNormal", Constants.EMPTY);
         fieldDefaults.put("CollectionYear", "000");
 
-        fieldDefaults.put("CmoPatientId", "#EMPTY");
+        fieldDefaults.put("CmoPatientId", Constants.EMPTY);
         fieldDefaults.put("Gender", "Unknown");
         fieldDefaults.put("TissueLocation", "na");
     }
@@ -230,7 +232,7 @@ public class SampleInfoImpact extends SampleInfo {
 
         // This only runs if LIBRARY_INPUT was not given already in CMO Sample Info Data Record
         if (this.LIBRARY_INPUT == null || this.LIBRARY_INPUT.startsWith("#")) {
-            this.LIBRARY_INPUT = "#EMPTY";
+            this.LIBRARY_INPUT = Constants.EMPTY;
             grabLibInput(drm, rec, apiUser, false, poolNormal);
             if (transfer && this.LIBRARY_INPUT.startsWith("#")) {
                 grabLibInputFromPrevSamps(drm, rec, apiUser, poolNormal);
@@ -248,7 +250,7 @@ public class SampleInfoImpact extends SampleInfo {
 
 
         if (this.LIBRARY_YIELD == null || this.LIBRARY_YIELD.startsWith("#")) {
-            this.LIBRARY_YIELD = "#EMPTY";
+            this.LIBRARY_YIELD = Constants.EMPTY;
         }
 
         // DEBUGGING. Print tree. I will recursively go through a sample and print their children data types and then grab the child samples and do it again.
@@ -544,7 +546,7 @@ public class SampleInfoImpact extends SampleInfo {
 
                 // if none are valid, make this.LIBRARY_INPUT == #empty
                 if (largestValidIndex < 0) {
-                    this.LIBRARY_INPUT = "#EMPTY";
+                    this.LIBRARY_INPUT = Constants.EMPTY;
                     return;
                 }
             } else {
@@ -566,7 +568,7 @@ public class SampleInfoImpact extends SampleInfo {
             if (val != null && Double.parseDouble(val) > 0) {
                 this.LIBRARY_INPUT = val;
             } else {
-                this.LIBRARY_INPUT = "#EMPTY";
+                this.LIBRARY_INPUT = Constants.EMPTY;
             }
         }
     }
@@ -816,7 +818,7 @@ public class SampleInfoImpact extends SampleInfo {
             }
             String pool = (String) poolName.get(a);
             //System.out.println("Pool name : " + pool + " Valid? " + validity);
-            if (validity && !pool.isEmpty() && !pool.equals("null")) {
+            if (validity && !pool.isEmpty() && !pool.equals(Constants.NULL)) {
                 if (poolNormal) {
                     if (poolNameList.contains(pool)) {
                         //System.out.println("CHOSEN POOL: " + pool);
@@ -880,7 +882,7 @@ public class SampleInfoImpact extends SampleInfo {
                 }
             }
             // for ease, just grab the other thing besides voltoUse
-            this.CAPTURE_INPUT = setFromMap("#EMPTY", "SourceMassToUse", nimbRec);
+            this.CAPTURE_INPUT = setFromMap(Constants.EMPTY, "SourceMassToUse", nimbRec);
         }
         if (libConc > 0) {
             double volumetoUse = Double.parseDouble(setFromMap("-1", "VolumeToUse", nimbRec));
@@ -891,9 +893,9 @@ public class SampleInfoImpact extends SampleInfo {
             this.CAPTURE_INPUT = "-2";
         }
         // Now the rest of the stuff
-        this.CAPTURE_NAME = setFromMap("#EMPTY", "Protocol2Sample", nimbRec);
-        this.CAPTURE_BAIT_SET = setFromMap("#EMPTY", "Recipe", nimbRec);
-        this.SPIKE_IN_GENES = setFromMap("na", "SpikeInGenes", nimbRec);
+        this.CAPTURE_NAME = setFromMap(Constants.EMPTY, "Protocol2Sample", nimbRec);
+        this.CAPTURE_BAIT_SET = setFromMap(Constants.EMPTY, VeloxConstants.RECIPE, nimbRec);
+        this.SPIKE_IN_GENES = setFromMap("na", VeloxConstants.SPIKE_IN_GENES, nimbRec);
 
         if (!Objects.equals(this.SPIKE_IN_GENES, "na") && !this.CAPTURE_BAIT_SET.startsWith("#")) {
             this.BAIT_VERSION = this.CAPTURE_BAIT_SET + "+" + this.SPIKE_IN_GENES;
@@ -910,17 +912,17 @@ public class SampleInfoImpact extends SampleInfo {
     private void populatePoolNormals(DataRecord Nymb1, User apiUser) {
         // add pooled normal to hashmap
         try {
-            DataRecord temp = Nymb1.getParentsOfType("Sample", apiUser).get(0);
-            List<DataRecord> NymbResult = Arrays.asList(temp.getChildrenOfType("Sample", apiUser));
+            DataRecord temp = Nymb1.getParentsOfType(VeloxConstants.SAMPLE, apiUser).get(0);
+            List<DataRecord> NymbResult = Arrays.asList(temp.getChildrenOfType(VeloxConstants.SAMPLE, apiUser));
             for (DataRecord poolSamp : NymbResult) {
                 // HERE check tos ee if it was added ot a flowcell?
-                List<DataRecord> lanes = poolSamp.getDescendantsOfType("FlowCellLane", apiUser);
+                List<DataRecord> lanes = poolSamp.getDescendantsOfType(VeloxConstants.FLOW_CELL_LANE, apiUser);
                 if (lanes == null || lanes.size() == 0) {
                     continue;
                 }
-                List<DataRecord> PoolParents = poolSamp.getParentsOfType("Sample", apiUser);
+                List<DataRecord> PoolParents = poolSamp.getParentsOfType(VeloxConstants.SAMPLE, apiUser);
                 for (DataRecord rent : PoolParents) {
-                    if (rent.getStringVal("SampleId", apiUser).startsWith("CTRL")) {
+                    if (rent.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL")) {
                         HashSet<String> tempSet = new HashSet<>();
 
                         if (pooledNormals == null) {
@@ -929,7 +931,7 @@ public class SampleInfoImpact extends SampleInfo {
                         if (pooledNormals.containsKey(rent)) {
                             tempSet.addAll(pooledNormals.get(rent));
                         }
-                        tempSet.add(poolSamp.getStringVal("SampleId", apiUser));
+                        tempSet.add(poolSamp.getStringVal(VeloxConstants.SAMPLE_ID, apiUser));
                         pooledNormals.put(rent, tempSet);
 
                     }
@@ -960,7 +962,7 @@ public class SampleInfoImpact extends SampleInfo {
                     if (captConc > 0) {
                         this.CAPTURE_CONCENTRATION = String.valueOf(captConc);
                     } else {
-                        this.CAPTURE_CONCENTRATION = "#EMPTY";
+                        this.CAPTURE_CONCENTRATION = Constants.EMPTY;
                     }
 
                     String name = CaptureInfo.getStringVal("SampleId", apiUser);

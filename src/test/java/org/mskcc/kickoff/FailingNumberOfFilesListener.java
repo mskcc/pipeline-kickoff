@@ -33,8 +33,8 @@ public class FailingNumberOfFilesListener implements FailingTestListener {
 
             expectedAndActualFilesList = Paths.get(String.format("%s/%s", failingOutputPathForCurrentRun, FAILED_NUMBER_OF_FILES_TXT));
             Files.createFile(expectedAndActualFilesList);
-            List<String> expectedFilesList = Utils.getFilesInDir(actualPath).stream().map(File::getPath).collect(Collectors.toList());
-            List<String> actualFilesList = Utils.getFilesInDir(expectedPath).stream().map(File::getPath).collect(Collectors.toList());
+            List<String> actualFilesList = Utils.getFilesInDir(actualPath).stream().map(File::getPath).collect(Collectors.toList());
+            List<String> expectedFilesList = Utils.getFilesInDir(expectedPath).stream().map(File::getPath).collect(Collectors.toList());
 
             List<String> dirFiles = new ArrayList<>(Collections.singletonList("expected files:"));
             dirFiles.addAll(expectedFilesList);

@@ -16,26 +16,22 @@ import java.util.stream.Collectors;
 public class Utils {
     public static final String LOG_FILE_PREFIX = "Log_";
     public static final String SHINY = "shiny";
-    private static final DateFormat dateFormat = new SimpleDateFormat("dd-MM-yy");
+    private static final DateFormat logDateFormat = new SimpleDateFormat("dd-MM-yy");
 
     public static String getRunInfoPath(Path dir) {
         return String.format("%s/%s", dir, Constants.RUN_INFO_PATH);
     }
 
-    public static String getFullProjectNameFromRequestId(String requestId) {
-        return String.format("%s%s", Constants.PROJECT_PREFIX, requestId);
-    }
-
     public static Path getFailingOutputPathForType(Path failingOutputPathForCurrentRun, String outputType, String project) {
-        return Paths.get(String.format("%s/%s/%s", failingOutputPathForCurrentRun, outputType, getFullProjectNameFromRequestId(project)));
+        return Paths.get(String.format("%s/%s/%s", failingOutputPathForCurrentRun, outputType, getFullProjectNameWithPrefix(project)));
     }
 
     public static String getLogFileName() {
-        return LOG_FILE_PREFIX + dateFormat.format(new Date()) + ".txt";
+        return LOG_FILE_PREFIX + logDateFormat.format(new Date()) + ".txt";
     }
 
     public static String getShinyLogFileName() {
-        return LOG_FILE_PREFIX + dateFormat.format(new Date()) + "_" + SHINY + ".txt";
+        return LOG_FILE_PREFIX + logDateFormat.format(new Date()) + "_" + SHINY + ".txt";
     }
 
     public static List<File> getFilesInDir(File file, Predicate<? super Path> filter) {
@@ -61,5 +57,9 @@ public class Utils {
             //@TODO logger.warn
         }
         return files;
+    }
+
+    public static String getFullProjectNameWithPrefix(String requestID) {
+        return String.format("%s%s", Constants.PROJECT_PREFIX, requestID);
     }
 }

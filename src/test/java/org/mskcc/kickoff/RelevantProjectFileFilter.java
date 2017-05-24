@@ -10,6 +10,6 @@ import java.util.function.Predicate;
 class RelevantProjectFileFilter implements Predicate<Path> {
     @Override
     public boolean test(Path path) {
-        return !Constants.RUN_INFO_PATH.equals(path);
+        return !path.toString().endsWith(Constants.RUN_INFO_PATH);
     }
 }

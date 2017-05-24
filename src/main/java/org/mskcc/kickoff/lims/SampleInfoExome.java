@@ -4,11 +4,12 @@ import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
 import com.velox.util.LogWriter;
+import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.velox.util.VeloxConstants;
 
 import java.util.*;
 
 public class SampleInfoExome extends SampleInfoImpact {
-
 
     public SampleInfoExome(String req, User apiUser, DataRecordManager drm, DataRecord rec, Map<String, Set<String>> SamplesAndRuns, Boolean force, Boolean poolNormal, Boolean transfer, LogWriter l) {
         super(req, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer, l);
@@ -24,7 +25,7 @@ public class SampleInfoExome extends SampleInfoImpact {
      */
 
     protected String optionallySetDefault(String currentVal, String defaultVal) {
-        if (currentVal == null || currentVal.startsWith("#") || Objects.equals(currentVal, "null")) {
+        if (currentVal == null || currentVal.startsWith("#") || Objects.equals(currentVal, Constants.NULL)) {
             return defaultVal;
         }
         return currentVal;
@@ -40,7 +41,7 @@ public class SampleInfoExome extends SampleInfoImpact {
         getBarcodeInfo(drm, apiUser, SamplesAndRuns, poolNormal, force);
 
         if (this.LIBRARY_INPUT == null || this.LIBRARY_INPUT.startsWith("#")) {
-            this.LIBRARY_INPUT = "#EMPTY";
+            this.LIBRARY_INPUT = Constants.EMPTY;
             grabLibInput(drm, rec, apiUser, false, poolNormal);
             if (this.LIBRARY_INPUT.startsWith("#") && transfer) {
                 grabLibInputFromPrevSamps(drm, rec, apiUser, poolNormal);
@@ -55,7 +56,7 @@ public class SampleInfoExome extends SampleInfoImpact {
         grabCaptureConc(rec, apiUser);
 
         if (this.LIBRARY_YIELD == null || this.LIBRARY_YIELD.startsWith("#")) {
-            this.LIBRARY_YIELD = "#EMPTY";
+            this.LIBRARY_YIELD = Constants.EMPTY;
         }
         // If Nimblgen Hybridization was created BEFORE May 5th, ASSUME
         // That Library Yield, and Capture INPUT is correct on Nimblgen data record
@@ -90,7 +91,6 @@ public class SampleInfoExome extends SampleInfoImpact {
         if (this.LIBRARY_YIELD.startsWith("#")) {
             this.LIBRARY_YIELD = "-2";
         }
-        //  }
     }
 
     private void processCaptureInfo(DataRecordManager drm, DataRecord rec, User apiUser, double libConc, boolean afterDate) {
@@ -101,8 +101,8 @@ public class SampleInfoExome extends SampleInfoImpact {
         List<List<Map<String, Object>>> kapa2FieldsList = null;
         try {
             requestAsList.add(rec);
-            kapa1FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, "KAPAAgilentCaptureProtocol1", apiUser);
-            kapa2FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, "KAPAAgilentCaptureProtocol2", apiUser);
+            kapa1FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_1, apiUser);
+            kapa2FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_2, apiUser);
         } catch (Throwable e) {
             logger.logError(e);
             e.printStackTrace();
@@ -125,11 +125,11 @@ public class SampleInfoExome extends SampleInfoImpact {
             kapa2Loop:
             {
                 for (Map<String, Object> kapa2Map : kapa2Fields) {
-                    if (!kapa2Map.containsKey("Valid") || kapa2Map.get("Valid") == null || !(Boolean) kapa2Map.get("Valid")) {
+                    if (!kapa2Map.containsKey(VeloxConstants.VALID) || kapa2Map.get(VeloxConstants.VALID) == null || !(Boolean) kapa2Map.get(VeloxConstants.VALID)) {
                         continue;
                     }
-                    this.CAPTURE_BAIT_SET = (String) kapa2Map.get("AgilentCaptureBaitSet");
-                    ExID = (String) kapa2Map.get("ExperimentId");
+                    this.CAPTURE_BAIT_SET = (String) kapa2Map.get(VeloxConstants.AGILENT_CAPTURE_BAIT_SET);
+                    ExID = (String) kapa2Map.get(VeloxConstants.EXPERIMENT_ID);
                     break kapa2Loop;
                 }
             }
@@ -139,16 +139,16 @@ public class SampleInfoExome extends SampleInfoImpact {
                 for (Map<String, Object> kapa1Map : kapa1Fields) {
                     // if kapa2 had valid in one of their records, match the kapa1 exp id with that
                     if (!ExID.equals("#NONE")) {
-                        String Kapa1ExId = (String) kapa1Map.get("ExperimentId");
+                        String Kapa1ExId = (String) kapa1Map.get(VeloxConstants.EXPERIMENT_ID);
                         if (!ExID.equals(Kapa1ExId)) {
                             continue;
                         }
                     } else {
                         // if KAPA2 isn't being used, make sure KAPA 1 is valid and then pull all the info you need from it.
-                        if (!kapa1Map.containsKey("Valid") || kapa1Map.get("Valid") == null || !(Boolean) kapa1Map.get("Valid")) {
+                        if (!kapa1Map.containsKey(VeloxConstants.VALID) || kapa1Map.get(VeloxConstants.VALID) == null || !(Boolean) kapa1Map.get(VeloxConstants.VALID)) {
                             continue;
                         }
-                        this.CAPTURE_BAIT_SET = (String) kapa1Map.get("AgilentCaptureBaitSet");
+                        this.CAPTURE_BAIT_SET = (String) kapa1Map.get(VeloxConstants.AGILENT_CAPTURE_BAIT_SET);
                         if (afterDate) {
                             print("[WARNING] No KAPAAgilentCaptureProtocol2 had a valid key, but it should!");
                         }
@@ -157,7 +157,7 @@ public class SampleInfoExome extends SampleInfoImpact {
                     if (afterDate) {
                         if (libConc > 0) {
                             Double volumeToUse;
-                            volumeToUse = (Double) kapa1Map.get("Aliq1SourceVolumeToUse");
+                            volumeToUse = (Double) kapa1Map.get(VeloxConstants.ALIQ_1_SOURCE_VOLUME_TO_USE);
                             if (volumeToUse != null && volumeToUse > 0) {
                                 this.CAPTURE_INPUT = String.valueOf(Math.round(volumeToUse * libConc));
                             }
@@ -167,12 +167,12 @@ public class SampleInfoExome extends SampleInfoImpact {
                         }
                     } else {
                         // Before Date -  grab vol and concentration to amek library yield
-                        this.CAPTURE_INPUT = String.valueOf(kapa1Map.get("Aliq1TargetMass"));
-                        Double StartVol = (Double) kapa1Map.get("Aliq1StartingVolume");
-                        Double StartConc = (Double) kapa1Map.get("Aliq1StartingConcentration");
+                        this.CAPTURE_INPUT = String.valueOf(kapa1Map.get(VeloxConstants.ALIQ_1_TARGET_MASS));
+                        Double StartVol = (Double) kapa1Map.get(VeloxConstants.ALIQ_1_STARTING_VOLUME);
+                        Double StartConc = (Double) kapa1Map.get(VeloxConstants.ALIQ_1_STARTING_CONCENTRATION);
                         if ((StartVol == null || StartConc == null || StartVol == 0.0 || StartConc == 0.0) && this.LIBRARY_YIELD.startsWith("#")) {
                             this.LIBRARY_YIELD = "#ExomeCALCERROR";
-                        } else if (this.LIBRARY_YIELD.equals("#EMPTY")) {
+                        } else if (this.LIBRARY_YIELD.equals(Constants.EMPTY)) {
                             this.LIBRARY_YIELD = String.valueOf(Math.round(StartVol * StartConc));
                         }
                         break kapa1Loop;
