@@ -1,10 +1,14 @@
 package org.mskcc.kickoff.config;
 
+import com.sampullara.cli.Args;
 import com.sampullara.cli.Argument;
+import org.mskcc.kickoff.util.Constants;
 
 import java.util.Arrays;
 
 public class Arguments {
+    private static final org.apache.log4j.Logger LOGGER = org.apache.log4j.Logger.getLogger(Constants.DEV_LOGGER);
+
     @Argument(alias = "k", description = "Krista's argument. For her testing")
     public static Boolean krista = false;
     @Argument(alias = "prod", description = "Production project files (goes in specific path) default to draft directory")
@@ -42,5 +46,14 @@ public class Arguments {
                 ",\npipeline_options=" + Arrays.toString(pipeline_options) +
                 ",\ntest=" + test +
                 "\n}";
+    }
+
+    public static void parseArguments(String[] args) {
+        try {
+            Args.parse(Arguments.class, args);
+        } catch (Exception e) {
+            LOGGER.error("Wrong arguments provided", e);
+            Args.usage(Arguments.class);
+        }
     }
 }

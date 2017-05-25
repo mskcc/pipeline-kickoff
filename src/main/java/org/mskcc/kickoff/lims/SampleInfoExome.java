@@ -5,12 +5,12 @@ import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
 import com.velox.util.LogWriter;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.util.Utils;
 import org.mskcc.kickoff.velox.util.VeloxConstants;
 
 import java.util.*;
 
 public class SampleInfoExome extends SampleInfoImpact {
-
     public SampleInfoExome(String req, User apiUser, DataRecordManager drm, DataRecord rec, Map<String, Set<String>> SamplesAndRuns, Boolean force, Boolean poolNormal, Boolean transfer, LogWriter l) {
         super(req, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer, l);
 
@@ -23,7 +23,6 @@ public class SampleInfoExome extends SampleInfoImpact {
     /*
             Capture Info Pulling
      */
-
     protected String optionallySetDefault(String currentVal, String defaultVal) {
         if (currentVal == null || currentVal.startsWith("#") || Objects.equals(currentVal, Constants.NULL)) {
             return defaultVal;
@@ -47,7 +46,7 @@ public class SampleInfoExome extends SampleInfoImpact {
                 grabLibInputFromPrevSamps(drm, rec, apiUser, poolNormal);
             }
             if (this.LIBRARY_INPUT.startsWith("#")) {
-                print("[WARNING] Unable to find DNA Lib Protocol for Library Input method (sample " + this.CMO_SAMPLE_ID + ")");
+                logWarning(String.format("Unable to find DNA Lib Protocol for Library Input method (sample %s)", this.CMO_SAMPLE_ID));
                 this.LIBRARY_INPUT = "-2";
             }
         }
@@ -78,7 +77,7 @@ public class SampleInfoExome extends SampleInfoImpact {
             if (libVol <= 0 && (this.LIBRARY_YIELD == null || this.LIBRARY_YIELD.startsWith("#"))) {
                 // No matter what I cannot get LIBRARY_YIELD
                 this.LIBRARY_YIELD = "-2";
-                print("[WARNING] Unable to calculate Library Yield because I cannot retrieve either Lib Conc or Lib Output Vol");
+                logWarning("Unable to calculate Library Yield because I cannot retrieve either Lib Conc or Lib Output Vol");
             } else if (libConc > 0 && (this.LIBRARY_YIELD == null || this.LIBRARY_YIELD.startsWith("#"))) {
                 this.LIBRARY_YIELD = String.valueOf(libVol * libConc);
             }
@@ -103,17 +102,16 @@ public class SampleInfoExome extends SampleInfoImpact {
             requestAsList.add(rec);
             kapa1FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_1, apiUser);
             kapa2FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_2, apiUser);
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace();
+        } catch (Exception e) {
+            Utils.DEV_LOGGER.error("Exception thrown while retrieving information about process capture", e);
         }
 
         if (kapa1FieldsList == null || kapa1FieldsList.size() == 0 || kapa1FieldsList.get(0) == null || kapa1FieldsList.get(0).size() == 0) {
             this.CAPTURE_INPUT = this.CAPTURE_BAIT_SET = "#NoKAPACaptureProtocol1";
-            print("[ERROR] No Valid KAPACaptureProtocol for sample " + this.CMO_SAMPLE_ID + ". The baitset, Capture Input, Library Yield will be unavailable. ");
+            logError(String.format("No Valid KAPACaptureProtocol for sample %s. The baitset, Capture Input, Library Yield will be unavailable. ", this.CMO_SAMPLE_ID));
         } else if (kapa2FieldsList == null || kapa2FieldsList.size() == 0 || kapa2FieldsList.get(0) == null || kapa2FieldsList.get(0).size() == 0) {
             this.CAPTURE_INPUT = this.CAPTURE_BAIT_SET = "#NoKAPACaptureProtocol2";
-            print("[ERROR] No Valid KAPACaptureProtocol2 for sample " + this.CMO_SAMPLE_ID + "(Should be present). The baitset, Capture Input, Library Yield will be unavailable. ");
+            logError(String.format("No Valid KAPACaptureProtocol2 for sample %s(Should be present). The baitset, Capture Input, Library Yield will be unavailable. ", this.CMO_SAMPLE_ID));
         } else {
             // there was only one sample in the reqeusts as list so you just need the first list of maps.
             List<Map<String, Object>> kapa2Fields = kapa2FieldsList.get(0);
@@ -150,7 +148,8 @@ public class SampleInfoExome extends SampleInfoImpact {
                         }
                         this.CAPTURE_BAIT_SET = (String) kapa1Map.get(VeloxConstants.AGILENT_CAPTURE_BAIT_SET);
                         if (afterDate) {
-                            print("[WARNING] No KAPAAgilentCaptureProtocol2 had a valid key, but it should!");
+                            String message = "No KAPAAgilentCaptureProtocol2 had a valid key, but it should!";
+                            logWarning(message);
                         }
                     }
 
@@ -188,4 +187,5 @@ public class SampleInfoExome extends SampleInfoImpact {
         }
         this.BAIT_VERSION = this.CAPTURE_BAIT_SET;
     }
+
 }

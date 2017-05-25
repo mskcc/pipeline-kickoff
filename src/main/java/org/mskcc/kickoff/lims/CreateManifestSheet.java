@@ -1,9 +1,7 @@
 package org.mskcc.kickoff.lims;
 
-import com.sampullara.cli.Args;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
-import com.velox.api.datarecord.IoError;
 import com.velox.api.datarecord.NotFound;
 import com.velox.api.user.User;
 import com.velox.api.util.ServerException;
@@ -15,19 +13,25 @@ import com.velox.util.LogWriter;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.*;
+import org.mskcc.kickoff.PriorityAwareLogMessage;
 import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.kickoff.config.ArgumentsFileReporter;
+import org.mskcc.kickoff.config.LogConfigurer;
 import org.mskcc.kickoff.domain.LibType;
 import org.mskcc.kickoff.domain.Recipe;
 import org.mskcc.kickoff.domain.RequestSpecies;
 import org.mskcc.kickoff.domain.Strand;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.validator.ProjectNameValidator;
 import org.mskcc.kickoff.velox.util.VeloxConstants;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -45,11 +49,6 @@ import java.text.DecimalFormat;
 import java.text.Normalizer;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.logging.FileHandler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -62,7 +61,8 @@ import static org.mskcc.kickoff.config.Arguments.*;
  */
 @ComponentScan(basePackages = "org.mskcc.kickoff")
 class CreateManifestSheet {
-    private static final PrintStream console = System.err;
+    private static final Logger devLogger = Logger.getLogger(Constants.DEV_LOGGER);
+    private static final Logger pmLogger = Logger.getLogger(Constants.PM_LOGGER);
     private static final HashSet<String> runIDlist = new HashSet<>();
     private static int NewMappingScheme = 0;
     private static VeloxConnection connection;
@@ -75,13 +75,11 @@ class CreateManifestSheet {
     private final String manualMappingHashMap = "LIBRARY_INPUT:LIBRARY_INPUT[ng],LIBRARY_YIELD:LIBRARY_YIELD[ng],CAPTURE_INPUT:CAPTURE_INPUT[ng],CAPTURE_CONCENTRATION:CAPTURE_CONCENTRATION[nM],MANIFEST_SAMPLE_ID:CMO_SAMPLE_ID";
     private final String manualMappingConfigMap = "name:ProjectTitle,desc:ProjectDesc,invest:PI,invest_name:PI_Name,tumor_type:TumorType,date_of_last_update:DateOfLastUpdate,assay_type:Assay";
     private final HashSet<File> filesCreated = new HashSet<>();
-    private final Logger logger = Logger.getLogger(CreateManifestSheet.class.getName());
     private final ArrayList<DataRecord> passingSeqRuns = new ArrayList<>();
     private final LinkedHashMap<String, LinkedHashMap<String, String>> SampleListToOutput = new LinkedHashMap<>();
     private final Set<String> sampleRuns = new HashSet<>();
     private final Map<String, Set<String>> badRuns = new HashMap<>();
     private final Set<String> poolRuns = new HashSet<>();
-    private final ArrayList<String> log_messages = new ArrayList<>();
     private final Map<String, Integer> readsForSample = new HashMap<>();
     //This collects all library protocol types and Amplification protocol types
     private final Set<LibType> libTypes = new HashSet<>();
@@ -122,34 +120,33 @@ class CreateManifestSheet {
     private File outLogDir = null;
     private String ReqType = "";
     private List<Recipe> recipes;
-    private Boolean exitLater = false;
-    private String poolQCWarnings = "";
+    private List<PriorityAwareLogMessage> poolQCWarnings = new ArrayList<>();
     // This is for sample renames and sample swaps
     private HashMap<String, String> sampleRenames = new HashMap<>();
 
+    @Autowired
+    private ProjectNameValidator projectNameValidator;
+
+    @Autowired
+    private LogConfigurer logConfigurer;
+
     public static void main(String[] args) throws ServerException {
         try {
+            parseArguments(args);
             ConfigurableApplicationContext context = configureSpringContext();
             CreateManifestSheet createManifestSheet = context.getBean(CreateManifestSheet.class);
 
-            if (args.length == 0) {
-                Args.usage(Arguments.class);
-            } else {
-                try {
-                    Args.parse(Arguments.class, args);
-                } catch (IllegalArgumentException e) {
-                    Args.usage(createManifestSheet);
-                }
+            addShutdownHook();
 
-                CreateManifestSheet.MySafeShutdown sh = new CreateManifestSheet.MySafeShutdown();
-                Runtime.getRuntime().addShutdownHook(sh);
-
-                saveCurrentArgumentToFile();
-                createManifestSheet.connectServer();
-            }
+            createManifestSheet.run();
         } catch (Exception e) {
-            //@TODO logger.error once logger added
+            devLogger.error(String.format("Error while generating manifest files for project: %s", Arguments.project));
         }
+    }
+
+    private static void addShutdownHook() {
+        MySafeShutdown sh = new MySafeShutdown();
+        Runtime.getRuntime().addShutdownHook(sh);
     }
 
     private static ConfigurableApplicationContext configureSpringContext() {
@@ -168,97 +165,49 @@ class CreateManifestSheet {
         if (connection.isConnected()) {
             try {
                 connection.close();
-            } catch (Throwable e) {
-                e.printStackTrace(console);
+            } catch (Exception e) {
+                devLogger.warn("Exception thrown while closing lims connection", e);
             }
         }
+    }
+
+    private void run() {
+        logConfigurer.configureDevLog();
+        devLogger.info("Received program arguments: " + toPrintable());
+        saveCurrentArgumentToFile();
+        projectNameValidator.validate(Arguments.project);
+
+        generate();
     }
 
     /**
      * Connect to a server, then execute the rest of code.
      */
-    private void connectServer() {
+    private void generate() {
+        connection = new VeloxConnection(limsConnectionFilePath);
         try {
+            connection.openFromFile();
 
-            File logsDir = new File("logs");
-            if (!logsDir.exists()) {
-                logsDir.mkdir();
-            }
+            if (connection.isConnected())
+                user = connection.getUser();
 
-            System.setErr(new PrintStream(new OutputStream() {
-                public void write(int b) {
+            VeloxStandalone.run(connection, new VeloxTask<Object>() {
+                @Override
+                public Object performTask() throws VeloxStandaloneException {
+                    queryProjectInfo(user, dataRecordManager, project);
+                    return new Object();
                 }
-            }));
-
-            DateFormat dateFormat = new SimpleDateFormat("dd-MM-yy");
-            String filename = "Log_" + dateFormat.format(new Date()) + ".txt";
-
-            if (shiny) {
-                filename = "Log_" + dateFormat.format(new Date()) + "_shiny.txt";
-            }
-            File file = new File(logsDir + "/" + filename);
-            if (!file.exists()) {
-                file.createNewFile();
-                file.setWritable(true, false);
-                file.setReadable(true, false);
-            }
-            //PrintWriter printWriter = new PrintWriter(new FileWriter(file, true), true);
-            FileHandler log_fh = new FileHandler(logsDir + "/" + filename, true);
-            log_fh.setFormatter(new SimpleFormatter());
-            logger.addHandler(log_fh);
-            logger.setUseParentHandlers(false);
-
-            // If request ID includes anything besides A-Za-z_0-9 exit
-            // This is done up here so we don't have to connect, then try to query a malformed project id, which could mess up the system.
-            Pattern reqPattern = Pattern.compile("^[0-9]{5,}[A-Z_]*$");
-            if (!reqPattern.matcher(project).matches()) {
-                print("Malformed request ID.");
-                return;
-            }
-
-            try {
-                connection = new VeloxConnection(limsConnectionFilePath);
-                System.setErr(console);
-                try {
-                    connection.openFromFile();
-
-                    if (connection.isConnected()) {
-                        user = connection.getUser();
-                    }
-                    // Execute the program
-                    VeloxStandalone.run(connection, new VeloxTask<Object>() {
-                        @Override
-                        public Object performTask() throws VeloxStandaloneException {
-                            queryProjectInfo(user, dataRecordManager, project);
-                            return new Object();
-                        }
-                    });
-                } finally {
-                    closeConnection();
-                }
-            } finally {
-                if (log_fh != null) {
-                    log_fh.close();
-                }
-            }
-        } catch (com.velox.sapioutils.client.standalone.VeloxConnectionException e) {
-            System.err.println("com.velox.sapioutils.client.standalone.VeloxConnectionException: Connection refused for all users.1 ");
-            e.printStackTrace(console);
-            System.exit(0);
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+            });
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        } finally {
+            closeConnection();
         }
     }
 
     private void queryProjectInfo(User apiUser, DataRecordManager drm, String requestID) {
         initializeFilePermissions();
-        // If request ID includes anything besides A-Za-z_0-9 exit
-        Pattern reqPattern = Pattern.compile("^[0-9]{5,}[A-Z_]*$");
-        if (!reqPattern.matcher(requestID).matches()) {
-            print("Malformed request ID.");
-            return;
-        }
+
         // this is to set up if production or draft (depreciated, everything goes to the draft project file path)
         Boolean draft = !prod;
         // Sets up project file path
@@ -271,9 +220,13 @@ class CreateManifestSheet {
             List<DataRecord> requests = drm.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestID + "'", apiUser);
 
             if (requests.size() == 0) {
-                print("[INFO] No matching request id.");
+                String message = String.format("No matching requests for request id: %s", Arguments.project);
+                pmLogger.info(message);
+                devLogger.error(message);
                 return;
             }
+
+            logConfigurer.configurePmLog();
 
             //checks argument outdir. If someone put this, it creates a directory for this project, and changes project file path to outdir
             if (outdir != null && !outdir.isEmpty()) {
@@ -284,20 +237,16 @@ class CreateManifestSheet {
                     if (!i.exists()) {
                         i.mkdir();
                     }
-                    print("[INFO] Overwriting default dir to " + outdir);
+                    log(String.format("Overwriting default dir to %s", outdir), Level.INFO, Level.INFO);
                     projectFilePath = outdir;
                 } else {
-                    print("[ERROR] The outdir directory you gave me is empty or does not exist: " + outdir);
+                    logError(String.format("The outdir directory you gave me is empty or does not exist: %s", outdir), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
                 }
             }
             // create directory, create log dir
             File projDir = new File(projectFilePath);
             if (!projDir.exists()) {
                 projDir.mkdir();
-            }
-            outLogDir = new File(projectFilePath + "/logs");
-            if (!outLogDir.exists()) {
-                outLogDir.mkdir();
             }
 
             for (DataRecord request : requests) {
@@ -320,7 +269,7 @@ class CreateManifestSheet {
                             break;
                         }
                     }
-                    print("[ERROR] According to the LIMS, project " + requestID + " cannot be run through this script. " + reason + " Sorry :(");
+                    logError(String.format("According to the LIMS, project %s cannot be run through this script. %s Sorry :(", requestID, reason), Level.ERROR, Level.ERROR);
                     if (!krista) {
                         return;
                     }
@@ -344,9 +293,9 @@ class CreateManifestSheet {
                         System.err.println("[ERROR] No sequencing runs found for this Request ID.");
                         return;
                     } else if (manualDemux) {
-                        print("[WARNING] MANUAL DEMULTIPLEXING was performed. Nothing but the request file should be output.");
+                        logWarning("MANUAL DEMULTIPLEXING was performed. Nothing but the request file should be output.");
                     } else {
-                        print("[WARNING] ALERT: There are no sequencing runs passing QC for this run. Force is true, I will pull ALL samples for this project.");
+                        logWarning("ALERT: There are no sequencing runs passing QC for this run. Force is true, I will pull ALL samples for this project.");
                         force = true;
                     }
                 }
@@ -360,7 +309,7 @@ class CreateManifestSheet {
                 if (ReqType.isEmpty()) {
                     // Here I will pull the childs field recipe
                     recipes = getRecipe(drm, apiUser, request);
-                    print("[WARNING] RECIPE: " + getJoinedRecipes());
+                    logWarning("RECIPE: " + getJoinedRecipes());
                     if (request.getPickListVal(Constants.REQUEST_NAME, apiUser).matches("(.*)PACT(.*)")) {
                         ReqType = Constants.IMPACT;
                     }
@@ -373,12 +322,12 @@ class CreateManifestSheet {
                     }
                     if (ReqType.length() == 0) {
                         if (requestID.startsWith(Constants.REQUEST_05500)) {
-                            print("[WARNING] 05500 project. This should be pulled as an impact.");
+                            logWarning("05500 project. This should be pulled as an impact.");
                             ReqType = Constants.IMPACT;
                         } else if (runAsExome) {
                             ReqType = Constants.EXOME;
                         } else {
-                            print("[WARNING] Request Name doesn't match one of the supported request types: " + request.getPickListVal(Constants.REQUEST_NAME, apiUser) + ". Information will be pulled as if it is an rnaseq/unknown run.");
+                            logWarning("Request Name doesn't match one of the supported request types: " + request.getPickListVal(Constants.REQUEST_NAME, apiUser) + ". Information will be pulled as if it is an rnaseq/unknown run.");
                             ReqType = Constants.OTHER;
                         }
                     }
@@ -397,12 +346,12 @@ class CreateManifestSheet {
                             String sid = wells.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
                             // Check to see if sample name is used already!
                             if (SampleListToOutput.containsKey(sid)) {
-                                System.err.println("[ERROR] This request has two samples that have the same name: " + sid);
+                                devLogger.error(String.format("This request has two samples that have the same name: %s", sid));
                                 return;
                             }
                             if ((SamplesAndRuns.containsKey(sid)) || (force)) {
                                 if (wells.getParentsOfType(VeloxConstants.SAMPLE, apiUser).size() > 0) {
-                                    print("This sample is a tranfer from another request!");
+                                    devLogger.warn("This sample is a tranfer from another request!");
                                     LinkedHashMap<String, String> tempHashMap = getSampleInfoMap(apiUser, drm, wells, SamplesAndRuns, false, true);
                                     tempHashMap.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(requestID));
                                     SampleListToOutput.put(sid, tempHashMap);
@@ -423,18 +372,18 @@ class CreateManifestSheet {
                     // Added because we were getting samples that had the same name as a sequenced sample, but then it was failed so it shouldn't be used (as per Aaron).
                     String status = child.getSelectionVal(VeloxConstants.EXEMPLAR_SAMPLE_STATUS, apiUser);
                     if (status.equals("Failed - Completed")) {
-                        print("Skipping " + sid + " because the sample is failed: " + status);
+                        devLogger.warn("Skipping " + sid + " because the sample is failed: " + status);
                         continue;
                     }
 
                     // This is never supposed to happen.
                     if (SampleListToOutput.containsKey(sid)) {
-                        print("[ERROR] This request has two samples that have the same name: " + sid);
+                        logError("This request has two samples that have the same name: " + sid, PmLogPriority.SAMPLE_ERROR, Level.ERROR);
                     }
                     // if this sample is in the list of
                     if ((SamplesAndRuns.containsKey(sid)) || (force)) {
                         if (child.getParentsOfType(VeloxConstants.SAMPLE, apiUser).size() > 0) {
-                            print("This sample is a tranfer from another request!");
+                            devLogger.warn(String.format("Sample: %s is a tranfer from another request", sid));
                             LinkedHashMap<String, String> tempHashMap = getSampleInfoMap(apiUser, drm, child, SamplesAndRuns, false, true);
                             tempHashMap.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(requestID));
                             SampleListToOutput.put(sid, tempHashMap);
@@ -452,16 +401,16 @@ class CreateManifestSheet {
 
                 int numSamples = SampleListToOutput.size();
                 if (numSamples == 0) {
-                    print("[ERROR] None of the samples in the project were found in the passing samples and runs. Please check the LIMs to see if the names are incorrect.");
+                    logError("None of the samples in the project were found in the passing samples and runs. Please check the LIMs to see if the names are incorrect.", Level.ERROR, Level.ERROR);
                 }
 
                 // POOLED NORMAL START
                 HashMap<DataRecord, HashSet<String>> PooledNormalSamples = SampleInfoImpact.getPooledNormals();
                 if (PooledNormalSamples != null && PooledNormalSamples.size() > 0) {
-                    print("Number of Pooled Normal Samples: " + PooledNormalSamples.size());
+                    devLogger.info(String.format("Number of Pooled Normal Samples: %d", PooledNormalSamples.size()));
 
                     // for each pooled normal, get the run ID from the pool, then add the sample and runID to that one variable.
-                    SamplesAndRuns = addPooledNormalstoSampleList(SamplesAndRuns, RunID_and_PoolName, PooledNormalSamples, apiUser);
+                    SamplesAndRuns = addPooledNormalsToSampleList(SamplesAndRuns, RunID_and_PoolName, PooledNormalSamples, apiUser);
 
                     HashSet<DataRecord> keyCopy = new HashSet<>(PooledNormalSamples.keySet());
 
@@ -474,17 +423,19 @@ class CreateManifestSheet {
                         // If include run ID is 'null' skip.
                         // This could mess up some older projects, so I may have to change this
                         if (tempHashMap.get(Constants.INCLUDE_RUN_ID) == null) {
-                            print("[WARNING] Skipping adding pooled normal info from " + tempHashMap.get(Constants.IGO_ID) + " because I cannot find include run id. ");
+                            logWarning("Skipping adding pooled normal info from " + tempHashMap.get(Constants.IGO_ID) + " because I cannot find include run id. ");
                             continue;
                         }
 
                         // If the sample pooled normal type (ex: FROZEN POOLED NORMAL) is already in the manfiest list
                         // Concatenate the include/ exclude run ids
                         if (SampleListToOutput.containsKey(pNorm_name) && tempHashMap.get(Constants.INCLUDE_RUN_ID) != null) {
-                            print("Combining Two Pooled Normals: " + pNorm_name);
+                            devLogger.info(String.format("Combining Two Pooled Normals: %s", pNorm_name));
+
                             LinkedHashMap<String, String> originalPooledNormalSample = SampleListToOutput.get(pNorm_name);
                             Set<String> currIncludeRuns = new HashSet<>(Arrays.asList(originalPooledNormalSample.get(Constants.INCLUDE_RUN_ID).split(";")));
-                            print("OLD include runs: " + originalPooledNormalSample.get(Constants.INCLUDE_RUN_ID));
+
+                            devLogger.info(String.format("OLD include runs: %s", originalPooledNormalSample.get(Constants.INCLUDE_RUN_ID)));
                             Set<String> currExcludeRuns = new HashSet<>(Arrays.asList(originalPooledNormalSample.get(Constants.EXCLUDE_RUN_ID).split(";")));
 
                             currIncludeRuns.addAll(Arrays.asList(tempHashMap.get(Constants.INCLUDE_RUN_ID).split(";")));
@@ -511,13 +462,6 @@ class CreateManifestSheet {
                     requestSpecies = RequestSpecies.XENOGRAFT;
 
                 if (SampleListToOutput.size() != 0) {
-                    // Add log messages from SampleInfo
-                    log_messages.addAll(SampleInfo.getLogMessages());
-
-                    if (SampleInfo.exitLater()) {
-                        exitLater = true;
-                    }
-
                     // Grab Sample Renames
                     sampleRenames = SampleInfo.getSampleRenames();
 
@@ -566,11 +510,11 @@ class CreateManifestSheet {
                         if (!projDir.exists()) {
                             projDir.mkdir();
                         }
-                        print("[INFO] Path: " + projDir);
+                        log("Path: " + projDir, Level.INFO, Level.INFO);
 
                         if (!force) {
                             if (manualDemux) {
-                                print("[WARNING] Manual demux performed. I will not output maping file");
+                                logWarning("Manual demux performed. I will not output maping file");
                             } else {
                                 printMappingFile(SamplesAndRuns, requestID, projDir, baitVersion);
                             }
@@ -633,7 +577,7 @@ class CreateManifestSheet {
                                 }
                             }
                             if (tType.isEmpty()) {
-                                print("[WARNING] I can't figure out the tumor type of this project. ");
+                                logWarning("I can't figure out the tumor type of this project. ");
 
                             } else if (tType.size() == 1) {
                                 ArrayList<String> tumorTypes = new ArrayList<>(tType);
@@ -644,7 +588,6 @@ class CreateManifestSheet {
                                 pInfo.add("TumorType: NA");
                             }
                         }
-
 
                         String Manifest_filename = manDir + "/" + Utils.getFullProjectNameWithPrefix(requestID) + "_sample_manifest.txt";
                         String pairing_filename = manDir + "/" + Utils.getFullProjectNameWithPrefix(requestID) + "_sample_pairing.txt";
@@ -672,7 +615,7 @@ class CreateManifestSheet {
                     // Also (TODO) add a specifc file with the errors causing the mapping issues
                     // For RNASEQ and other, nothing gets output except request and mapping files
                     // I will have to wait and figure out what to do, but int he meantime I will delete everything
-                    if (exitLater && !krista && !requestID.startsWith(Constants.REQUEST_05500) && !ReqType.equals(Constants.RNASEQ) && !ReqType.equals(Constants.OTHER)) {
+                    if (Utils.exitLater && !krista && !requestID.startsWith(Constants.REQUEST_05500) && !ReqType.equals(Constants.RNASEQ) && !ReqType.equals(Constants.OTHER)) {
                         for (File f : filesCreated) {
                             if (isMappingFile(f)) {
                                 File newName = new File(getErrorFile(f));
@@ -698,25 +641,18 @@ class CreateManifestSheet {
                 }
 
             }// end of request
-        } catch (NotFound nf) {
-            nf.printStackTrace(console);
-        } catch (IoError | RemoteException ioe) {
-            ioe.printStackTrace(console);
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(e.getMessage(), e);
         } finally {
-
-            if (outLogDir != null) {
-                DateFormat dateFormat = new SimpleDateFormat("dd-MM-yy");
-                File filename = new File(outLogDir.getAbsolutePath() + "/Log_" + dateFormat.format(new Date()) + ".txt");
-
-                printLogMessages(filename);
-            }
-
             File f = new File(projectFilePath);
             setPermissions(f);
         }
+    }
+
+    private void logError(String message, Level pmLogLevel, Level devLogLevel) {
+        Utils.exitLater = true;
+        pmLogger.log(pmLogLevel, message);
+        devLogger.log(devLogLevel, message);
     }
 
     private String getErrorFile(File f) {
@@ -812,9 +748,8 @@ class CreateManifestSheet {
                     }
                 }
             }
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(e.getMessage(), e);
         }
     }
 
@@ -826,9 +761,8 @@ class CreateManifestSheet {
             samples = Arrays.asList(request.getChildrenOfType(VeloxConstants.SAMPLE, apiUser));
             recipes = drm.getValueList(samples, VeloxConstants.RECIPE, apiUser);
 
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(e.getMessage(), e);
         }
 
         return recipes.stream().map(r -> Recipe.getRecipeByValue(r.toString())).distinct().collect(Collectors.toList());
@@ -862,7 +796,8 @@ class CreateManifestSheet {
                         if (!status.equals(Constants.PASSED)) {
                             String note = post.getStringVal(VeloxConstants.NOTE, apiUser);
                             note = note.replaceAll("\n", " ");
-                            print("[WARNING] Sample " + sampID + " in run " + runID + " did not pass POST Sequencing QC(" + status + "). The note attached says: " + note + ". This will not be included in manifest.");
+                            String message = String.format("Sample %s in run %s did not pass POST Sequencing QC(%s). The note attached says: %s. This will not be included in manifest.", sampID, runID, status, note);
+                            logWarning(message);
                         } else {
                             if (!finalList.containsKey(sampID)) {
                                 Set<String> temp = new HashSet<>();
@@ -884,13 +819,14 @@ class CreateManifestSheet {
 
             }
 
-        } catch (RemoteException | NotFound ioe) {
-            ioe.printStackTrace(console);
+        } catch (RemoteException | NotFound e) {
+            devLogger.warn(e.getMessage(), e);
         }
         if (!SampleRunHash.isEmpty()) {
             for (String sampID : SampleRunHash.keySet()) {
                 Set<String> runIDs = SampleRunHash.get(sampID);
-                print("[WARNING] Sample " + sampID + " has runs that do not have POST Sequencing QC. We won't be able to tell if they are failed or not: " + Arrays.toString(runIDs.toArray()) + ". They will still be added to the sample list.");
+                String message = String.format("Sample %s has runs that do not have POST Sequencing QC. We won't be able to tell if they are failed or not: %s. They will still be added to the sample list.", sampID, Arrays.toString(runIDs.toArray()));
+                logWarning(message);
                 if (!finalList.containsKey(sampID)) {
                     Set<String> temp = new HashSet<>();
                     temp.addAll(runIDs);
@@ -904,7 +840,11 @@ class CreateManifestSheet {
         }
 
         return finalList;
+    }
 
+    private void logWarning(String message) {
+        pmLogger.log(PmLogPriority.WARNING, message);
+        devLogger.warn(message);
     }
 
     private void checkReadCounts() {
@@ -914,7 +854,7 @@ class CreateManifestSheet {
             if (numReads < 1000000) {
                 // Print AND add to readme file
                 extraReadmeInfo += "\n[WARNING] sample " + sample + " has less than 1M total reads: " + numReads + "\n";
-                print("[WARNING] sample " + sample + " has less than 1M total reads: " + numReads);
+                logWarning(String.format("sample %s has less than 1M total reads: %d", sample, numReads));
             }
         }
     }
@@ -940,8 +880,7 @@ class CreateManifestSheet {
         return pInfo;
     }
 
-    private Map<String, Set<String>> addPooledNormalstoSampleList(Map<String, Set<String>> SamplesAndRuns, Map<String, String> RunID_and_PoolName, HashMap<DataRecord, HashSet<String>> PooledNormalSamples, User apiUser) {
-
+    private Map<String, Set<String>> addPooledNormalsToSampleList(Map<String, Set<String>> SamplesAndRuns, Map<String, String> RunID_and_PoolName, HashMap<DataRecord, HashSet<String>> PooledNormalSamples, User apiUser) {
         HashSet<String> runs = new HashSet<>();
         for (DataRecord rec : PooledNormalSamples.keySet()) {
             try {
@@ -961,9 +900,8 @@ class CreateManifestSheet {
                 t.addAll(runs);
                 SamplesAndRuns.put(sampName, t);
                 runs.clear();
-            } catch (Throwable e) {
-                logger.log(Level.SEVERE, "Exception thrown: ", e);
-                e.printStackTrace(console);
+            } catch (Exception e) {
+                devLogger.warn(e.getMessage(), e);
             }
         }
 
@@ -987,16 +925,16 @@ class CreateManifestSheet {
                 if (this.requestSpecies == RequestSpecies.XENOGRAFT) {
                     // Xenograft projects may only have samples of sampleSpecies human or xenograft
                     if (sampleSpecies != RequestSpecies.HUMAN && sampleSpecies != RequestSpecies.XENOGRAFT) {
-                        print("[ERROR] Request sampleSpecies has been determined as xenograft, but this sample is neither xenograft or human: " + sampleSpecies);
+                        logError("Request sampleSpecies has been determined as xenograft, but this sample is neither xenograft or human: " + sampleSpecies, PmLogPriority.SAMPLE_ERROR, Level.ERROR);
                     }
                 } else if (this.requestSpecies == null) {
                     this.requestSpecies = sampleSpecies;
                 } else if (this.requestSpecies != sampleSpecies) {
                     // Requests that are not xenograft must have 100% the same sampleSpecies for each sample. If that is not true, it will output issue here:
-                    print("[ERROR] There seems to be a clash between sampleSpecies of each sample: Species for sample " + tempSamp.get(Constants.IGO_ID) + "=" + sampleSpecies + " Species for request so far=" + this.requestSpecies);
+                    logError("There seems to be a clash between sampleSpecies of each sample: Species for sample " + tempSamp.get(Constants.IGO_ID) + "=" + sampleSpecies + " Species for request so far=" + this.requestSpecies, PmLogPriority.SAMPLE_ERROR, Level.ERROR);
                 }
             } catch (Exception e) {
-                print(e.getMessage());
+                devLogger.warn(String.format("Exception thrown while retrieving information about request species for request id: %s", Arguments.project));
             }
 
             //baitVerison - sometimes bait version needs to be changed. If so, the CAPTURE_BAIT_SET must also be changed
@@ -1033,8 +971,7 @@ class CreateManifestSheet {
                         }
                     }
                     if (!this.baitVersion.equals(baitVersion) && !this.baitVersion.equals(Constants.EMPTY)) {
-                        print("[ERROR] Request Bait version is not consistent: Current sample Bait verion: " + baitVersion + " Bait version for request so far: " + this.baitVersion);
-                        // This should be an error
+                        logError(String.format("Request Bait version is not consistent: Current sample Bait version: %s. Bait version for request so far: %s", baitVersion, this.baitVersion), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
                     } else if (this.baitVersion.equals(Constants.EMPTY)) {
                         this.baitVersion = baitVersion;
                     }
@@ -1068,12 +1005,10 @@ class CreateManifestSheet {
 
             // Try finalSampleList FIRST. If this doesn't have any library types, just try samples from seq run.
             checkSamplesForLibTypes(finalSampleList, drm, apiUser);
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while retrieving information about Library Types for request id: %s", Arguments.project, e));
         }
     }
-
 
     private void checkSamplesForLibTypes(Set<DataRecord> finalSampleList, DataRecordManager drm, User apiUser) {
         try {
@@ -1103,9 +1038,8 @@ class CreateManifestSheet {
                             }
                         } catch (NullPointerException e) {
                             System.err.println("[WARNING] You hit a null pointer exception while trying to find valid for library types. Please let BIC know.");
-                        } catch (Throwable e) {
-                            logger.log(Level.SEVERE, "Exception thrown: ", e);
-                            e.printStackTrace(console);
+                        } catch (Exception e) {
+                            devLogger.warn(String.format("Exception thrown while looking for valid for Library Types for request id: %s", Arguments.project), e);
                         }
                     }
                 }
@@ -1141,9 +1075,8 @@ class CreateManifestSheet {
                     ReqType = Constants.EXOME;
                 }
             }
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while retrieving information about protocols for request id: %s", Arguments.project), e);
         }
     }
 
@@ -1161,9 +1094,8 @@ class CreateManifestSheet {
             }
         } catch (NullPointerException e) {
             System.err.println("[WARNING] You hit a null pointer exception while trying to find valid for library types. Please let BIC know.");
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while looking for valid for Library Types for request id: %s", Arguments.project), e);
         }
         return false;
     }
@@ -1177,7 +1109,7 @@ class CreateManifestSheet {
         } else if (ReqType.equals(Constants.EXOME)) {
             LS2 = new SampleInfoExome(ReqType, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer, deadLog);
         } else {
-            LS2 = new SampleInfo(ReqType, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer, deadLog);
+            LS2 = new SampleInfo(ReqType, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer);
         }
         RequestInfo = LS2.SendInfoToMap();
 
@@ -1198,7 +1130,7 @@ class CreateManifestSheet {
         // Here I will grab all Sample Speicfic QC that have request XXXX.
         // I will then populate a thing that will have all the samples as well as the runs they passed in.
 
-        Map<String, Set<String>> x = new HashMap<>();
+        Map<String, Set<String>> sampleSpecificQC = new HashMap<>();
 
         try {
             List<DataRecord> SampleQCList = drm.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC, "Request = '" + requestID + "'", apiUser);
@@ -1213,16 +1145,14 @@ class CreateManifestSheet {
 
                 if (!RunStatus.contains(Constants.PASSED)) {
                     if (RunStatus.contains(Constants.FAILED)) {
-                        print("[SAMPLE_QC_INFO] Not including Sample " + SampleID + " from Run ID " + RunID + " because it did NOT pass Sequencing Analysis QC: " + RunStatus);
+                        String message = String.format("Not including Sample %s from Run ID %s because it did NOT pass Sequencing Analysis QC: %s", SampleID, RunID, RunStatus);
+                        log(message, PmLogPriority.SAMPLE_INFO, Level.INFO);
                         addToBadRuns(SampleID, RunID);
                     } else if (RunStatus.contains("Under-Review")) {
-                        print("[SAMPLE_QC_ERROR] Sample " + SampleID + " from RunID " + RunID + " is still under review. I cannot guarantee this is DONE!");
-                        exitLater = true;
+                        logError(String.format("Sample %s from RunID %s is still under review. I cannot guarantee this is DONE!", SampleID, RunID), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
                         mappingIssue = true;
                     } else {
-                        print("[SAMPLE_QC_ERROR] Sample " + SampleID + " from RunID " + RunID + " needed additional reads. This status should change when the extra reads are sequenced. Please check. ");
-                        // continue; //(?)
-                        exitLater = true;
+                        logError("Sample " + SampleID + " from RunID " + RunID + " needed additional reads. This status should change when the extra reads are sequenced. Please check. ", PmLogPriority.SAMPLE_ERROR, Level.ERROR);
                         mappingIssue = true;
                     }
                     continue;
@@ -1247,25 +1177,31 @@ class CreateManifestSheet {
 
                 // NOT DOING ANYTHING WITH ALIAS RIGHT NOW
                 if (alias != null && !alias.isEmpty()) {
-                    print("[WARNING] SAMPLE " + SampleID + " HAS AN ALIAS: " + alias + "!");
+                    String message = "SAMPLE " + SampleID + " HAS AN ALIAS: " + alias + "!";
+                    logWarning(message);
                     sampleAlias.put(SampleID, alias);
                 }
 
-                if (x.containsKey(SampleID)) {
-                    Set<String> temp = x.get(SampleID);
+                if (sampleSpecificQC.containsKey(SampleID)) {
+                    Set<String> temp = sampleSpecificQC.get(SampleID);
                     temp.add(RunID);
-                    x.put(SampleID, temp);
+                    sampleSpecificQC.put(SampleID, temp);
                 } else {
                     Set<String> temp = new HashSet<>();
                     temp.add(RunID);
-                    x.put(SampleID, temp);
+                    sampleSpecificQC.put(SampleID, temp);
                 }
             }
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while retrieving information about Sample specific QC for request id: %s", Arguments.project), e);
         }
-        return x;
+        return sampleSpecificQC;
+    }
+
+    private void logSampleError(String message) {
+        pmLogger.log(PmLogPriority.SAMPLE_ERROR, message);
+        devLogger.error(message);
+        Utils.exitLater = true;
     }
 
     private void addToBadRuns(String sample, String run) {
@@ -1291,12 +1227,13 @@ class CreateManifestSheet {
 
         if (FinalSamplesAndRuns.size() == 0) {
             if (pool.size() != 0 && !manualDemux) {
-                print("[ERROR] For this project the sample specific QC is not present. My script is looking at the pool specific QC instead, which assumes that if the pool passed, every sample in the pool also passed. This is not necessarily true and you might want to check the delivery email to make sure it includes every sample name that is on the manifest. This doesn’t mean you can’t put the project through, it just means that the script doesn’t know if the samples failed sequencing QC.");
+                logError("For this project the sample specific QC is not present. My script is looking at the pool specific QC instead, which assumes that if the pool passed, every sample in the pool also passed. This is not necessarily true and you might want to check the delivery email to make sure it includes every sample name that is on the manifest. This doesn’t mean you can’t put the project through, it just means that the script doesn’t know if the samples failed sequencing QC.",
+                        Level.ERROR, Level.ERROR);
                 mappingIssue = true;
             }
-            print(poolQCWarnings);
+            printPoolQCWarnings();
         } else if (poolQCWarnings.contains(Constants.ERROR)) {
-            print(poolQCWarnings);
+            printPoolQCWarnings();
         }
         if (poolRuns.equals(sampleRuns)) {
             return FinalSamplesAndRuns;
@@ -1311,9 +1248,7 @@ class CreateManifestSheet {
         }
 
         if (TempRunList.size() > 0) {
-            print("[SAMPLE_QC_INFO] Sample specific QC is missing run(s) that pool QC contains. Will add POOL QC data for missing run(s): " + StringUtils.join(TempRunList, ", "));
-            String msg = "[SAMPLE_QC_INFO] Sample specific QC is missing run(s) that pool QC contains for Project: " + requestID + " Runs: " + StringUtils.join(TempRunList, ", ");
-            logger.log(Level.INFO, msg);
+            log("Sample specific QC is missing run(s) that pool QC contains. Will add POOL QC data for missing run(s): " + StringUtils.join(TempRunList, ", "), PmLogPriority.SAMPLE_INFO, Level.INFO);
 
             for (String samp : pool.keySet()) {
                 // get run ids from pool sample that overlap with the ones sample qc is missing.
@@ -1333,7 +1268,6 @@ class CreateManifestSheet {
                     }
                 }
             }
-
         }
 
         // Here go through and see if any runs are included in Sample QC and not Pool QC.
@@ -1346,6 +1280,21 @@ class CreateManifestSheet {
 
         return FinalSamplesAndRuns;
 
+    }
+
+    private void log(String message, Level pmLogLevel, Level devLogLevel) {
+        pmLogger.log(pmLogLevel, message);
+        devLogger.log(devLogLevel, message);
+    }
+
+    private void printPoolQCWarnings() {
+        for (PriorityAwareLogMessage poolQCWarning : poolQCWarnings) {
+            pmLogger.log(poolQCWarning.getPriority(), poolQCWarning.getMessage());
+            if (poolQCWarning.getPriority() == PmLogPriority.POOL_ERROR)
+                devLogger.error(poolQCWarning.getMessage());
+            else
+                devLogger.info(poolQCWarning.getMessage());
+        }
     }
 
     private Map<String, Set<String>> getPoolSpecificQC(DataRecord request, User apiUser) {
@@ -1397,18 +1346,21 @@ class CreateManifestSheet {
 
                 if ((!RunStatus.contains(Constants.PASSED)) && (!RunStatus.equals("0"))) {
                     if (RunStatus.contains(Constants.FAILED)) {
-                        poolQCWarnings += "[POOL_QC_INFO] Skipping Run ID " + RunID + " because it did NOT pass Sequencing Analysis QC: " + RunStatus + "\n";
+                        String message = "Skipping Run ID " + RunID + " because it did NOT pass Sequencing Analysis QC: " + RunStatus;
+                        poolQCWarnings.add(new PriorityAwareLogMessage(PmLogPriority.POOL_INFO, message));
                         poolRuns.add(RunID);
                         continue;
                     } else if (RunStatus.contains("Under-Review")) {
                         String pool = seqrun.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
-                        poolQCWarnings += "[POOL_QC_ERROR] RunID " + RunID + " is still under review for pool " + pool + " I cannot guarantee this is DONE!\n";
-                        exitLater = true;
+                        String message = "RunID " + RunID + " is still under review for pool " + pool + " I cannot guarantee this is DONE!";
+                        poolQCWarnings.add(new PriorityAwareLogMessage(PmLogPriority.POOL_ERROR, message));
+                        Utils.exitLater = true;
                         mappingIssue = true;
                     } else {
-                        poolQCWarnings += "[POOL_QC_ERROR] RunID " + RunID + " needed additional reads. I cannot tell yet if they were finished. Please check. \n";
+                        String message = "RunID " + RunID + " needed additional reads. I cannot tell yet if they were finished. Please check.";
+                        poolQCWarnings.add(new PriorityAwareLogMessage(PmLogPriority.POOL_ERROR, message));
                         poolRuns.add(RunID);
-                        exitLater = true;
+                        Utils.exitLater = true;
                         mappingIssue = true;
                     }
                 } else {
@@ -1417,10 +1369,10 @@ class CreateManifestSheet {
                 passingSeqRuns.add(seqrun);
 
                 if (Objects.equals(RunID, Constants.NULL)) {
-                    poolQCWarnings += "[POOL_QC_ERROR] Unable to find run path or related sample ID for this sequencing run.\n";
-                    exitLater = true;
+                    String message = "Unable to find run path or related sample ID for this sequencing run";
+                    poolQCWarnings.add(new PriorityAwareLogMessage(PmLogPriority.POOL_ERROR, message));
+                    Utils.exitLater = true;
                     mappingIssue = true;
-
                 }
 
                 RunID_and_PoolName = linkPoolToRunID(RunID_and_PoolName, RunID, seqrun.getStringVal(VeloxConstants.SAMPLE_ID, apiUser));
@@ -1442,9 +1394,8 @@ class CreateManifestSheet {
                     }
                 }
             }
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while retrieving information about Pool specific QC for request id: %s", Arguments.project), e);
         }
         return SamplesAndRuns;
     }
@@ -1464,39 +1415,26 @@ class CreateManifestSheet {
                 List<String> requests = Arrays.asList(reqs.split("\\s*,\\s*"));
                 sameReq = requests.contains(reqID);
             }
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while verifying sequence run for request id: %s", Arguments.project), e);
         }
         return sameReq;
     }
 
     private String getPreviousDateOfLastUpdate(File request) {
         String date = "NULL";
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(new FileReader(request));
+        try (BufferedReader reader = new BufferedReader(new FileReader(request))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.contains("DateOfLastUpdate: ")) {
-                    date = line.split(": ")[1].replaceAll("-", "");
-                    break;
+                    return line.split(": ")[1].replaceAll("-", "");
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            devLogger.warn(String.format("Exception thrown while retrieving information date of last update for request id: %s", Arguments.project), e);
         }
-        // DIdn't find anything, return NULL
-        return date;
 
+        return date;
     }
 
     private void createSampleKeyExcel(String requestID, File projDir, LinkedHashMap<String, LinkedHashMap<String, String>> sampleHashMap) {
@@ -1612,27 +1550,21 @@ class CreateManifestSheet {
             }
 
         } catch (Exception e) {
-            print("An Exception has Occurred: " + e.getMessage());
+            devLogger.warn(String.format("An Exception was thrown while creating sample key excel file: %s", sampleKeyExcel), e);
         }
         // the example sheet has a header for each example, so I can't auto size that column.
         exampleSheet.setColumnWidth(0, (int) (exampleSheet.getColumnWidth(0) * 2.2));
-        //exampleSheet.autoSizeColumn(0);
         exampleSheet.autoSizeColumn(1);
         exampleSheet.autoSizeColumn(2);
 
-        // Now that I think I did this right, Print the excel the same way I did in other methods:
         try {
-            //Now that the excel is done, print it to file
             FileOutputStream fileOUT = new FileOutputStream(sampleKeyExcel);
             filesCreated.add(sampleKeyExcel);
             wb.write(fileOUT);
             fileOUT.close();
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while writing to file: %s", sampleKeyExcel), e);
         }
-
-
     }
 
     private void printPairingExcel(String pairing_filename, LinkedHashMap<String, String> pair_Info, ArrayList<String> exome_normal_list) {
@@ -1662,9 +1594,8 @@ class CreateManifestSheet {
             filesCreated.add(pairingExcel);
             wb.write(fileOUT);
             fileOUT.close();
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while writing to file: %s", pairingExcel), e);
         }
     }
 
@@ -1740,13 +1671,11 @@ class CreateManifestSheet {
                 filesCreated.add(new File(ExcelFileName));
                 fileOUT.close();
 
-            } catch (Throwable e) {
-                logger.log(Level.SEVERE, "Exception thrown: ", e);
-                e.printStackTrace(console);
+            } catch (Exception e) {
+                devLogger.warn(String.format("Exception thrown while writing to file: %s", ExcelFileName), e);
             }
-        } catch (Throwable e) {
-            e.printStackTrace(console);
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while creating mapping file", e));
         }
     }
 
@@ -1793,9 +1722,8 @@ class CreateManifestSheet {
                 cell.setCellStyle(style);
                 cell.setCellValue(val);
             }
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while adding row to xlsx sheet"), e);
         }
         return sheet;
     }
@@ -1826,9 +1754,8 @@ class CreateManifestSheet {
 
                 row.createCell(cellNum++).setCellValue(map.get(key));
             }
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while adding row to xlsx sheet"), e);
         }
         return sheet;
     }
@@ -1845,7 +1772,7 @@ class CreateManifestSheet {
                         } catch (Throwable ignored) {
                         }
                     } else if (Objects.equals(ReqType, Constants.IMPACT) && !runAsExome) {
-                        print("[ERROR] Cannot find design file for assay " + assay);
+                        logError(String.format("Cannot find design file for assay %s", assay), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
                     }
                 } else { // exome
                     for (File iterDirContents : Utils.getFilesInDir(dir)) {
@@ -1863,8 +1790,9 @@ class CreateManifestSheet {
     }
 
     private void printMappingFile(Map<String, Set<String>> SamplesAndRuns, String requestID, File projDir, String baitVersion) {
-        try {
+        File mappingFile = null;
 
+        try {
             HashSet<String> runsWithMultipleFolders = new HashSet<>();
 
             String mappingFileContents = "";
@@ -1875,7 +1803,8 @@ class CreateManifestSheet {
                 if (sampleAlias.keySet().contains(sample)) {
                     ArrayList<String> aliasSampleNames = new ArrayList<>(Arrays.asList(sampleAlias.get(sample).split(";")));
                     for (String aliasName : aliasSampleNames) {
-                        print("[WARNING] Sample " + sample + " has alias " + aliasName);
+                        String message = String.format("Sample %s has alias %s", sample, aliasName);
+                        logWarning(message);
                         sample_pattern.add(aliasName.replaceAll("[_-]", "[-_]"));
                     }
                 } else {
@@ -1898,11 +1827,12 @@ class CreateManifestSheet {
 
                     // find out how many run IDs came back
                     if (files == null) {
-                        print("[WARNING] No directories for run ID " + id + " found.");
+                        String message = String.format("No directories for run ID %s found.", id);
+                        logWarning(message);
                         continue;
                     }
                     if (files.length == 0) {
-                        print("[ERROR] Could not find sequencing run folder for Run ID: " + id);
+                        logError(String.format("Could not find sequencing run folder for Run ID: %s", id), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
                         mappingIssue = true;
                         return;
                     } else if (files.length > 1) {
@@ -1916,18 +1846,20 @@ class CreateManifestSheet {
                         }
                         files = runsWithProjectDir.toArray(new File[runsWithProjectDir.size()]);
                         if (files == null) {
-                            print("[WARNING] No run ids with request id found.");
+                            String message = "No run ids with request id found.";
+                            logWarning(message);
                             continue;
                         }
                         if (files.length == 0) {
-                            print("[ERROR] Could not find sequencing run folder that also contains request " + requestID + " for Run ID: " + id);
+                            logError(String.format("Could not find sequencing run folder that also contains request %s for Run ID: %s", requestID, id), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
                             mappingIssue = true;
                             return;
                         } else if (files.length > 1) {
                             Arrays.sort(files);
                             String foundFiles = StringUtils.join(files, ", ");
                             if (!runsWithMultipleFolders.contains(id)) {
-                                print("[WARNING] More than one sequencing run folder found for Run ID " + id + ": " + foundFiles + " I will be picking the newest folder.");
+                                String message = String.format("More than one sequencing run folder found for Run ID %s: %s I will be picking the newest folder.", id, foundFiles);
+                                logWarning(message);
                                 runsWithMultipleFolders.add(id);
                             }
                             RunIDFull = files[files.length - 1].getAbsoluteFile().getName().toString();
@@ -1973,7 +1905,7 @@ class CreateManifestSheet {
                                 exit = pr.exitValue();
 
                                 if (exit != 0) {
-                                    print("[ERROR] Error while trying to find fastq Directory for " + sample + " it is probably mispelled, or has an alias.");
+                                    logError(String.format("Error while trying to find fastq Directory for %s it is probably mispelled, or has an alias.", sample), Level.ERROR, Level.ERROR);
                                     BufferedReader bufE = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
                                     while (bufE.ready()) {
                                         System.err.println("[ERROR] " + bufE.readLine());
@@ -2024,7 +1956,8 @@ class CreateManifestSheet {
                                 } else {
                                     System.out.print("[WARNING] ");
                                 }
-                                print("Sample " + sample + " from run " + RunIDFull + " does not have a sample sheet in the sample directory. This will not pass the validator.");
+                                String message = String.format("Sample %s from run %s does not have a sample sheet in the sample directory. This will not pass the validator.", sample, RunIDFull);
+                                devLogger.warn(message);
                             }
 
 
@@ -2038,7 +1971,6 @@ class CreateManifestSheet {
                             }
 
                             mappingFileContents += "_1\t" + sampleName + "\t" + RunIDFull + "\t" + p + "\t" + paired + "\n";
-
                         }
                     }
                 }
@@ -2046,25 +1978,23 @@ class CreateManifestSheet {
 
             if (mappingFileContents.length() > 0) {
                 mappingFileContents = filterToAscii(mappingFileContents);
-                File mappingFile = new File(projDir.getAbsolutePath() + "/" + Utils.getFullProjectNameWithPrefix(requestID) + "_sample_mapping.txt");
+                mappingFile = new File(projDir.getAbsolutePath() + "/" + Utils.getFullProjectNameWithPrefix(requestID) + "_sample_mapping.txt");
                 PrintWriter pW = new PrintWriter(new FileWriter(mappingFile, false), false);
                 filesCreated.add(mappingFile);
                 pW.write(mappingFileContents);
                 pW.close();
             }
 
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while creating mapping file: %s", mappingFile), e);
         }
-
     }
 
     private void printPairingFile(LinkedHashMap<String, LinkedHashMap<String, String>> SampleListToOutput, DataRecordManager drm, User apiUser, String pairing_filename, LinkedHashMap<String, Set<String>> patientSampleMap) {
         try {
             LinkedHashMap<String, String> igo_tumor_info = new LinkedHashMap<>();
             LinkedHashMap<String, String> pair_Info = new LinkedHashMap<>();
-            String warnings = "";
+            List<String> warnings = new ArrayList<>();
             ArrayList<String> exome_normal_list = new ArrayList<>();
 
             HashSet<String> CorrectedCMOids = new HashSet<>();
@@ -2083,7 +2013,7 @@ class CreateManifestSheet {
                 List<DataRecord> records = drm.queryDataRecords(VeloxConstants.SAMPLE_PAIRING, "SampleId = '" + id + "'", apiUser);
                 if (records.size() == 0) {
                     if (!id.startsWith("CTRL-")) {
-                        warnings += "[WARNING] No pairing record for igo ID '" + id + "'\n";
+                        warnings.add(String.format("No pairing record for igo ID '%s", id));
                     }
                     continue;
                 }
@@ -2105,9 +2035,9 @@ class CreateManifestSheet {
                         norm = Constants.NA_LOWER_CASE;
                     }
                     if (pair_Info.containsKey(tum) && !Objects.equals(pair_Info.get(tum), norm)) {
-                        print("[ERROR] Tumor is matched with two different normals. I have no idea how this happened! Tumor: " + tum + " Normal: " + norm);
+                        logError(String.format("Tumor is matched with two different normals. I have no idea how this happened! Tumor: %s Normal: %s", tum, norm), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
+                        printWarnings(warnings);
 
-                        System.out.print(warnings);
                         return;
                     }
                     pair_Info.put(tum, norm);
@@ -2123,17 +2053,16 @@ class CreateManifestSheet {
             }
 
             if (pair_Info.size() > 0) {
-                System.out.print(warnings);
+                printWarnings(warnings);
             } else if (!patientSampleMap.isEmpty()) {
                 // There were no pairing sample records, do smart pairing
                 // For each patient ID, separate samples by normal and tumor. Then if there is at least 1 normal, match it with all the tumors.
                 // TODO: This will have to become populated into the LIMs Perhaps send a signal to another script that will suck it into the LIMs.
 
-                print("[INFO] Pairing records not found, trying smart Pairing");
+                log("Pairing records not found, trying smart Pairing", org.apache.log4j.Level.INFO, Level.INFO);
                 pair_Info = smartPairing(SampleListToOutput, patientSampleMap);
-
             } else {
-                print("[WARNING] No Pairing File will be output.");
+                logWarning("No Pairing File will be output.");
             }
 
             //Done going through all igo ids, now print
@@ -2156,9 +2085,14 @@ class CreateManifestSheet {
                 }
             }
 
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while creating pairing file: %s", pairing_filename), e);
+        }
+    }
+
+    private void printWarnings(List<String> warnings) {
+        for (String warning : warnings) {
+            devLogger.warn(warning);
         }
     }
 
@@ -2253,7 +2187,8 @@ class CreateManifestSheet {
             LinkedHashMap<String, String> rec = SampleList.get(sid);
             String pid = rec.get(Constants.CMO_PATIENT_ID);
             if (pid.startsWith("#")) {
-                print("[WARNING] Cannot make smart mapping because Patient ID is emtpy or has an issue: " + pid);
+                String message = String.format("Cannot make smart mapping because Patient ID is emtpy or has an issue: %s", pid);
+                logWarning(message);
                 return new LinkedHashMap<>();
             }
             if (tempMap.containsKey(pid)) {
@@ -2323,9 +2258,8 @@ class CreateManifestSheet {
                 filesCreated.add(outputFile);
                 pW.write(outputText);
                 pW.close();
-            } catch (Throwable e) {
-                logger.log(Level.SEVERE, "Exception thrown: ", e);
-                e.printStackTrace(console);
+            } catch (Exception e) {
+                devLogger.warn(String.format("Exception thrown while creating file: %s", outputFilename), e);
             }
         }
     }
@@ -2335,7 +2269,8 @@ class CreateManifestSheet {
         DecimalFormat df = new DecimalFormat("000");
         int count = 0;
         if (patientSampleMap.isEmpty()) {
-            print("[WARNING] No patient sample map, therefore no grouping file created.");
+            String message = "No patient sample map, therefore no grouping file created.";
+            logWarning(message);
             return;
         }
         for (String k : patientSampleMap.keySet()) {
@@ -2354,9 +2289,8 @@ class CreateManifestSheet {
                 filesCreated.add(outputFile);
                 pW.write(outputText);
                 pW.close();
-            } catch (Throwable e) {
-                logger.log(Level.SEVERE, "Exception thrown: ", e);
-                e.printStackTrace(console);
+            } catch (Exception e) {
+                devLogger.warn(String.format("Exception thrown while creating grouping file: %s", outputFilename), e);
             }
         }
     }
@@ -2436,7 +2370,7 @@ class CreateManifestSheet {
         }
 
         if (invest.isEmpty() || pi.isEmpty()) {
-            print("[ERROR] Cannot create run number because PI and/or Investigator is missing. " + pi + " " + invest);
+            logError(String.format("Cannot create run number because PI and/or Investigator is missing. %s %s", pi, invest), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
         } else {
             if (runNum != 0) {
                 requestFileContents += "RunNumber: " + runNum + "\n";
@@ -2444,8 +2378,8 @@ class CreateManifestSheet {
         }
         if (runNum > 1) {
             if (!shiny && (rerunReason == null || rerunReason.isEmpty())) {
-                print("[ERROR] This generation of the project files is a rerun, but no rerun reason was given. Use option 'rerunReason' to give a reason for this rerun in quotes. ");
-                exitLater = true;
+                logError("This generation of the project files is a rerun, but no rerun reason was given. Use option 'rerunReason' to give a reason for this rerun in quotes. ", PmLogPriority.SAMPLE_ERROR, Level.ERROR);
+                Utils.exitLater = true;
                 return;
             }
             requestFileContents += "Reason_for_rerun: " + rerunReason + "\n";
@@ -2464,7 +2398,8 @@ class CreateManifestSheet {
             requestFileContents += "LibraryTypes: " + getJoinedLibTypes() + "\n";
 
             if (strand.size() > 1) {
-                print("[WARNING] Multiple strandedness options found!");
+                String message = "Multiple strandedness options found!";
+                logWarning(message);
             }
 
             requestFileContents += "Strand: " + getJoinedCollection(strand, ", ") + "\n";
@@ -2508,9 +2443,8 @@ class CreateManifestSheet {
             filesCreated.add(requestFile);
             pW.write(requestFileContents);
             pW.close();
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while creating request file: %s", requestFileContents), e);
         }
     }
 
@@ -2580,20 +2514,21 @@ class CreateManifestSheet {
         if (!dataClinicalPath.isEmpty()) {
             configFileContents += "data_clinical=\"" + dataClinicalPath + "/" + Utils.getFullProjectNameWithPrefix(requestID) + "_sample_data_clinical.txt\"\n";
         } else {
-            print("[WARNING] Cannot find path to data clinical file. Not included in portal config.");
+            String message = String.format("Cannot find path to data clinical file: %s. Not included in portal config", dataClinicalPath);
+            logWarning(message);
             configFileContents += "data_clinical=\"\"\n";
         }
+        File configFile = null;
 
         try {
             configFileContents = filterToAscii(configFileContents);
-            File configFile = new File(projDir.getAbsolutePath() + "/" + Utils.getFullProjectNameWithPrefix(requestID) + "_portal_conf.txt");
+            configFile = new File(projDir.getAbsolutePath() + "/" + Utils.getFullProjectNameWithPrefix(requestID) + "_portal_conf.txt");
             filesCreated.add(configFile);
             PrintWriter pW = new PrintWriter(new FileWriter(configFile, false), false);
             pW.write(configFileContents);
             pW.close();
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while creating portal config file: %s", configFile), e);
         }
     }
 
@@ -2619,20 +2554,9 @@ class CreateManifestSheet {
                 return runs[runs.length - 1] + 1;
             }
         }
-        print("[WARNING] Could not determine PIPELINE RUN NUMBER from delivery directory. Setting to: 1. If this is incorrect, email cmo-project-start@cbio.mskcc.org");
+        logWarning("Could not determine PIPELINE RUN NUMBER from delivery directory. Setting to: 1. If this is incorrect, email cmo-project-start@cbio.mskcc.org");
 
         return 1;
-    }
-
-    private void print(String message) {
-        // Log and print to stdout
-        if (message.startsWith("[")) {
-            if (message.startsWith("[ERROR]")) {
-                exitLater = true;
-            }
-            log_messages.add(message);
-        }
-        System.out.println(message);
     }
 
     private void printToPipelineRunLog(String requestID) {
@@ -2643,7 +2567,7 @@ class CreateManifestSheet {
         File archiveProject = new File(archivePath + "/" + Utils.getFullProjectNameWithPrefix(requestID));
 
         if (!archiveProject.exists()) {
-            print("Making archive directory, it should be made already");
+            devLogger.info(String.format("Creating archive directory: %s", archiveProject));
             archiveProject.mkdirs();
         }
 
@@ -2670,24 +2594,11 @@ class CreateManifestSheet {
             pw.println(dateFormat.format(now) + "\t" + timeFormat.format(now) + "\t" + runNum + "\t" + reason);
 
             pw.close();
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while creating run log file: %s", runLogFile), e);
         }
     }
 
-    private void printLogMessages(File logFile) {
-        try {
-            PrintWriter pw = new PrintWriter(new FileWriter(logFile, false), false);
-            for (String line : log_messages) {
-                pw.write(line + "\n");
-            }
-            pw.close();
-        } catch (Throwable e) {
-            logger.log(Level.SEVERE, "Exception thrown: ", e);
-            e.printStackTrace(console);
-        }
-    }
 /*
 
  This is where all functions that happen after printing project files.
@@ -2716,31 +2627,29 @@ class CreateManifestSheet {
                     setPermissions(f);
                 }
             } else {
-                print("[ERROR] Cannot copy project files to archive directory, the current directory is not valid or has no files.");
+                logError(String.format("Cannot copy project files to archive directory: %s, the current directory: %s is not valid or has no files.",
+                        projDir, curDir), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
             }
 
-        } catch (Throwable e) {
-            e.printStackTrace(console);
+        } catch (Exception e) {
+            devLogger.warn(String.format("Exception thrown while copying files from: %s to archive: %s", curDir, projDir), e);
         }
     }
 
     private void printReadmeFile(String fileText, String requestID, File projDir) {
         if (fileText.length() > 0) {
-
+            File readmeFile = null;
             try {
                 fileText = filterToAscii(fileText);
-                File readmeFile = new File(projDir.getAbsolutePath() + "/" + Utils.getFullProjectNameWithPrefix(requestID) + "_README.txt");
+                readmeFile = new File(projDir.getAbsolutePath() + "/" + Utils.getFullProjectNameWithPrefix(requestID) + "_README.txt");
                 PrintWriter pW = new PrintWriter(new FileWriter(readmeFile, false), false);
                 filesCreated.add(readmeFile);
                 pW.write(fileText + "\n");
                 pW.close();
-            } catch (Throwable e) {
-                logger.log(Level.SEVERE, "Exception thrown: ", e);
-                e.printStackTrace(console);
+            } catch (Exception e) {
+                devLogger.warn(String.format("Exception thrown while creating readme file: %s", readmeFile), e);
             }
-
         }
-
     }
 
     private Map<String, String> linkPoolToRunID(Map<String, String> RunID_and_PoolName, String RunID, String poolName) {

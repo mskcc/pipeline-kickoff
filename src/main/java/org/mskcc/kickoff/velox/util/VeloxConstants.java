@@ -46,4 +46,8 @@ public class VeloxConstants {
     public static final String ALIQ_1_STARTING_CONCENTRATION = "Aliq1StartingConcentration";
     public static final String KAPA_AGILENT_CAPTURE_PROTOCOL_2 = "KAPAAgilentCaptureProtocol2";
     public static final String FLOW_CELL_LANE = "FlowCellLane";
+    public static final String KAPA_LIB_PLATE_SETUP_PROTOCOL_1 = "KAPALibPlateSetupProtocol1";
+    public static final String KAPA_AUTO_NORMALIZATION_PROTOCOL = "KapaAutoNormalizationProtocol";
+    public static final String TARGET_MASS_ALIQ_1 = "TargetMassAliq1";
+    public static final String DNA_LIBRARY_PREP_PROTOCOL_1 = "DNALibraryPrepProtocol1";
 }

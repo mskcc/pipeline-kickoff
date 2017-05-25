@@ -1,41 +1,43 @@
 package org.mskcc.kickoff.lims;
 
-//These were already here or added by me as needed
-
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
 import com.velox.util.LogWriter;
 import org.apache.commons.lang3.StringUtils;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.util.Utils;
 import org.mskcc.kickoff.velox.util.VeloxConstants;
 
 import java.text.DecimalFormat;
 import java.util.*;
+
+import static org.mskcc.kickoff.util.Utils.*;
+import static org.mskcc.kickoff.util.Utils.DEV_LOGGER;
 
 /**
  * SampleInfoImpact<br>Purpose: this is a class extending SampleInfo so that we can grab all necessary information from
  * extra data records as needed for IMPACT/dmp pipeline
  **/
 public class SampleInfoImpact extends SampleInfo {
-    private static HashMap<DataRecord, HashSet<String>> pooledNormals;
     private static final HashSet<String> poolNameList = new HashSet<>();
+    private static final DecimalFormat df = new DecimalFormat("#.##");
+    private static HashMap<DataRecord, HashSet<String>> pooledNormals;
     // Consensus BaitSet
     private static String ConsensusBaitSet;
     private static String ConsensusSpikeIn;
-    private static final DecimalFormat df = new DecimalFormat("#.##");
     String LIBRARY_INPUT;// = "#EMPTY";
+    String LIBRARY_YIELD; // = "#EMPTY";
+    String CAPTURE_BAIT_SET; // = "#EMPTY";
+    String CAPTURE_INPUT; // = "#EMPTY";
+    String BAIT_VERSION; // = "#EMPTY";
     private String CMO_PATIENT_ID;
     private String SEX; // = "Unknown";
     private String SPECIMEN_COLLECTION_YEAR; // ="000";
     private String ONCOTREE_CODE; // = "#EMPTY";
     private String TISSUE_SITE; // = "na";
-    String LIBRARY_YIELD; // = "#EMPTY";
-    String CAPTURE_BAIT_SET; // = "#EMPTY";
     private String CAPTURE_CONCENTRATION; // = "#EMPTY";
-    String CAPTURE_INPUT; // = "#EMPTY";
     private String CAPTURE_NAME; // = "#EMPTY";
-    String BAIT_VERSION; // = "#EMPTY";
     private String SPIKE_IN_GENES; // = "na";
 
     /**
@@ -46,7 +48,7 @@ public class SampleInfoImpact extends SampleInfo {
      * @see #addPooledNormalDefaults
      **/
     public SampleInfoImpact(String req, User apiUser, DataRecordManager drm, DataRecord rec, Map<String, Set<String>> SamplesAndRuns, Boolean force, Boolean poolNormal, Boolean transfer, LogWriter l) {
-        super(req, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer, l);
+        super(req, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer);
         getSpreadOutInfo(apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer);
         if (poolNormal) {
             addPooledNormalDefaults(rec, apiUser, drm, SamplesAndRuns);
@@ -55,6 +57,17 @@ public class SampleInfoImpact extends SampleInfo {
 
     public static HashMap<DataRecord, HashSet<String>> getPooledNormals() {
         return pooledNormals;
+    }
+
+    public void logInfo(String message) {
+        PM_LOGGER.info( message);
+        DEV_LOGGER.info(message);
+    }
+
+    public void logError(String message) {
+        PM_LOGGER.error( message);
+        DEV_LOGGER.error(message);
+        Utils.exitLater = true;
     }
 
     /**
@@ -95,7 +108,7 @@ public class SampleInfoImpact extends SampleInfo {
         // We need to look at all the runs that were already added to the (samplesAdnRuns, or just runs)
         // Then if the pooled normal has a sample specific qc of that run type, add to include run id!
         this.INCLUDE_RUN_ID = getPooledNormalRuns(rec, apiUser, drm, SamplesAndRuns);
-        print("INCLUDE RUN ID: " + this.INCLUDE_RUN_ID);
+        DEV_LOGGER.info(String.format("INCLUDE RUN ID: %s", this.INCLUDE_RUN_ID));
     }
 
     private String getPooledNormalRuns(DataRecord rec, User apiUser, DataRecordManager drm, Map<String, Set<String>> SamplesAndRuns) {
@@ -105,7 +118,7 @@ public class SampleInfoImpact extends SampleInfo {
             allRunIds.addAll(val);
         }
 
-        System.out.println("Looking at this sample: " + this.IGO_ID);
+        DEV_LOGGER.info(String.format("Looking at sample: %s", this.IGO_ID));
 
         List<String> goodRunIds = new ArrayList<>();
 
@@ -118,19 +131,18 @@ public class SampleInfoImpact extends SampleInfo {
             qcRecs = rec.getDescendantsOfType("SeqAnalysisSampleQC", apiUser);
             qcValue = drm.getValueList(qcRecs, "SeqQCStatus", apiUser);
             qcRunID = drm.getValueList(qcRecs, "SequencerRunFolder", apiUser);
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace();
+        } catch (Exception e) {
+            DEV_LOGGER.warn("Exception thrown while retrieving information about pooled normal runs", e);
         }
 
         // Now try to match everything up
         if (qcRecs == null || qcValue == null || qcRunID == null) {
-            print("[WARNING] No sample specific qc for ctrl " + this.CMO_SAMPLE_ID + " AKA " + this.IGO_ID + ".");
+            logWarning(String.format("No sample specific qc for ctrl %s AKA %s.", this.CMO_SAMPLE_ID, this.IGO_ID));
             return null;
         }
 
         if (qcRecs.size() == 0 || qcValue.size() == 0 || qcRunID.size() == 0) {
-            print("[WARNING] No sample specific qc for ctrl " + this.CMO_SAMPLE_ID + " AKA " + this.IGO_ID + ".");
+            logWarning(String.format("No sample specific qc for ctrl %s AKA %s.", this.CMO_SAMPLE_ID, this.IGO_ID));
             return null;
         }
 
@@ -238,7 +250,7 @@ public class SampleInfoImpact extends SampleInfo {
                 grabLibInputFromPrevSamps(drm, rec, apiUser, poolNormal);
             }
             if (this.LIBRARY_INPUT.startsWith("#")) {
-                print("[WARNING] Unable to find DNA Lib Protocol for Library Input method (sample " + this.CMO_SAMPLE_ID + ")");
+                logWarning(String.format("Unable to find DNA Lib Protocol for Library Input method (sample %s)", this.CMO_SAMPLE_ID));
                 this.LIBRARY_INPUT = "-2";
             }
         }
@@ -308,17 +320,16 @@ public class SampleInfoImpact extends SampleInfo {
             nimbProtocols = rec.getDescendantsOfType(protocolName, apiUser);
             validity = drm.getValueList(nimbProtocols, "Valid", apiUser);
             creationDate = drm.getValueList(nimbProtocols, "DateCreated", apiUser);
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace();
+        } catch (Exception e) {
+            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information for protocol: %s", protocolName), e);
         }
 
         if (nimbProtocols == null || validity == null || creationDate == null) {
-            print("[ERROR] Unknown error in checked creation date of" + protocolName + " protocols");
+            logError(String.format("Unknown error in checked creation date of %s protocols", protocolName));
             return false;
         }
         if (nimbProtocols.size() == 0 || validity.size() == 0 || creationDate.size() == 0) {
-            print("[WARNING] Not able to find " + protocolName + " Protocol or date created");
+            logWarning(String.format("Not able to find %s Protocol or date created", protocolName));
             return false;
         }
 
@@ -355,9 +366,8 @@ public class SampleInfoImpact extends SampleInfo {
             // First find sample specific qc with this cmo sample id, one of the run IDs,
             qcRecs = drm.queryDataRecords("SeqAnalysisSampleQC", "Request = '" + this.REQUEST_ID + "' AND OtherSampleId = '" + this.CMO_SAMPLE_ID + "'", apiUser);
 
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace();
+        } catch (Exception e) {
+            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about Sequence analysis sample QC"), e);
         }
         // Now I can iterate, the qcRecs, and I have to check to see if the runIDs are the same as above
         if (qcRecs == null || qcRecs.size() == 0) {
@@ -374,13 +384,11 @@ public class SampleInfoImpact extends SampleInfo {
                         this.BARCODE_INDEX = bc.getStringVal("IndexTag", apiUser);
                         return;
                     }
-                } catch (Throwable e) {
-                    logger.logError(e);
-                    e.printStackTrace();
+                } catch (Exception e) {
+                    DEV_LOGGER.error(String.format("Exception thrown while retrieving information about Index Barcode for sample: %s", this.IGO_ID), e);
                 }
-
             }
-            print("[ERROR] Unable to get barcode for " + this.IGO_ID + " AKA: " + this.CMO_SAMPLE_ID); //" there must be a sample specific QC data record that I can search up from");
+            logError(String.format("Unable to get barcode for %s AKA: %s", this.IGO_ID, this.CMO_SAMPLE_ID)); //" there must be a sample specific QC data record that I can search up from");
             return;
         }
         DataRecord qcToUse = null;
@@ -389,12 +397,12 @@ public class SampleInfoImpact extends SampleInfo {
             try {
                 runParts = r.getStringVal("SequencerRunFolder", apiUser).split("_");
                 if (runParts.length < 2) {
-                    print("[ERROR] sequencingRunFolder incorrectly split by '_', or not correctly pulled.");
+                    logError("sequencingRunFolder incorrectly split by '_', or not correctly pulled.");
                 }
 
                 String RunID = runParts[0] + "_" + runParts[1];
                 if (!SamplesAndRuns.keySet().contains(this.CMO_SAMPLE_ID)) {
-                    print("[ERROR] The sample ID I am using to search for runs is not the correct sample ID.");
+                    logError("The sample ID I am using to search for runs is not the correct sample ID.");
                     return;
                 }
                 if (SamplesAndRuns.get(this.CMO_SAMPLE_ID).contains(RunID)) {
@@ -402,9 +410,8 @@ public class SampleInfoImpact extends SampleInfo {
                     qcToUse = r;
                     break;
                 }
-            } catch (Throwable e) {
-                logger.logError(e);
-                e.printStackTrace();
+            } catch (Exception e) {
+                DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about Sequencer run folder"), e);
             }
         }
 
@@ -435,9 +442,8 @@ public class SampleInfoImpact extends SampleInfo {
                         break;
                     }
                 }
-            } catch (Throwable e) {
-                logger.logError(e);
-                e.printStackTrace();
+            } catch (Exception e) {
+                DEV_LOGGER.error(String.format("Exception thrown while retrieving information about sample ancestors"), e);
             }
         }
     }
@@ -451,20 +457,21 @@ public class SampleInfoImpact extends SampleInfo {
         List<DataRecord> psamp = new ArrayList<>();
         try {
             psamp = rec.getParentsOfType("Sample", apiUser);
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace();
+        } catch (Exception e) {
+            DEV_LOGGER.error(String.format("Exception thrown while retrieving information about sample parents"), e);
         }
         for (DataRecord samp : psamp) {
+            String dnaLibProtocol = VeloxConstants.KAPA_LIB_PLATE_SETUP_PROTOCOL_1;
+            String kapaAutoNormalProtocol = VeloxConstants.KAPA_AUTO_NORMALIZATION_PROTOCOL;
+
             try {
-                List<DataRecord> DNALibPrep = Arrays.asList(samp.getChildrenOfType("KAPALibPlateSetupProtocol1", apiUser));
-                List<DataRecord> KapaAutoNormProt = Arrays.asList(samp.getChildrenOfType("KapaAutoNormalizationProtocol", apiUser));
+                List<DataRecord> DNALibPrep = Arrays.asList(samp.getChildrenOfType(dnaLibProtocol, apiUser));
+                List<DataRecord> KapaAutoNormProt = Arrays.asList(samp.getChildrenOfType(kapaAutoNormalProtocol, apiUser));
                 if (DNALibPrep.size() > 0 || KapaAutoNormProt.size() > 0) {
                     grabLibInput(drm, samp, apiUser, true, poolNormal);
                 }
-            } catch (Throwable e) {
-                logger.logError(e);
-                e.printStackTrace();
+            } catch (Exception e) {
+                DEV_LOGGER.error(String.format("Exception thrown while retrieving information about sample protocols: %s and %s", dnaLibProtocol, kapaAutoNormalProtocol), e);
             }
             if (!this.LIBRARY_INPUT.startsWith("#")) {
                 return;
@@ -475,51 +482,54 @@ public class SampleInfoImpact extends SampleInfo {
     }
 
     void grabLibInput(DataRecordManager drm, DataRecord rec, User apiUser, Boolean childrenOnly, Boolean poolNormal) {
+        String targetMassAliquote = VeloxConstants.TARGET_MASS_ALIQ_1;
         if (poolNormal) {
             this.LIBRARY_INPUT = "0";
             List<DataRecord> DNALibPreps = null;
+            String dnaLibPrepProtocol = VeloxConstants.DNA_LIBRARY_PREP_PROTOCOL_1;
             try {
-                DNALibPreps = drm.queryDataRecords("DNALibraryPrepProtocol1", "SampleId = '" + this.IGO_ID + "'", apiUser);
-            } catch (Throwable e) {
-                e.printStackTrace();
+                DNALibPreps = drm.queryDataRecords(dnaLibPrepProtocol, "SampleId = '" + this.IGO_ID + "'", apiUser);
+            } catch (Exception e) {
+                DEV_LOGGER.error(String.format("Exception thrown while retrieving information about protocol: %s for sample: %s", dnaLibPrepProtocol, this.IGO_ID), e);
             }
             if (DNALibPreps != null && DNALibPreps.size() > 0) {
                 DataRecord DNALP = DNALibPreps.get(DNALibPreps.size() - 1);
                 try {
-                    this.LIBRARY_INPUT = String.valueOf(df.format(DNALP.getDoubleVal("TargetMassAliq1", apiUser)));
-                } catch (Throwable e) {
-                    e.printStackTrace();
+                    this.LIBRARY_INPUT = String.valueOf(df.format(DNALP.getDoubleVal(targetMassAliquote, apiUser)));
+                } catch (Exception e) {
+                    DEV_LOGGER.error(String.format("Exception thrown while retrieving information about Target mass Aliquote: %s", targetMassAliquote), e);
                 }
             }
             return;
         }
         Boolean Normalization_DR = false;
         List<DataRecord> KANP = new ArrayList<>();
+        String kapaLibPlateSetupProtocol = VeloxConstants.KAPA_LIB_PLATE_SETUP_PROTOCOL_1;
+        String kapaAutoNormalizationProtocol = VeloxConstants.KAPA_AUTO_NORMALIZATION_PROTOCOL;
         try {
             // First check KAPALibPlateSetupProtocol1 (newer data record..)
             // If that is empty try to find the old one
             if (childrenOnly) {
-                KANP = Arrays.asList(rec.getChildrenOfType("KAPALibPlateSetupProtocol1", apiUser));
+                KANP = Arrays.asList(rec.getChildrenOfType(kapaLibPlateSetupProtocol, apiUser));
                 if (KANP.size() == 0) {
-                    KANP = Arrays.asList(rec.getChildrenOfType("KapaAutoNormalizationProtocol", apiUser));
+                    KANP = Arrays.asList(rec.getChildrenOfType(kapaAutoNormalizationProtocol, apiUser));
                     if (KANP.size() == 0) {
                         return;
                     }
                     Normalization_DR = true;
                 }
             } else {
-                KANP = rec.getDescendantsOfType("KAPALibPlateSetupProtocol1", apiUser);
+                KANP = rec.getDescendantsOfType(kapaLibPlateSetupProtocol, apiUser);
                 if (KANP == null || KANP.size() == 0) {
-                    KANP = rec.getDescendantsOfType("KapaAutoNormalizationProtocol", apiUser);
+                    KANP = rec.getDescendantsOfType(kapaAutoNormalizationProtocol, apiUser);
                     if (KANP == null || KANP.size() == 0) {
                         return;
                     }
                     Normalization_DR = true;
                 }
             }
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace();
+        } catch (Exception e) {
+            DEV_LOGGER.error(String.format("Exception thrown while retrieving information about protocols: %s and %s", kapaLibPlateSetupProtocol, kapaAutoNormalizationProtocol), e);
         }
         if (KANP != null && KANP.size() > 0) {
             int largestValidIndex = -1;
@@ -529,8 +539,8 @@ public class SampleInfoImpact extends SampleInfo {
                 List<Object> validity = new ArrayList<>();
                 try {
                     validity = drm.getValueList(KANP, "Preservation", apiUser);
-                } catch (Throwable e) {
-                    e.printStackTrace();
+                } catch (Exception e) {
+                    DEV_LOGGER.error(String.format("Exception thrown while retrieving information about Preservation"), e);
                 }
 
                 if (validity != null && validity.size() > 0) {
@@ -560,10 +570,10 @@ public class SampleInfoImpact extends SampleInfo {
                 if (Normalization_DR) {
                     val = String.valueOf(df.format(KANP.get(largestValidIndex).getDoubleVal("Aliq2TargetMass", apiUser)));
                 } else {
-                    val = String.valueOf(df.format(KANP.get(largestValidIndex).getDoubleVal("TargetMassAliq1", apiUser)));
+                    val = String.valueOf(df.format(KANP.get(largestValidIndex).getDoubleVal(targetMassAliquote, apiUser)));
                 }
-            } catch (Throwable e) {
-                e.printStackTrace();
+            } catch (Exception e) {
+
             }
             if (val != null && Double.parseDouble(val) > 0) {
                 this.LIBRARY_INPUT = val;
@@ -586,8 +596,8 @@ public class SampleInfoImpact extends SampleInfo {
             } else {
                 DNALibPreps = rec.getDescendantsOfType(dataRecordName, apiUser);
             }
-        } catch (Throwable e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+
         }
         if (DNALibPreps == null || DNALibPreps.size() == 0) {
             return -9;
@@ -597,7 +607,7 @@ public class SampleInfoImpact extends SampleInfo {
             Boolean real;
             try {
                 real = n1.getBooleanVal("Valid", apiUser);
-            } catch (Throwable e) {
+            } catch (Exception e) {
                 real = false;
             }
             if (real) {
@@ -605,9 +615,9 @@ public class SampleInfoImpact extends SampleInfo {
                     input = n1.getDoubleVal("ElutionVol", apiUser);
                 } catch (NullPointerException e) {
                     input = -1;
-                    print("[ERROR] Cannot find elution vol for " + this.CMO_SAMPLE_ID + " AKA " + this.IGO_ID + " Using DataRecord " + dataRecordName);
-                } catch (Throwable e) {
-                    e.printStackTrace();
+                    logError(String.format("Cannot find elution vol for %s AKA %s Using DataRecord %s", this.CMO_SAMPLE_ID, this.IGO_ID, dataRecordName));
+                } catch (Exception e) {
+                    DEV_LOGGER.warn("Exception thrown while retrieving information about Elution Volume", e);
                 }
             }
         }
@@ -620,9 +630,9 @@ public class SampleInfoImpact extends SampleInfo {
 
         try {
             psamp = rec.getParentsOfType("Sample", apiUser);
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace();
+        } catch (Exception e) {
+            DEV_LOGGER.error(e);
+
         }
 
         for (DataRecord samp : psamp) {
@@ -672,13 +682,13 @@ public class SampleInfoImpact extends SampleInfo {
                     }
                 }
             }
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace();
+        } catch (Exception e) {
+            DEV_LOGGER.error(e);
+
         }
 
         if (libConcParent == null) {
-            print("[WARNING] Unable to find lib concentration for " + this.IGO_ID);
+            logWarning(String.format("Unable to find lib concentration for %s", this.IGO_ID));
             return -9;
         }
 
@@ -692,9 +702,8 @@ public class SampleInfoImpact extends SampleInfo {
             String request = this.REQUEST_ID;
             try {
                 request = gp.getStringVal("RequestId", apiUser);
-            } catch (Throwable e) {
-                logger.logError(e);
-                e.printStackTrace();
+            } catch (Exception e) {
+                DEV_LOGGER.warn("Exception thrown while getting Request id", e);
             }
 
             if (!request.equals(this.REQUEST_ID)) {
@@ -718,9 +727,9 @@ public class SampleInfoImpact extends SampleInfo {
         // If not present look up QCDatum ** more rules with QCDatum below
         try {
             concRecs = drm.getFieldsForChildrenOfType(DLP, "MolarConcentrationAssignment", apiUser).get(0);
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace();
+        } catch (Exception e) {
+            DEV_LOGGER.error(e);
+
         }
         // If there are Molar Concentratin Assignments
         if (concRecs != null || concRecs.size() > 0) {
@@ -742,16 +751,16 @@ public class SampleInfoImpact extends SampleInfo {
         if (conc_ng <= 0) {
             try {
                 concRecs = drm.getFieldsForChildrenOfType(DLP, "QCDatum", apiUser).get(0);
-            } catch (Throwable e) {
-                logger.logError(e);
-                e.printStackTrace();
+            } catch (Exception e) {
+                DEV_LOGGER.error(e);
+
             }
             for (Map<String, Object> n2 : concRecs) {
                 String type = (String) n2.get("DatumType");
                 //DO NOT grab from tapestation or bioanalyzer. They are not accurate (as per Kate).
                 if (!type.startsWith("TapeStation") && !type.startsWith("Bioanalyzer")) {
                     if (!type.startsWith("Qubit")) {
-                        print("[INFO] This qc datum is type " + type + ", I will try to pull concentration from it.");
+                        logInfo(String.format("This qc datum is type %s, I will try to pull concentration from it.", type));
                     }
                     concentration = setFromMap("-1", "CalculatedConcentration", n2);
                     if (concentration != null && Double.parseDouble(concentration) > 0) {
@@ -789,15 +798,15 @@ public class SampleInfoImpact extends SampleInfo {
             valid = drm.getValueList(nimbProtocols, "Valid", apiUser);
             poolName = drm.getValueList(nimbProtocols, "Protocol2Sample", apiUser);
             igoId = drm.getValueList(nimbProtocols, "SampleId", apiUser);
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace();
+        } catch (Exception e) {
+            DEV_LOGGER.error(e);
+
         }
 
         DataRecord chosenRec = null;
         // Look for issues
         if (nimbProtocols == null && nimbProtocols.size() == 0) {
-            print("[ERROR] No NoNymbHybProtocol DataRecord found for " + this.CMO_SAMPLE_ID + "(" + this.IGO_ID + "). The baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ");
+            logError("No NoNymbHybProtocol DataRecord found for " + this.CMO_SAMPLE_ID + "(" + this.IGO_ID + "). The baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ");
             return;
         }
         // only one sample (rec) that was checked for
@@ -813,7 +822,7 @@ public class SampleInfoImpact extends SampleInfo {
             }
             String igoIdGiven = (String) igoId.get(a);
             if (!igoIdGiven.contains(this.IGO_ID)) {
-                print("[WARNING] Nimblegen D.R. has a different igo id than this sample: Nimb: " + igoIdGiven + ", this sample: " + this.IGO_ID);
+                logWarning("Nimblegen D.R. has a different igo id than this sample: Nimb: " + igoIdGiven + ", this sample: " + this.IGO_ID);
                 continue;
             }
             String pool = (String) poolName.get(a);
@@ -846,7 +855,7 @@ public class SampleInfoImpact extends SampleInfo {
                 }
             }
             if (chosenRec == null) {
-                print("[ERROR] No VALID NimblgenHybridizationProtocol DataRecord found for " + this.CMO_SAMPLE_ID + "(" + this.IGO_ID + "). " + poolNameList + " The baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ");
+                logError("No VALID NimblgenHybridizationProtocol DataRecord found for " + this.CMO_SAMPLE_ID + "(" + this.IGO_ID + "). " + poolNameList + " The baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ");
                 return;
             }
         }
@@ -855,13 +864,13 @@ public class SampleInfoImpact extends SampleInfo {
 
         try {
             nimbRec = chosenRec.getFields(apiUser);
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace();
+        } catch (Exception e) {
+            DEV_LOGGER.error("Exception thrown while getting fields for record", e);
+
         }
         // another check
         if (nimbRec == null || nimbRec.size() == 0) {
-            print("[ERROR] Unknown error while pulling getFields");
+            logError("Unknown error while pulling getFields");
             return;
         }
 
@@ -937,8 +946,8 @@ public class SampleInfoImpact extends SampleInfo {
                     }
                 }
             }
-        } catch (Throwable e) {
-            logger.logError(e);
+        } catch (Exception e) {
+            DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
         }
     }
 
@@ -971,11 +980,9 @@ public class SampleInfoImpact extends SampleInfo {
                     }
                 }
             }
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace();
+        } catch (Exception e) {
+            DEV_LOGGER.error("Exception thrown while retrieving information about capture concentration", e);
         }
-
     }
 
     @Override

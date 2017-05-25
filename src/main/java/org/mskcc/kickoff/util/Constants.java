@@ -1,9 +1,7 @@
 package org.mskcc.kickoff.util;
 
 public class Constants {
-    public static final String MANUAL_EXOME_XENOGRAFT_BAIT_VERSION_HUMAN_MOUSE = "AgilentExon_51MB_b37_mm10_v3";
-    public static final String MANUAL_EXOME_BAIT_VERSION_HUMAN = "AgilentExon_51MB_b37_v3";
-    public static final String HUMAN_ABREV = "b37";
+
     public static final String BAIT_VERSION = "BAIT_VERSION";
     public static final String BANANNA_GRAM_72 = "banannaGram72";
     public static final String BIC_AUTORUNNABLE = "BicAutorunnable";
@@ -13,6 +11,8 @@ public class Constants {
     public static final String CORRECT = "Correct";
     public static final String CORRECTED_CMO_ID = "CORRECTED_CMO_ID";
     public static final String DATA_CLINICAL = "data_clinical";
+    public static final String DEV_LOGGER = "devLogger";
+    public static final String DEV_PROFILE = "dev";
     public static final String EMPTY = "#EMPTY";
     public static final String ERROR = "ERROR";
     public static final String EXAMPLE = "Example";
@@ -20,7 +20,9 @@ public class Constants {
     public static final String EXCLUDE_RUN_ID = "EXCLUDE_RUN_ID";
     public static final String EXOME = "exome";
     public static final String FAILED = "Failed";
+    public static final String HUMAN_ABREV = "b37";
     public static final String IGO_ID = "IGO_ID";
+    public static final String IGO_PROFILE = "igo";
     public static final String IMPACT = "impact";
     public static final String INCLUDE_RUN_ID = "INCLUDE_RUN_ID";
     public static final String INCORRECT = "Incorrect";
@@ -29,6 +31,8 @@ public class Constants {
     public static final String LOG_FILE_PATH = "logs";
     public static final String MANIFEST_SAMPLE_ID = "MANIFEST_SAMPLE_ID";
     public static final String MANUAL_DEMUX = "ManualDemux";
+    public static final String MANUAL_EXOME_BAIT_VERSION_HUMAN = "AgilentExon_51MB_b37_v3";
+    public static final String MANUAL_EXOME_XENOGRAFT_BAIT_VERSION_HUMAN_MOUSE = "AgilentExon_51MB_b37_mm10_v3";
     public static final String MATCHED_NORMAL = "MatchedNormal";
     public static final String MOUSE_ABREV = "mm10";
     public static final String NA = "NA";
@@ -43,7 +47,9 @@ public class Constants {
     public static final String PAIRING_INFO = "PairingInfo";
     public static final String PASSED = "Passed";
     public static final String PATIENT = "patient";
+    public static final String PM_LOGGER = "pmLogger";
     public static final String POOLNORMAL = "POOLNORMAL";
+    public static final String PROD_PROFILE = "prod";
     public static final String PROJECT_ID = "ProjectID";
     public static final String PROJECT_PREFIX = "Proj_";
     public static final String READ_ME = "ReadMe";
@@ -60,16 +66,13 @@ public class Constants {
     public static final String SPECIES = "SPECIES";
     public static final String SPECIMEN_PRESERVATION_TYPE = "SPECIMEN_PRESERVATION_TYPE";
     public static final String SPIKE_IN_GENES = "SPIKE_IN_GENES";
+    public static final String STATUS = "STATUS";
     public static final String STRANDED = "Stranded";
+    public static final String TANGO_PROFILE = "tango";
     public static final String TISSUE_SITE = "TISSUE_SITE";
-
     public static final String TUMOR = "Tumor";
     public static final String UNKNOWN = "Unknown";
-    public static final String STATUS = "STATUS";
-    public static final String PROD_PROFILE = "prod";
-    public static final String DEV_PROFILE = "dev";
-    public static final String IGO_PROFILE = "igo";
-    public static final String TANGO_PROFILE = "tango";
+    public static final String LOG_FILE_PREFIX = "Log_";
 
     public static class Manifest {
         public static final String SAMPLE_INFO = "SampleInfo";
