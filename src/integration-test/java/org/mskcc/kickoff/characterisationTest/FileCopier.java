@@ -1,4 +1,4 @@
-package org.mskcc.kickoff;
+package org.mskcc.kickoff.characterisationTest;
 
 import jdk.nashorn.internal.ir.annotations.Immutable;
 import org.apache.log4j.Logger;
@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @Immutable
-class FileCopier {
+public class FileCopier {
     private static final Logger LOGGER = Logger.getLogger(FileCopier.class);
     public static void copy(Path source, Path dest) {
         Path failingDestination = Paths.get(String.format("%s/%s", dest, source.getFileName()));

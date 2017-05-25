@@ -1,11 +1,13 @@
-package org.mskcc.kickoff;
+package org.mskcc.kickoff.characterisationTest.comparator;
 
-import org.junit.Assert;
+
+import junit.framework.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
 
 public class LinesEqualExceptPathsAndDatesPredicateTest {
     private LinesEqualExceptPathsAndDatesPredicate linesEqualExceptPathsAndDatesPredicate;

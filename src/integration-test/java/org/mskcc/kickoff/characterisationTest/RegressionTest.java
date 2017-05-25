@@ -1,4 +1,4 @@
-package org.mskcc.kickoff;
+package org.mskcc.kickoff.characterisationTest;
 
 import org.apache.log4j.Logger;
 import org.junit.Before;
@@ -6,6 +6,12 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.mskcc.kickoff.characterisationTest.comparator.FileContentFolderComparator;
+import org.mskcc.kickoff.characterisationTest.comparator.FolderComparator;
+import org.mskcc.kickoff.characterisationTest.comparator.LinesEqualExceptPathsAndDatesPredicate;
+import org.mskcc.kickoff.characterisationTest.comparator.NonLogFileFilter;
+import org.mskcc.kickoff.characterisationTest.listener.*;
+import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.kickoff.util.Utils;
 
 import java.io.IOException;
@@ -14,7 +20,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -34,10 +39,9 @@ public class RegressionTest {
     private static final String FAILING_OUTPUT_PATH = "failingOutputPath";
     private static final String ARG = "arg";
     private final Date testStartTime = new Date();
-
+    private final String archivePath = "/home/reza/testIfs/projects/BIC/archive";
     @Rule
     public WriteToTestReportOnFailure ruleExample = new WriteToTestReportOnFailure();
-
     private boolean isShiny = false;
     private String project = "06907_J";
     private Path expectedOutputPath = Paths.get("src/test/resources/expectedOutput/06907_J/noArg");
@@ -46,8 +50,6 @@ public class RegressionTest {
     private Path failingOutputPathForCurrentRun;
     private String fullProjectName;
     private String failingOutputPath = "testResults/failing";
-    private final String archivePath = "/home/reza/testIfs/projects/BIC/archive";
-
     private String arg;
 
     @Before
@@ -65,7 +67,7 @@ public class RegressionTest {
         arg = System.getProperty(ARG);
         isShiny = "-s".equals(arg);
 
-        failingOutputPathForCurrentRun = Paths.get(String.format("%s/%s", failingOutputPath, DATE_AND_TIME_FORMAT.format(testStartTime)));
+        failingOutputPathForCurrentRun = Paths.get(String.format("%s/%s/%s", failingOutputPath, project, arg));
         fullProjectName = Utils.getFullProjectNameWithPrefix(project);
     }
 
@@ -144,7 +146,7 @@ public class RegressionTest {
 
     private Path getProjectOutputPath(Path path) {
         return Paths.get(String.format("%s/%s", path, Utils.getFullProjectNameWithPrefix(
-                    project)));
+                project)));
     }
 
     private class WriteToTestReportOnFailure extends TestWatcher {

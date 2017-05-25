@@ -1,4 +1,4 @@
-package org.mskcc.kickoff;
+package org.mskcc.kickoff.characterisationTest.comparator;
 
 import org.apache.log4j.Logger;
 
@@ -7,7 +7,7 @@ import java.util.function.BiPredicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class LinesEqualExceptPathsAndDatesPredicate implements BiPredicate<String, String> {
+public class LinesEqualExceptPathsAndDatesPredicate implements BiPredicate<String, String> {
     private static final Logger LOGGER = Logger.getLogger(LinesEqualExceptPathsAndDatesPredicate.class);
     private final Path actualOutputPathForProject;
     private final Path expectedOutputPathForProject;

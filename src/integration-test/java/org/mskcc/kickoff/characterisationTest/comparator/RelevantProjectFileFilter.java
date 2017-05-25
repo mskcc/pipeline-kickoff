@@ -1,4 +1,4 @@
-package org.mskcc.kickoff;
+package org.mskcc.kickoff.characterisationTest.comparator;
 
 import org.mskcc.kickoff.util.Constants;
 

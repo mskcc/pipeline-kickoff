@@ -1,4 +1,4 @@
-package org.mskcc.kickoff;
+package org.mskcc.kickoff.characterisationTest;
 
 public enum OutputType {
     ACTUAL("actual"),

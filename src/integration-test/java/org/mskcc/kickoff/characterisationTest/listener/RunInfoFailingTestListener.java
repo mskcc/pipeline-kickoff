@@ -1,5 +1,6 @@
-package org.mskcc.kickoff;
+package org.mskcc.kickoff.characterisationTest.listener;
 
+import org.mskcc.kickoff.characterisationTest.FileCopier;
 import org.mskcc.kickoff.util.Utils;
 
 import java.nio.file.Path;

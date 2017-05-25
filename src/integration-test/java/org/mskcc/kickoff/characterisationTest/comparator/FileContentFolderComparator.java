@@ -1,8 +1,10 @@
-package org.mskcc.kickoff;
+package org.mskcc.kickoff.characterisationTest.comparator;
 
 import org.apache.log4j.Logger;
 import org.apache.poi.xssf.extractor.XSSFExcelExtractor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.mskcc.kickoff.characterisationTest.listener.FailingTestListener;
+import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
 import java.io.File;
@@ -10,13 +12,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.function.BiPredicate;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-class FileContentFolderComparator implements FolderComparator {
+public class FileContentFolderComparator implements FolderComparator {
     private static final Logger LOGGER = Logger.getLogger(FileContentFolderComparator.class);
     private static final String LOGS_FOLDER = "logs";
 
@@ -29,6 +31,14 @@ class FileContentFolderComparator implements FolderComparator {
     private FileContentFolderComparator(BiPredicate<String, String> areLinesEqualPredicate, BooleanSupplier shouldCompareLogFilePredicate) {
         this.areLinesEqualPredicate = areLinesEqualPredicate;
         this.shouldCompareLogFilePredicate = shouldCompareLogFilePredicate;
+    }
+
+    public static String getShinyLogFileName() {
+        return Constants.LOG_FILE_PREFIX + Utils.LOG_DATE_FORMAT.format(new Date()) + "_" + Utils.SHINY + ".txt";
+    }
+
+    public static String getLogFileName() {
+        return Constants.LOG_FILE_PREFIX + Utils.LOG_DATE_FORMAT.format(new Date()) + ".txt";
     }
 
     @Override
@@ -106,12 +116,12 @@ class FileContentFolderComparator implements FolderComparator {
 
     private String getLogFileName(Path expectedSubPath) {
         if(expectedSubPath.getFileName().toString().contains(Utils.SHINY))
-            return Utils.getShinyLogFileName();
-        return Utils.getLogFileName();
+            return getShinyLogFileName();
+        return getLogFileName();
     }
 
     private boolean isLogFile(Path expectedSubPath) {
-        return expectedSubPath.getFileName().toString().startsWith(Utils.LOG_FILE_PREFIX);
+        return expectedSubPath.getFileName().toString().startsWith(Constants.LOG_FILE_PREFIX);
     }
 
     private boolean isNumberOfFilesInDirsEqual(Path actualPath, Path expectedPath) {
@@ -148,7 +158,36 @@ class FileContentFolderComparator implements FolderComparator {
     private boolean areFilesEqual(File actualFile, File expectedFile) throws Exception {
         if (isXlsxFile(actualFile))
             return areXslxFilesEqual(actualFile, expectedFile);
+        if(isPmLogFile(actualFile))
+            return arePmLogsEqualWithoutLineOrdering(actualFile, expectedFile);
         return areFilesEqualExcludingPathsAndDates(actualFile, expectedFile);
+    }
+
+    private boolean arePmLogsEqualWithoutLineOrdering(File actualFile, File expectedFile) throws IOException {
+        List<String> actualLines = Files.readAllLines(actualFile.toPath());
+        List<String> expectedLines = Files.readAllLines(expectedFile.toPath());
+
+        for (String expectedLine : expectedLines) {
+            LOGGER.info(String.format("Looking for expected line: %s in actual file", expectedLine));
+            boolean expectedLineExists=false;
+            for (String actualLine : actualLines) {
+                if(areLinesEqualPredicate.test(actualLine, expectedLine)) {
+                    expectedLineExists=true;
+                    break;
+                }
+            }
+
+            if(!expectedLineExists) {
+                LOGGER.error(String.format("Expected line: %s is not present in actual file", expectedLine));
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean isPmLogFile(File file) {
+        return file.getPath().contains(Constants.PROJECT_PREFIX) && file.getName().startsWith(Constants.LOG_FILE_PREFIX);
     }
 
     private boolean areFilesEqualExcludingPathsAndDates(File actualFile, File expectedFile) throws IOException {

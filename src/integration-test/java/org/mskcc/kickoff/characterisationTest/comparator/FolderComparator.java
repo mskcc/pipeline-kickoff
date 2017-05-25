@@ -1,8 +1,10 @@
-package org.mskcc.kickoff;
+package org.mskcc.kickoff.characterisationTest.comparator;
+
+import org.mskcc.kickoff.characterisationTest.listener.FailingTestListener;
 
 import java.nio.file.Path;
 
-interface FolderComparator {
+public interface FolderComparator {
     boolean compare(Path actualPath, Path expectedPath) throws Exception;
 
     void registerFailingComparisonListener(FailingTestListener failingTestListener);
