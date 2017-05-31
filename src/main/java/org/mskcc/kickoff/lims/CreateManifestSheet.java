@@ -290,7 +290,7 @@ class CreateManifestSheet {
 
                 if (SamplesAndRuns.size() == 0) {
                     if (!forced && !manualDemux) {
-                        System.err.println("[ERROR] No sequencing runs found for this Request ID.");
+                        logError("No sequencing runs found for this Request ID.");
                         return;
                     } else if (manualDemux) {
                         logWarning("MANUAL DEMULTIPLEXING was performed. Nothing but the request file should be output.");
@@ -647,6 +647,10 @@ class CreateManifestSheet {
             File f = new File(projectFilePath);
             setPermissions(f);
         }
+    }
+
+    private void logError(String message) {
+        logError(message, Level.ERROR, Level.ERROR);
     }
 
     private void logError(String message, Level pmLogLevel, Level devLogLevel) {
