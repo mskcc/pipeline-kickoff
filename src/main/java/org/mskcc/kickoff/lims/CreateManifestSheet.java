@@ -2026,7 +2026,11 @@ class CreateManifestSheet {
                     String norm = rec.getStringVal(VeloxConstants.SAMPLE_PAIR, apiUser);
 
                     if (norm.isEmpty()) {
-                        norm = Constants.NA_LOWER_CASE;
+                        if (ReqType == Constants.EXOME) {
+                            norm = Constants.NA_LOWER_CASE;
+                        } else {
+                            continue;
+                        }
                     }
 
                     norm = norm.replaceAll("\\s", "");
