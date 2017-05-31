@@ -3,7 +3,6 @@ package org.mskcc.kickoff.characterisationTest;
 import org.apache.log4j.Logger;
 import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.mskcc.kickoff.characterisationTest.comparator.FileContentFolderComparator;
@@ -11,7 +10,6 @@ import org.mskcc.kickoff.characterisationTest.comparator.FolderComparator;
 import org.mskcc.kickoff.characterisationTest.comparator.LinesEqualExceptPathsAndDatesPredicate;
 import org.mskcc.kickoff.characterisationTest.comparator.NonLogFileFilter;
 import org.mskcc.kickoff.characterisationTest.listener.*;
-import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.kickoff.util.Utils;
 
 import java.io.IOException;
@@ -30,7 +28,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 public class RegressionTest {
     private static final Logger LOGGER = Logger.getLogger(RegressionTest.class);
-    private static final SimpleDateFormat DATE_AND_TIME_FORMAT = new SimpleDateFormat("yyyy-dd-MM HH:mm:ss");
     private static final SimpleDateFormat DATE_ARCHIVE_FORMAT = new SimpleDateFormat("yyyyMMdd");
     private static final String PROJECT_PROPERTY = "project";
     private static final String EXPECTED_OUTPUT_PROPERTY = "expectedOutput";
@@ -38,7 +35,6 @@ public class RegressionTest {
     private static final String SUCCEEDED_PROJECTS_LIST_PATH = "succeededProjectsList";
     private static final String FAILING_OUTPUT_PATH = "failingOutputPath";
     private static final String ARG = "arg";
-    private final Date testStartTime = new Date();
     private final String archivePath = "/home/reza/testIfs/projects/BIC/archive";
     @Rule
     public WriteToTestReportOnFailure ruleExample = new WriteToTestReportOnFailure();
@@ -71,7 +67,7 @@ public class RegressionTest {
         fullProjectName = Utils.getFullProjectNameWithPrefix(project);
     }
 
-    @Test
+    @org.junit.Test
     public void whenRunningCreateManifestSheet_outputFilesShouldBeAsBefore() throws Exception {
         LOGGER.info(String.format("Running test for project: %s, expected path: %s, actual path: %s", project, expectedOutputPath, actualOutputPath));
 
