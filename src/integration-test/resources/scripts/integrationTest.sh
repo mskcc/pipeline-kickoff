@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source utils.sh
+source "${BASH_SOURCE%/*}/utils.sh"
 
 #arguments=("noArg" "-s")
 arguments=("noArg" "-noPortal" "-f" "-exome" "-s")
@@ -73,7 +73,8 @@ runTest() {
 	expected=$(getOutputPath $expectedPath $1 $2)
 	echo "Actual output path: $actual"
 	echo "Expected output path: $expected"
-	${java8} -cp .:libs/*:build/classes/main:build/classes/integrationTest:build/resources/integrationTest -Dspring.profiles.active=dev -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList} org.junit.runner.JUnitCore org.mskcc.kickoff.characterisationTest.RegressionTest
+	./gradlew integrationTest -Dspring.profiles.active=dev -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList}
+	#${java8} -cp .:libs/*:build/classes/main:build/classes/integrationTest:build/resources/integrationTest -Dspring.profiles.active=dev -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList} org.junit.runner.JUnitCore org.mskcc.kickoff.characterisationTest.RegressionTest
 	cd ~
 }
 
