@@ -378,7 +378,7 @@ class CreateManifestSheet {
 
                     // This is never supposed to happen.
                     if (SampleListToOutput.containsKey(sid)) {
-                        logError("This request has two samples that have the same name: " + sid, PmLogPriority.SAMPLE_ERROR, Level.ERROR);
+                        logError("This request has two samples that have the same name: " + sid, Level.ERROR, Level.ERROR);
                     }
                     // if this sample is in the list of
                     if ((SamplesAndRuns.containsKey(sid)) || (force)) {
@@ -1832,7 +1832,7 @@ class CreateManifestSheet {
                         continue;
                     }
                     if (files.length == 0) {
-                        logError(String.format("Could not find sequencing run folder for Run ID: %s", id), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
+                        logError(String.format("Could not find sequencing run folder for Run ID: %s", id), Level.ERROR, Level.ERROR);
                         mappingIssue = true;
                         return;
                     } else if (files.length > 1) {
