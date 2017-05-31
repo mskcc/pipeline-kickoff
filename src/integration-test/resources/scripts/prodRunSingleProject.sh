@@ -8,7 +8,7 @@ cd ~/pipeline_kickoff_prod/exemplar
 
 if [ "${2}" == "debug" ] || [ "${3}" == "debug" ]; then
 	echo "Running in debug mode"
-	debugArg="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
+	debugArg="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005"
 fi
 
 ${java8} ${debugArg} -cp lib/*:classes org.mskcc.kickoff.lims.CreateManifestSheet -p ${1} -o output -rerunReason TEST ${2}
