@@ -2047,7 +2047,7 @@ class CreateManifestSheet {
                     pair_Info.put(tum, norm);
                 } else if (ReqType.equals(Constants.EXOME)) {
                     // Add normals to a list, check at the end that all normals are in the pairing file. Otherwise add them with na.
-                    exome_normal_list.add(rec.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser));
+                    exome_normal_list.add(cmoID);
                 }
             }
             for (String NormIds : exome_normal_list) {
