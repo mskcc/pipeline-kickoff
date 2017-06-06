@@ -119,6 +119,8 @@ public class RegressionTest {
             LOGGER.info(String.format("Comparing actual dir: %s and archive dir: %s", actualOutputPathForProject, archiveProjectTodayPath));
 
             assertThat(folderComparator.compare(actualOutputPathForProject, archiveProjectTodayPath), is(true));
+        } else {
+            LOGGER.info("Omitting comparing archive files as there are no output files to compare with");
         }
     }
 

@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.characterisationTest.comparator;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.poi.xssf.extractor.XSSFExcelExtractor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -167,7 +168,7 @@ public class FileContentFolderComparator implements FolderComparator {
         List<String> actualLines = Files.readAllLines(actualFile.toPath());
         List<String> expectedLines = Files.readAllLines(expectedFile.toPath());
 
-        for (String expectedLine : expectedLines) {
+        for (String expectedLine : getNonEmptyLines(expectedLines)) {
             LOGGER.info(String.format("Looking for expected line: %s in actual file", expectedLine));
             boolean expectedLineExists=false;
             for (String actualLine : actualLines) {
@@ -184,6 +185,10 @@ public class FileContentFolderComparator implements FolderComparator {
         }
 
         return true;
+    }
+
+    private List<String> getNonEmptyLines(List<String> expectedLines) {
+        return expectedLines.stream().filter(l -> !StringUtils.isEmpty(l)).collect(Collectors.toList());
     }
 
     private boolean isPmLogFile(File file) {

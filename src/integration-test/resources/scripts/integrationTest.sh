@@ -123,37 +123,44 @@ fi
 init
 
 projects=(
-"01234_EWA" # not exising project 
-"02756_B" # !BicAutorunnable
-"02756_B" # Recipe WholeExome, Xenograft
+"01234_EWA" # not exising project
+"02756_B" # !BicAutorunnable, Recipe WholeExome, Xenograft
 "03498_D" # Canno be run through Create manifest sheet
 "04298_C" # Recipe WholeGenomeSeq
 "04298_D" # !manual Demux
 "04495" # manual Demux
 "04525_J" # Exemplar Sample status Failed-Complete
 "04657_D" # ChIPSeq recipe
-"04919_G" # Exemplar Sample status Failed-Complete 
+"04919_G" # Exemplar Sample status Failed-Complete
 "05257_AX" # investigator patient IDs are problematic
 "05372_B" # Request name *PACT*
 "05500_AZ"  # !BicAutorunnable && "NOT_AUTORUNNABLE" in Readme
 "05514_I" # IMPACT bait set
+"05583_F" #pairing changes
 "05600" # No Status Sequence Analysis QC
+"05667_AB"  #pairing changes
+"05667_AT"  #pairing changes
+"05667_AW"  #pairing changes
 "05684_D" # KK- NimlegenHybridizationProtocol1
 "05737_R" # HEMEPACT_v3 bait set, species in Xenograft
 "05873_H" # Failed Sequence Analysis QC
 "05971_G" # IMPACT bait set, species in Xenograft
+"06049_I"  #pairing changes
+"06049_R"  #pairing changes
+"06049_U"  #pairing changes
 "06208_D" # Agilient Capture KAPA Libary
 "06477_E" # !KAPAAgilentCaptureProtocol2
-#"06507" # Request with 2 samples with same name
+"06507" # Request with 2 samples with same name
 "06507_D" # rename FASTQ
-"06507_E" 
+"06507_E"
 "06836_E" # IMPACT bait set, two samples are failed in post process QC
 "06907_J"
-#"06912_B" # Failed Reprocess Sequence Analysis QC
+"06912_B" # Failed Reprocess Sequence Analysis QC
 "07275" # germline-no pipeline run
 "07306_D" # Request with 2 samples with same name
+"07323_F"  #pairing changes
 "07437_B" # BR7 and BR11 match each other, neither one matches corresponding DMP normal
-#"07473" # Under review Sequence Analysis QC
+"07473" # Under review Sequence Analysis QC
 "07507_B" # no recipe in the sample sheet
 "08192_E" # no tumor
 )

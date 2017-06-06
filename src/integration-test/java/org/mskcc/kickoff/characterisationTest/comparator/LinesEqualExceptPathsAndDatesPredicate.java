@@ -1,6 +1,9 @@
 package org.mskcc.kickoff.characterisationTest.comparator;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
+import org.mskcc.kickoff.domain.Recipe;
+import org.mskcc.kickoff.util.Constants;
 
 import java.nio.file.Path;
 import java.util.function.BiPredicate;
@@ -25,7 +28,32 @@ public class LinesEqualExceptPathsAndDatesPredicate implements BiPredicate<Strin
         actualLogLine = getStringWithoutDates(actualLogLine);
         expectedLogLine = getStringWithoutDates(expectedLogLine);
 
+        if (isUnsupportedRecipeLine(expectedLogLine))
+            return true;
         return actualLogLine.equals(expectedLogLine);
+    }
+
+    private boolean isUnsupportedRecipeLine(String expectedLogLine) {
+        return StringUtils.containsIgnoreCase(expectedLogLine, Constants.RECIPE) && isUnsupportedRecipe(expectedLogLine);
+    }
+
+    private boolean isUnsupportedRecipe(String expectedLogLine) {
+        Pattern pattern = Pattern.compile(".*Recipe: (.+)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(expectedLogLine);
+
+        if (matcher.find()) {
+            String recipe = matcher.group(1);
+            LOGGER.info(String.format("Recipe found in expected file: %s", recipe));
+            try {
+                Recipe.getRecipeByValue(recipe);
+                return false;
+            } catch (Recipe.UnsupportedRecipeException e) {
+                LOGGER.info(String.format("Unsupported recipe found in expected file: %s. Omitting comparing it", recipe));
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private String getStringWithoutDates(String line) {

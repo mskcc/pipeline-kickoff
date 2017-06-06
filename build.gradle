@@ -87,4 +87,3 @@ task integrationTest(type: Test) {
     outputs.upToDateWhen { false }
 }
 
-build.finalizedBy integrationTest
