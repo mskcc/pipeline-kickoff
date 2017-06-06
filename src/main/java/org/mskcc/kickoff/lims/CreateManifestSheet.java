@@ -20,6 +20,7 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.*;
 import org.mskcc.kickoff.PriorityAwareLogMessage;
+import org.mskcc.kickoff.config.AppConfiguration;
 import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.kickoff.config.ArgumentsFileReporter;
 import org.mskcc.kickoff.config.LogConfigurer;
@@ -150,9 +151,13 @@ class CreateManifestSheet {
     }
 
     private static ConfigurableApplicationContext configureSpringContext() {
-        ConfigurableApplicationContext context = new AnnotationConfigApplicationContext(CreateManifestSheet.class);
-        context.getEnvironment().setDefaultProfiles(Constants.PROD_PROFILE, Constants.IGO_PROFILE);
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        if (context.getEnvironment().getActiveProfiles().length == 0)
+            context.getEnvironment().setActiveProfiles(Constants.PROD_PROFILE, Constants.IGO_PROFILE);
+        context.register(AppConfiguration.class);
+        context.register(CreateManifestSheet.class);
         context.registerShutdownHook();
+        context.refresh();
         return context;
     }
 
@@ -605,7 +610,7 @@ class CreateManifestSheet {
                         printFileType(tumorSampInfo, clinical_filename, Constants.DATA_CLINICAL);
 
                         printGroupingFile(SampleListToOutput, patientSampleMap, grouping_filename);
-                        printPairingFile(SampleListToOutput, drm, apiUser, pairing_filename, patientSampleMap);
+                        printPairingFile(request, SampleListToOutput, drm, apiUser, pairing_filename, patientSampleMap);
                         printReadmeFile(readmeInfo, requestID, manDir);
                     }
 
@@ -769,7 +774,13 @@ class CreateManifestSheet {
             devLogger.warn(e.getMessage(), e);
         }
 
-        return recipes.stream().map(r -> Recipe.getRecipeByValue(r.toString())).distinct().collect(Collectors.toList());
+        try {
+            return recipes.stream().map(r -> Recipe.getRecipeByValue(r.toString())).distinct().collect(Collectors.toList());
+        } catch (Recipe.UnsupportedRecipeException e) {
+            Utils.exitLater = true;
+        }
+
+        return Collections.emptyList();
     }
 
     private Map<String, Set<String>> checkPostSeqQC(User apiUser, DataRecord request, Map<String, Set<String>> SampleRunHash) {
@@ -972,6 +983,11 @@ class CreateManifestSheet {
                                 //setNewBaitSet should be called
                                 bvChanged = true;
                             }
+                        }
+                    } else {
+                        if (!baitVersion.contains("+") && findDesignFile(baitVersion) == "NA") {
+                            logError("Cannot find bait version " + baitVersion + " design files!");
+                            return;
                         }
                     }
                     if (!this.baitVersion.equals(baitVersion) && !this.baitVersion.equals(Constants.EMPTY)) {
@@ -1236,7 +1252,7 @@ class CreateManifestSheet {
                 mappingIssue = true;
             }
             printPoolQCWarnings();
-        } else if (poolQCWarnings.contains(Constants.ERROR)) {
+        } else if (isPoolQcWarning()) {
             printPoolQCWarnings();
         }
         if (poolRuns.equals(sampleRuns)) {
@@ -1284,6 +1300,10 @@ class CreateManifestSheet {
 
         return FinalSamplesAndRuns;
 
+    }
+
+    private boolean isPoolQcWarning() {
+        return poolQCWarnings.stream().anyMatch(w -> w.getPriority() == PmLogPriority.POOL_ERROR || w.getPriority() == Level.ERROR);
     }
 
     private void log(String message, Level pmLogLevel, Level devLogLevel) {
@@ -1571,7 +1591,7 @@ class CreateManifestSheet {
         }
     }
 
-    private void printPairingExcel(String pairing_filename, LinkedHashMap<String, String> pair_Info, ArrayList<String> exome_normal_list) {
+    private void printPairingExcel(String pairing_filename, Map<String, String> pair_Info, HashSet<String> missingNormalsToBeAdded) {
         File pairingExcel = new File(pairing_filename.substring(0, pairing_filename.lastIndexOf('.')) + ".xlsx");
 
         XSSFWorkbook wb = new XSSFWorkbook();
@@ -1583,12 +1603,12 @@ class CreateManifestSheet {
 
         for (String tum : pair_Info.keySet()) {
             String norm = pair_Info.get(tum);
-            if (Objects.equals(ReqType, Constants.EXOME) && exome_normal_list.contains(tum)) {
-                norm = tum;
-                tum = Constants.NA_LOWER_CASE;
-            }
-
             pairingInfo = addRowToSheet(wb, pairingInfo, new ArrayList<>(Arrays.asList(tum, norm)), rowNum, null);
+            rowNum++;
+        }
+        for (String unmatchedNorm : missingNormalsToBeAdded) {
+            String tum = "na";
+            pairingInfo = addRowToSheet(wb, pairingInfo, new ArrayList<>(Arrays.asList(tum, unmatchedNorm)), rowNum, null);
             rowNum++;
         }
 
@@ -1994,113 +2014,226 @@ class CreateManifestSheet {
         }
     }
 
-    private void printPairingFile(LinkedHashMap<String, LinkedHashMap<String, String>> SampleListToOutput, DataRecordManager drm, User apiUser, String pairing_filename, LinkedHashMap<String, Set<String>> patientSampleMap) {
-        try {
-            LinkedHashMap<String, String> igo_tumor_info = new LinkedHashMap<>();
-            LinkedHashMap<String, String> pair_Info = new LinkedHashMap<>();
-            List<String> warnings = new ArrayList<>();
-            ArrayList<String> exome_normal_list = new ArrayList<>();
+    private Map<String, String> getPairingInfo(DataRecord request, LinkedHashMap<String, LinkedHashMap<String, String>> SampleListToOutput, DataRecordManager drm, User apiUser, LinkedHashMap<String, Set<String>> patientSampleMap) {
+        // First, grab "PairingInfo" data records that contain the correct igo ids.
+        // If those are unavailable, grab "SamplePairing" of the same thing.
+        // Lastly, if that doesn't work, then try smart pairing (for impact, not exome)
 
-            HashSet<String> CorrectedCMOids = new HashSet<>();
+        LinkedHashMap<String, String> igo_tumor_info = new LinkedHashMap<>();
+        LinkedHashMap<String, String> igo_normal_info = new LinkedHashMap<>();
 
-            // Make a list of IGO ids to give to printPairingFile script
-            ArrayList<String> igoIDs = new ArrayList<>();
-            for (String samp : SampleListToOutput.keySet()) {
-                igoIDs.add(SampleListToOutput.get(samp).get(Constants.IGO_ID));
-                igo_tumor_info.put(SampleListToOutput.get(samp).get(Constants.IGO_ID), samp);
-                CorrectedCMOids.add(SampleListToOutput.get(samp).get(Constants.CORRECTED_CMO_ID));
-            }
-
-            // Go through each igo id and try and find a SamplePairing data record,
-            for (String id : igoIDs) {
-                String cmoID = igo_tumor_info.get(id);
-                List<DataRecord> records = drm.queryDataRecords(VeloxConstants.SAMPLE_PAIRING, "SampleId = '" + id + "'", apiUser);
-                if (records.size() == 0) {
-                    if (!id.startsWith("CTRL-")) {
-                        warnings.add(String.format("No pairing record for igo ID '%s", id));
-                    }
-                    continue;
-                }
-
-                // If Sample Class doesn't have "Normal" in it, sample is tumor
-                // Then save as Normal,Tumor
-                DataRecord rec = records.get(records.size() - 1);
-                if (!SampleListToOutput.get(cmoID).get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL)) {
-                    String tum = SampleListToOutput.get(igo_tumor_info.get(id)).get(Constants.CORRECTED_CMO_ID);
-                    String norm = rec.getStringVal(VeloxConstants.SAMPLE_PAIR, apiUser);
-
-                    if (norm.isEmpty()) {
-                        if (ReqType == Constants.EXOME) {
-                            norm = Constants.NA_LOWER_CASE;
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    norm = norm.replaceAll("\\s", "");
-                    if ((!CorrectedCMOids.contains(norm)) && (!force) && (!norm.equals(Constants.NA_LOWER_CASE))) {
-                        System.err.println("[WARNING] Normal matching with this tumor is NOT a valid sample in this request: Tumor: " + tum + " Normal: " + norm + " The normal will be changed to na.");
-                        norm = Constants.NA_LOWER_CASE;
-                    }
-                    if (pair_Info.containsKey(tum) && !Objects.equals(pair_Info.get(tum), norm)) {
-                        logError(String.format("Tumor is matched with two different normals. I have no idea how this happened! Tumor: %s Normal: %s", tum, norm), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
-                        printWarnings(warnings);
-
-                        return;
-                    }
-                    pair_Info.put(tum, norm);
-                } else if (ReqType.equals(Constants.EXOME)) {
-                    // Add normals to a list, check at the end that all normals are in the pairing file. Otherwise add them with na.
-                    exome_normal_list.add(cmoID);
-                }
-            }
-            for (String NormIds : exome_normal_list) {
-                if (!pair_Info.containsKey(NormIds) && !pair_Info.containsValue(NormIds)) {
-                    pair_Info.put(NormIds, Constants.NA_LOWER_CASE);
-                }
-            }
-
-            if (pair_Info.size() > 0) {
-                printWarnings(warnings);
-            } else if (!patientSampleMap.isEmpty()) {
-                // There were no pairing sample records, do smart pairing
-                // For each patient ID, separate samples by normal and tumor. Then if there is at least 1 normal, match it with all the tumors.
-                // TODO: This will have to become populated into the LIMs Perhaps send a signal to another script that will suck it into the LIMs.
-
-                log("Pairing records not found, trying smart Pairing", org.apache.log4j.Level.INFO, Level.INFO);
-                pair_Info = smartPairing(SampleListToOutput, patientSampleMap);
+        // Make a list of IGO ids to give to printPairingFile script
+        //ArrayList<String> igoIDs = new ArrayList<String>();
+        for (String samp : SampleListToOutput.keySet()) {
+            if (!SampleListToOutput.get(samp).get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL)) {
+                igo_tumor_info.put(SampleListToOutput.get(samp).get(Constants.IGO_ID), SampleListToOutput.get(samp).get(Constants.CORRECTED_CMO_ID));
             } else {
-                logWarning("No Pairing File will be output.");
+                igo_normal_info.put(SampleListToOutput.get(samp).get(Constants.IGO_ID), SampleListToOutput.get(samp).get(Constants.CORRECTED_CMO_ID));
             }
+        }
 
-            //Done going through all igo ids, now print
-            if (pair_Info.size() > 0) {
-                File pairing_file = new File(pairing_filename);
-                PrintWriter pW = new PrintWriter(new FileWriter(pairing_file, false), false);
-                filesCreated.add(pairing_file);
-                for (String tum : pair_Info.keySet()) {
-                    String norm = pair_Info.get(tum);
-                    if (Objects.equals(ReqType, Constants.EXOME) && exome_normal_list.contains(tum)) {
-                        norm = tum;
-                        tum = Constants.NA_LOWER_CASE;
-                    }
-                    pW.write(sampleNormalization(norm) + "\t" + sampleNormalization(tum) + "\n");
-                }
-                pW.close();
+        DataRecord[] pairRecords = {};
+        // First try PairingInfo
+        try {
+            pairRecords = request.getChildrenOfType(Constants.PAIRING_INFO, apiUser);
+        } catch (Throwable e) {
+            devLogger.warn("Exception thrown: ", e);
+        }
 
-                if (shiny || krista) {
-                    printPairingExcel(pairing_filename, pair_Info, exome_normal_list);
-                }
+        HashSet<String> normalCMOids = new HashSet<>(igo_normal_info.values());
+
+        LinkedHashMap<String, String> pair_info;
+        if (pairRecords != null && pairRecords.length > 0) {
+            // Generate Pool Normal Map
+            pair_info = grab_PairingInfo_pairings(igo_tumor_info, igo_normal_info, pairRecords, apiUser);
+            if (pair_info != null && pair_info.size() > 0) {
+                return pair_info;
             }
+        }
 
-        } catch (Exception e) {
-            devLogger.warn(String.format("Exception thrown while creating pairing file: %s", pairing_filename), e);
+        //Next try samplePairings
+        // For this you have to go through all the tumor IDs.
+
+        pair_info = grab_SamplePairings_pairings(igo_tumor_info, normalCMOids, drm, apiUser);
+        if (pair_info != null && pair_info.size() > 0) {
+            return pair_info;
+        }
+
+        //Last, Do smart Pairing.
+        if (!patientSampleMap.isEmpty()) {
+            log("Pairing records not found, trying smart Pairing", Level.INFO, Level.INFO);
+            pair_info = smartPairing(SampleListToOutput, patientSampleMap);
+            return pair_info;
+        } else {
+            logWarning("No Pairing File will be output.");
+            return Collections.emptyMap();
         }
     }
 
-    private void printWarnings(List<String> warnings) {
-        for (String warning : warnings) {
-            devLogger.warn(warning);
+    private LinkedHashMap<String, String> grab_PairingInfo_pairings(LinkedHashMap<String, String> igo_tumor_info, LinkedHashMap<String, String> igo_normal_info, DataRecord[] pairRecords, User apiUser) {
+        // Grab all IGO IDs and normals from the list of data records
+        LinkedHashMap<String, String> igo_pairing = new LinkedHashMap<>();
+        for (DataRecord rec : pairRecords) {
+            String tumIGO = null;
+            String norm = null;
+            try {
+                tumIGO = rec.getStringVal(VeloxConstants.TUMOR_ID, apiUser);
+                norm = rec.getStringVal(VeloxConstants.NORMAL_ID, apiUser);
+            } catch (Throwable e) {
+                devLogger.warn("Exception thrown: ", e);
+            }
+
+            if (norm == null || norm.isEmpty()) {
+                if (Objects.equals(ReqType, Constants.EXOME)) {
+                    norm = Constants.NA_LOWER_CASE;
+                } else {
+                    continue;
+                }
+            }
+
+            if (!igo_normal_info.keySet().contains(norm) && !norm.equals("na")) {
+                logWarning(String.format("Normal matching with this tumor is NOT a valid sample in this request: Tumor: %s Norm: %s. The normal will be changed to na.", igo_tumor_info.get(tumIGO), norm));
+                norm = Constants.NA_LOWER_CASE;
+            }
+
+            //Ignore if igo id is not in igo_tumor_info (probably failed sample, or not sequenced)
+            if (!igo_tumor_info.keySet().contains(tumIGO)) {
+                continue;
+            }
+
+            if (igo_pairing.keySet().contains(tumIGO)) {
+                logWarning(String.format("Multiple pairing records for %s! This is not supposed to happen.", tumIGO));
+                continue;
+            }
+            if (Objects.equals(norm, Constants.NA_LOWER_CASE)) {
+                igo_pairing.put(igo_tumor_info.get(tumIGO), norm);
+            } else {
+                igo_pairing.put(igo_tumor_info.get(tumIGO), igo_normal_info.get(norm));
+            }
+
+        }
+
+        // checking to see if all exome records are empty!
+        if (Objects.equals(ReqType, Constants.EXOME)) {
+            Set<String> normals_present = new HashSet<>(igo_pairing.values());
+            if (normals_present.size() == 1 && normals_present.contains("na")) {
+                return null;
+            }
+        }
+
+        if (igo_pairing.size() > 0) {
+            Set<String> temp1 = new HashSet<>(igo_tumor_info.values());
+            Set<String> temp2 = new HashSet<>(igo_pairing.keySet());
+            temp1.removeAll(temp2);
+            if (temp1.size() > 0) {
+                logWarning("one or more pairing records was not found! " + Arrays.toString(temp1.toArray()));
+            }
+        }
+
+        return igo_pairing;
+    }
+
+    private LinkedHashMap<String, String> grab_SamplePairings_pairings(LinkedHashMap<String, String> igo_tumor_info, HashSet<String> normalCMOids, DataRecordManager drm, User apiUser) {
+        LinkedHashMap<String, String> pair_info = new LinkedHashMap<>();
+        List<DataRecord> records = new ArrayList<>();
+        for (String id : igo_tumor_info.keySet()) {
+            if (id.startsWith("CTRL-")) {
+                logError("A CTRL- igo ID is listed as Tumor?? " + id);
+                continue;
+            }
+
+            try {
+                records = drm.queryDataRecords("SamplePairing", "SampleId = '" + id + "'", apiUser);
+            } catch (Throwable e) {
+                devLogger.warn("Exception thrown: ", e);
+            }
+
+            if (records.size() == 0) {
+                //print("[WARNING] No pairing record for igo ID '" + id + "'\n");
+                continue;
+            }
+
+            // Just pick the last pairing record, because for some reason there are multiple of the same record.
+            DataRecord rec = records.get(records.size() - 1);
+            String tum = igo_tumor_info.get(id);
+            String norm = null;
+            try {
+                norm = rec.getStringVal(VeloxConstants.SAMPLE_PAIR, apiUser).replaceAll("\\s", "");
+
+            } catch (Throwable e) {
+                devLogger.warn("Exception thrown: ", e);
+            }
+
+            if (norm.isEmpty()) {
+                if (Objects.equals(ReqType, Constants.EXOME)) {
+                    norm = Constants.NA_LOWER_CASE;
+                } else {
+                    continue; // You don't want any records if there is no normals filled out. Matched with pooled normal means they put "na"
+                }
+            } else if (!normalCMOids.contains(norm)) {
+                logWarning("Normal matching with this tumor is NOT a valid sample in this request: Tumor: " + tum + " Normal: " + norm + " The normal will be changed to na.");
+                norm = Constants.NA_LOWER_CASE;
+            }
+
+            if (pair_info.containsKey(tum) && pair_info.get(tum) != norm) {
+                logError(String.format("Tumor is matched with two different normals. I have no idea how this happened! Tumor: %s Normal: %s", tum, norm));
+                return null;
+            }
+
+            pair_info.put(tum, norm);
+        }
+
+        if (pair_info != null && pair_info.size() > 0) {
+            return pair_info;
+        }
+
+        return null;
+    }
+
+    private void printPairingFile(DataRecord request, LinkedHashMap<String, LinkedHashMap<String, String>> SampleListToOutput, DataRecordManager drm, User apiUser, String pairing_filename, LinkedHashMap<String, Set<String>> patientSampleMap) {
+        //Retrieve pairing information
+        Map<String, String> tumorNormalMap = getPairingInfo(request, SampleListToOutput, drm, apiUser, patientSampleMap);
+
+        //Exome only:
+        HashSet<String> missingNormalsToBeAdded = new HashSet<>();
+
+        HashSet<String> normalCMOids = new HashSet<>();
+        // Generate normal CMO IDs
+        for (String samp : SampleListToOutput.keySet()) {
+            if (SampleListToOutput.get(samp).get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL)) {
+                normalCMOids.add(SampleListToOutput.get(samp).get(Constants.CORRECTED_CMO_ID));
+            }
+        }
+
+        if (Objects.equals(ReqType, Constants.EXOME)) {
+            // Make a list of all the unmatched normals, so they can be added to the end of the pairing
+            HashSet<String> normalsPairedWithThings = new HashSet<>(tumorNormalMap.values());
+            missingNormalsToBeAdded = new HashSet<>(normalCMOids);
+            missingNormalsToBeAdded.removeAll(normalsPairedWithThings);
+        }
+        try {
+            //Done going through all igo ids, now print
+            if (tumorNormalMap.size() > 0) {
+                File pairing_file = new File(pairing_filename);
+                PrintWriter pW = new PrintWriter(new FileWriter(pairing_file, false), false);
+                filesCreated.add(pairing_file);
+                for (String tum : tumorNormalMap.keySet()) {
+                    String norm = tumorNormalMap.get(tum);
+                    pW.write(sampleNormalization(norm) + "\t" + sampleNormalization(tum) + "\n");
+                }
+                for (String unmatchedNorm : missingNormalsToBeAdded) {
+                    String tum = Constants.NA_LOWER_CASE;
+                    pW.write(sampleNormalization(unmatchedNorm) + "\t" + sampleNormalization(tum) + "\n");
+                }
+
+                pW.close();
+
+                if (shiny || krista) {
+                    printPairingExcel(pairing_filename, tumorNormalMap, missingNormalsToBeAdded);
+                }
+            }
+        } catch (Throwable e) {
+            devLogger.warn("Exception thrown: ", e);
         }
     }
 
@@ -2617,6 +2750,7 @@ class CreateManifestSheet {
     }
 
     private void copyToArchive(String fromPath, String requestID, String dateDir, String suffix) {
+        devLogger.info(String.format("Copying files from : %s to archive: %s", fromPath, archivePath));
         File curDir = new File(fromPath);
         File projDir = new File(String.format("%s/%s/%s", archivePath, Utils.getFullProjectNameWithPrefix(requestID), dateDir));
 

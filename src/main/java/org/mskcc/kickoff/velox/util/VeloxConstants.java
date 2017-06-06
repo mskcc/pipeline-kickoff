@@ -50,4 +50,6 @@ public class VeloxConstants {
     public static final String KAPA_AUTO_NORMALIZATION_PROTOCOL = "KapaAutoNormalizationProtocol";
     public static final String TARGET_MASS_ALIQ_1 = "TargetMassAliq1";
     public static final String DNA_LIBRARY_PREP_PROTOCOL_1 = "DNALibraryPrepProtocol1";
+    public static final String TUMOR_ID = "TumorId";
+    public static final String NORMAL_ID = "NormalId";
 }

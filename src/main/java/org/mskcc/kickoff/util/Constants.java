@@ -73,6 +73,7 @@ public class Constants {
     public static final String TUMOR = "Tumor";
     public static final String UNKNOWN = "Unknown";
     public static final String LOG_FILE_PREFIX = "Log_";
+    public static final String RECIPE = "Recipe";
 
     public static class Manifest {
         public static final String SAMPLE_INFO = "SampleInfo";

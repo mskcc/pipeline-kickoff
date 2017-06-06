@@ -45,8 +45,6 @@ public enum Recipe {
     MULTIPLE_OF_THE_ABOVE("(Multiple of the Above)"),
     IWG("IWG");
 
-    private String value;
-
     private static final Map<String, Recipe> valueToRecipe = new HashMap<>();
 
     static {
@@ -55,6 +53,8 @@ public enum Recipe {
         }
     }
 
+    private String value;
+
     Recipe(String value) {
         this.value = value;
     }
@@ -62,7 +62,7 @@ public enum Recipe {
     public static Recipe getRecipeByValue(String value) {
         String loweredValue = value.toLowerCase();
         if(!valueToRecipe.containsKey(loweredValue))
-            throw new IllegalArgumentException(String.format("Recipe: %s doesn't exist", value));
+            throw new UnsupportedRecipeException(String.format("Recipe: %s doesn't exist", value));
         return valueToRecipe.get(loweredValue);
     }
 
@@ -70,6 +70,12 @@ public enum Recipe {
     @Override
     public String toString() {
         return value;
+    }
+
+    public static class UnsupportedRecipeException extends RuntimeException {
+        public UnsupportedRecipeException(String message) {
+            super(message);
+        }
     }
 }
 
