@@ -777,6 +777,7 @@ class CreateManifestSheet {
         try {
             return recipes.stream().map(r -> Recipe.getRecipeByValue(r.toString())).distinct().collect(Collectors.toList());
         } catch (Recipe.UnsupportedRecipeException e) {
+            devLogger.warn(e.getMessage(), e);
             Utils.exitLater = true;
         }
 
