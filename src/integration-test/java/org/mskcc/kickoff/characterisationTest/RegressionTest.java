@@ -5,13 +5,15 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
-import org.mskcc.kickoff.characterisationTest.comparator.FileContentFolderComparator;
-import org.mskcc.kickoff.characterisationTest.comparator.FolderComparator;
-import org.mskcc.kickoff.characterisationTest.comparator.LinesEqualExceptPathsAndDatesPredicate;
-import org.mskcc.kickoff.characterisationTest.comparator.NonLogFileFilter;
-import org.mskcc.kickoff.characterisationTest.listener.*;
+import org.mskcc.kickoff.characterisationTest.comparator.*;
+import org.mskcc.kickoff.characterisationTest.listener.ActualOutputFailingTestListener;
+import org.mskcc.kickoff.characterisationTest.listener.ArchiveOutputFailingTestListener;
+import org.mskcc.kickoff.characterisationTest.listener.ExpectedOutputFailingTestListener;
+import org.mskcc.kickoff.characterisationTest.listener.FailingNumberOfFilesListener;
+import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -90,14 +92,33 @@ public class RegressionTest {
 
         folderComparator.registerFailingComparisonListener(new ActualOutputFailingTestListener(failingOutputPathForCurrentRun, project));
         folderComparator.registerFailingComparisonListener(new ExpectedOutputFailingTestListener(failingOutputPathForCurrentRun, project));
-        folderComparator.registerFailingComparisonListener(new RunInfoFailingTestListener(actualOutputPath, failingOutputPathForCurrentRun));
 
         folderComparator.registerFailingNumberOfFilesListener(new FailingNumberOfFilesListener(failingOutputPathForCurrentRun));
-        folderComparator.registerFailingNumberOfFilesListener(new RunInfoFailingTestListener(actualOutputPath, failingOutputPathForCurrentRun));
 
         LOGGER.info(String.format("Comparing actual dir: %s and expected dir: %s", actualOutputPath, expectedOutputPath));
 
-        assertThat(folderComparator.compare(actualOutputPath, expectedOutputPath), is(true));
+        if (Utils.getFilesInDir(expectedOutputPath).size() == 0) {
+            assertProjectAndLogDirExists(actualOutputPath);
+        } else {
+            assertThat(folderComparator.compare(actualOutputPath, expectedOutputPath), is(true));
+        }
+    }
+
+    private void assertProjectAndLogDirExists(Path actualOutputPath) {
+        List<File> outputDirFiles = Utils.getFilesInDir(actualOutputPath, new RelevantProjectFileFilter());
+        assertThat(outputDirFiles.size(), is(1));
+
+        File projectDir = outputDirFiles.get(0);
+        assertThat(projectDir.getName(), is(Utils.getFullProjectNameWithPrefix(project)));
+
+        List<File> projectOutputFiles = Utils.getFilesInDir(projectDir);
+        assertThat(projectOutputFiles.size(), is(1));
+        File logDir = projectOutputFiles.get(0);
+        assertThat(logDir.getName(), is(Constants.LOG_FILE_PATH));
+
+        List<File> logFiles = Utils.getFilesInDir(logDir);
+        assertThat(logFiles.size(), is(1));
+        assertThat(logFiles.get(0).getName(), is(Utils.getPmLogFileName()));
     }
 
     private void assertArchiveFiles(Path actualOutputPathForProject) throws Exception {
@@ -111,10 +132,8 @@ public class RegressionTest {
 
             folderComparator.registerFailingComparisonListener(new ArchiveOutputFailingTestListener(failingOutputPathForCurrentRun, project));
             folderComparator.registerFailingComparisonListener(new ActualOutputFailingTestListener(failingOutputPathForCurrentRun, project));
-            folderComparator.registerFailingComparisonListener(new RunInfoFailingTestListener(actualOutputPath, failingOutputPathForCurrentRun));
 
             folderComparator.registerFailingNumberOfFilesListener(new FailingNumberOfFilesListener(failingOutputPathForCurrentRun));
-            folderComparator.registerFailingNumberOfFilesListener(new RunInfoFailingTestListener(actualOutputPath, failingOutputPathForCurrentRun));
 
             LOGGER.info(String.format("Comparing actual dir: %s and archive dir: %s", actualOutputPathForProject, archiveProjectTodayPath));
 

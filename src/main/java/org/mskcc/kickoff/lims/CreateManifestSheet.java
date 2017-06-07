@@ -22,8 +22,7 @@ import org.apache.poi.xssf.usermodel.*;
 import org.mskcc.kickoff.PriorityAwareLogMessage;
 import org.mskcc.kickoff.config.AppConfiguration;
 import org.mskcc.kickoff.config.Arguments;
-import org.mskcc.kickoff.config.ArgumentsFileReporter;
-import org.mskcc.kickoff.config.LogConfigurer;
+import org.mskcc.kickoff.config.LogConfigurator;
 import org.mskcc.kickoff.domain.LibType;
 import org.mskcc.kickoff.domain.Recipe;
 import org.mskcc.kickoff.domain.RequestSpecies;
@@ -129,7 +128,7 @@ class CreateManifestSheet {
     private ProjectNameValidator projectNameValidator;
 
     @Autowired
-    private LogConfigurer logConfigurer;
+    private LogConfigurator logConfigurator;
 
     public static void main(String[] args) throws ServerException {
         try {
@@ -141,7 +140,7 @@ class CreateManifestSheet {
 
             createManifestSheet.run();
         } catch (Exception e) {
-            devLogger.error(String.format("Error while generating manifest files for project: %s", Arguments.project));
+            devLogger.error(String.format("Error while generating manifest files for project: %s", Arguments.project), e);
         }
     }
 
@@ -161,11 +160,6 @@ class CreateManifestSheet {
         return context;
     }
 
-    private static void saveCurrentArgumentToFile() {
-        ArgumentsFileReporter argumentsFileReporter = new ArgumentsFileReporter();
-        argumentsFileReporter.printCurrentArgumentsToFile();
-    }
-
     private static void closeConnection() {
         if (connection.isConnected()) {
             try {
@@ -177,18 +171,34 @@ class CreateManifestSheet {
     }
 
     private void run() {
-        logConfigurer.configureDevLog();
+        logConfigurator.configureDevLog();
         devLogger.info("Received program arguments: " + toPrintable());
-        saveCurrentArgumentToFile();
+        String projectFilePath = getProjectOutputDir(Arguments.project);
+        logConfigurator.configurePmLog(projectFilePath);
+
         projectNameValidator.validate(Arguments.project);
 
-        generate();
+        generate(projectFilePath);
+    }
+
+    private String getProjectOutputDir(String requestID) {
+        String projectFilePath = String.format("%s/%s", draftProjectFilePath, Utils.getFullProjectNameWithPrefix(requestID));
+        if (!StringUtils.isEmpty(outdir)) {
+            File f = new File(outdir);
+            if (f.exists() && f.isDirectory())
+                return String.format("%s/%s", outdir, Utils.getFullProjectNameWithPrefix(requestID));
+        }
+
+        new File(projectFilePath).mkdirs();
+
+        return projectFilePath;
     }
 
     /**
      * Connect to a server, then execute the rest of code.
+     * @param projectFilePath
      */
-    private void generate() {
+    private void generate(String projectFilePath) {
         connection = new VeloxConnection(limsConnectionFilePath);
         try {
             connection.openFromFile();
@@ -199,7 +209,7 @@ class CreateManifestSheet {
             VeloxStandalone.run(connection, new VeloxTask<Object>() {
                 @Override
                 public Object performTask() throws VeloxStandaloneException {
-                    queryProjectInfo(user, dataRecordManager, project);
+                    queryProjectInfo(user, dataRecordManager, project, projectFilePath);
                     return new Object();
                 }
             });
@@ -210,16 +220,25 @@ class CreateManifestSheet {
         }
     }
 
-    private void queryProjectInfo(User apiUser, DataRecordManager drm, String requestID) {
+    private void queryProjectInfo(User apiUser, DataRecordManager drm, String requestID, String projectFilePath) {
+        File outputDir = new File(outdir);
+        if (!StringUtils.isEmpty(outdir)) {
+            if (outputDir.exists() && outputDir.isDirectory()) {
+                String message = String.format("Overwriting default dir to %s", projectFilePath);
+                pmLogger.info(message);
+                devLogger.info(message);
+            } else {
+                String message = String.format("The outdir directory you gave me is empty or does not exist: %s", outdir);
+                Utils.exitLater = true;
+                pmLogger.error(message);
+                devLogger.error(message);
+            }
+        }
+
         initializeFilePermissions();
 
         // this is to set up if production or draft (depreciated, everything goes to the draft project file path)
         Boolean draft = !prod;
-        // Sets up project file path
-        String projectFilePath = productionProjectFilePath + "/" + ReqType + "/" + Utils.getFullProjectNameWithPrefix(requestID);
-        if (draft) {
-            projectFilePath = draftProjectFilePath + "/" + Utils.getFullProjectNameWithPrefix(requestID);
-        }
 
         try {
             List<DataRecord> requests = drm.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestID + "'", apiUser);
@@ -229,29 +248,6 @@ class CreateManifestSheet {
                 pmLogger.info(message);
                 devLogger.error(message);
                 return;
-            }
-
-            logConfigurer.configurePmLog();
-
-            //checks argument outdir. If someone put this, it creates a directory for this project, and changes project file path to outdir
-            if (outdir != null && !outdir.isEmpty()) {
-                File f = new File(outdir);
-                if (f.exists() && f.isDirectory()) {
-                    outdir += "/" + Utils.getFullProjectNameWithPrefix(requestID);
-                    File i = new File(outdir);
-                    if (!i.exists()) {
-                        i.mkdir();
-                    }
-                    log(String.format("Overwriting default dir to %s", outdir), Level.INFO, Level.INFO);
-                    projectFilePath = outdir;
-                } else {
-                    logError(String.format("The outdir directory you gave me is empty or does not exist: %s", outdir), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
-                }
-            }
-            // create directory, create log dir
-            File projDir = new File(projectFilePath);
-            if (!projDir.exists()) {
-                projDir.mkdir();
             }
 
             for (DataRecord request : requests) {
@@ -511,7 +507,7 @@ class CreateManifestSheet {
                     sampInfo = getManualOverrides(readmeInfo, sampInfo);
 
                     if (ReqType.equals(Constants.RNASEQ) || ReqType.equals(Constants.OTHER)) {
-                        projDir = new File(projectFilePath);
+                        File projDir = new File(projectFilePath);
                         if (!projDir.exists()) {
                             projDir.mkdir();
                         }

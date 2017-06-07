@@ -28,12 +28,6 @@ dependencies {
     compile group: 'org.springframework', name: 'spring-test', version: '4.3.7.RELEASE'
 }
 
-test {
-    testLogging {
-        events 'started', 'passed'
-    }
-}
-
 task copyRuntimeLibs(type: Copy) {
 //    delete fileTree(dir: "libs/")
     from configurations.testRuntime

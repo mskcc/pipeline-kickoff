@@ -20,6 +20,9 @@ public class AppConfiguration {
     public static PropertySourcesPlaceholderConfigurer propertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/application.properties"));
+        propertySourcesPlaceholderConfigurer.setOrder(0);
+        propertySourcesPlaceholderConfigurer.setIgnoreUnresolvablePlaceholders(true);
+
         return propertySourcesPlaceholderConfigurer;
     }
 
@@ -28,6 +31,9 @@ public class AppConfiguration {
     public static PropertySourcesPlaceholderConfigurer devPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/application-dev.properties"));
+        propertySourcesPlaceholderConfigurer.setOrder(0);
+        propertySourcesPlaceholderConfigurer.setIgnoreUnresolvablePlaceholders(true);
+
         return propertySourcesPlaceholderConfigurer;
     }
 
@@ -36,6 +42,8 @@ public class AppConfiguration {
     public static PropertySourcesPlaceholderConfigurer igoPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/lims-igo.properties"));
+        propertySourcesPlaceholderConfigurer.setOrder(1);
+
         return propertySourcesPlaceholderConfigurer;
     }
 
@@ -44,6 +52,8 @@ public class AppConfiguration {
     public static PropertySourcesPlaceholderConfigurer tangoPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/lims-tango.properties"));
+        propertySourcesPlaceholderConfigurer.setOrder(1);
+
         return propertySourcesPlaceholderConfigurer;
     }
 
@@ -58,8 +68,8 @@ public class AppConfiguration {
     }
 
     @Bean
-    public LogConfigurer logConfigurer() {
-        LogConfigurer logConfigurer = new LogConfigurer();
-        return logConfigurer;
+    public LogConfigurator logConfigurer() {
+        PmAndDevLogConfigurator pmAndDevLogConfigurator = new PmAndDevLogConfigurator();
+        return pmAndDevLogConfigurator;
     }
 }
