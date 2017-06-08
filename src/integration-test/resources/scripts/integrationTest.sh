@@ -8,14 +8,28 @@ arguments=("noArg" "-noPortal" "-f" "-exome" "-s")
 init() {
 	jdk8="/home/kristakaz/jdk/jdk1.8.0_121"
 	java8="${jdk8}/bin/java"
-	#expectedPath=/home/kristakaz/prodOutput
-	expectedPath=~/kickoffTest/expectedOutput
-	actualPath=~/kickoffTest/actualOutput
-	prodKickoff=~/pipeline_kickoff_prod/exemplar
-	actualKickoff=~/pipeline-kickoff-refactored
-	testResults=~/kickoffTest/testResults
+	testDir=~/test
+	echo "Clearing test directory ${testDir}"
+	find ${testDir} -mindepth 1 -delete
+
+	expectedPath="${testDir}/expectedOutput"
+	mkdir -p ${expectedPath}
+
+	actualPath="${testDir}/actualOutput"
+	mkdir -p ${actualPath}
+
+	prodKickoff=~/pipeline_kickoff_prod
+	prodTestKickoff="${testDir}/pipeline_kickoff_prod/exemplar"
+
+	currentKickoff=~/pipeline-kickoff-refactored
+	currentTestKickoff="${testDir}/pipeline-kickoff-refactored"
+
+	testResults="${testDir}/testResults"
 	failingDir="${testResults}/failing"
+	mkdir -p ${failingDir}
+
 	succeededProjectsList="${testResults}/succeededProjects.txt"
+
 	archivePath=~/testIfs/projects/BIC/archive/
 	echo "Succeeded projects path: ${succeededProjectsList}"
 }
@@ -40,8 +54,8 @@ getOutputPath() {
 runTrunk() {
 	header3 "Running [PROD] version of Pipeline Kickoff for project ${1} with argument $2"
 	
-	echo "Changing directory to ${prodKickoff}"
-	cd ${prodKickoff}
+	echo "Changing directory to ${prodTestKickoff}"
+	cd ${prodTestKickoff}
 	outputPath=$(getOutputPath $expectedPath $1 $2)
 	echo "Output path: ${outputPath}"
 	mkdir -p ${outputPath}
@@ -53,22 +67,22 @@ runTrunk() {
 
 runCurrent() {
 	header3 "Running [CURRENT] version of Pipeline Kickoff for project ${1} with argument $2"
-	echo "Chaging directory to ${actualKickoff}"
-	cd ${actualKickoff}
+	echo "Chaging directory to ${currentTestKickoff}"
+	cd ${currentTestKickoff}
 	outputPath=$(getOutputPath $actualPath $1 $2)
 	echo "Output path: ${outputPath}"
 	mkdir -p ${outputPath}
 	argToPass=$(getArgToPass $2)
 	echo "Argument passed: ${argToPass}"
-	./gradlew run -Dspring.profiles.active=dev,igo -PprogramArgs=-p,${1},-o,${outputPath},-rerunReason,TEST,${argToPass}
+	./gradlew run -Dspring.profiles.active=dev,tango -PprogramArgs=-p,${1},-o,${outputPath},-rerunReason,TEST,${argToPass}
 	#${java8} -cp .:libs/*:build/classes/main:build/resources/main -Dspring.profiles.active=dev org.mskcc.kickoff.lims.CreateManifestSheet -p ${1} -o ${outputPath} -rerunReason TEST ${argToPass}
 	cd ~
 }
 
 runTest() {
 	header3 "Running [TEST] comparing trunk and current for project $1 with argument $2"
-	echo "Changing directory to ${actualKickoff}"
-	cd ${actualKickoff}
+	echo "Changing directory to ${currentTestKickoff}"
+	cd ${currentTestKickoff}
 	actual=$(getOutputPath $actualPath $1 $2)
 	expected=$(getOutputPath $expectedPath $1 $2)
 	echo "Actual output path: $actual"
@@ -76,6 +90,14 @@ runTest() {
 	./gradlew integrationTest -Dspring.profiles.active=dev -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList}
 	#${java8} -cp .:libs/*:build/classes/main:build/classes/integrationTest:build/resources/integrationTest -Dspring.profiles.active=dev -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList} org.junit.runner.JUnitCore org.mskcc.kickoff.characterisationTest.RegressionTest
 	cd ~
+}
+
+copySourceCode() {
+    echo "Copying prod source code from: ${prodKickoff} to test directory: ${testDir}"
+    rsync -az --exclude '.*' ${prodKickoff} "${testDir}/"
+
+    echo "Copying current kickoff source code from: ${currentKickoff} to test directory: ${testDir}"
+    rsync -az --exclude '.*' ${currentKickoff} "${testDir}/"
 }
 
 clearOutputPaths() {
@@ -164,9 +186,12 @@ projects=(
 "07507_B" # no recipe in the sample sheet
 "08192_E" # no tumor
 )
+
 projectsList=$(printf ",%s" "${projects[@]}")
 
 header1 "Running Pipeline Kickoff tests for projects ${projectsList:1}"
+
+copySourceCode
 
 echo "Clearing output paths: ${expectedPath} and ${actualPath}"
 clearOutputPaths
