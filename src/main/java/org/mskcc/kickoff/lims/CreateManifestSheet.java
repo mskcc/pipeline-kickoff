@@ -221,8 +221,8 @@ class CreateManifestSheet {
     }
 
     private void queryProjectInfo(User apiUser, DataRecordManager drm, String requestID, String projectFilePath) {
-        File outputDir = new File(outdir);
         if (!StringUtils.isEmpty(outdir)) {
+            File outputDir = new File(outdir);
             if (outputDir.exists() && outputDir.isDirectory()) {
                 String message = String.format("Overwriting default dir to %s", projectFilePath);
                 pmLogger.info(message);
