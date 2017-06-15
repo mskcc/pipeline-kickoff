@@ -2,7 +2,6 @@ package org.mskcc.kickoff.lims;
 
 import com.sampullara.cli.Args;
 import com.sampullara.cli.Argument;
-import com.velox.api.datamgmtserver.DataMgmtServer;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.datarecord.IoError;
@@ -18,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.velox.util.VeloxConstants;
+import org.mskcc.kickoff.velox.util.VeloxUtils;
 
 import java.io.*;
 import java.rmi.RemoteException;
@@ -38,9 +38,9 @@ class QueryImpactProjectInfo {
     private static final LinkedHashMap<String, String> pmEmail = new LinkedHashMap<>();
     @Argument(alias = "p", description = "Project to get samples for")
     private static String project;
-    private LogWriter logger;
     private final HashSet<String> platforms = new HashSet<>();
     private final Map<String, String> ProjectInfoMap = new LinkedHashMap<>();
+    private LogWriter logger;
 
     public static void main(String[] args) throws ServerException {
         QueryImpactProjectInfo qe = new QueryImpactProjectInfo();
@@ -79,11 +79,11 @@ class QueryImpactProjectInfo {
 
                 logger = new LogWriter(getClass());
 
-                VeloxConnection connection = new VeloxConnection("Connection.txt");
+                VeloxConnection connection = VeloxUtils.getVeloxConnection("Connection.txt");
                 System.setErr(console);
                 try {
 
-                    connection.openFromFile();
+                    connection.open();
                     // Execute the program
                     VeloxStandalone.run(connection, new VeloxTask<Object>() {
                         @Override
@@ -107,7 +107,6 @@ class QueryImpactProjectInfo {
             e.printStackTrace(console);
         }
     }
-
     private void queryProjectInfo(User apiUser, DataRecordManager drm, String requestID) {
         queryProjectInfo(apiUser, drm, requestID, null);
     }

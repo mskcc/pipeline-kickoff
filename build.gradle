@@ -62,12 +62,13 @@ sourceSets {
         }
         resources.srcDir file('src/integration-test/resources')
         compileClasspath += sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
     }
 }
 
 configurations {
-    integrationTestCompile.extendsFrom testCompile
-    integrationTestRuntime.extendsFrom testRuntime
+    integrationTestCompile.extendsFrom compile
+    integrationTestRuntime.extendsFrom compile
 }
 
 task integrationTest(type: Test) {

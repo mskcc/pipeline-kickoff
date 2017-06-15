@@ -31,6 +31,7 @@ import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.mskcc.kickoff.validator.ProjectNameValidator;
 import org.mskcc.kickoff.velox.util.VeloxConstants;
+import org.mskcc.kickoff.velox.util.VeloxUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -199,9 +200,9 @@ class CreateManifestSheet {
      * @param projectFilePath
      */
     private void generate(String projectFilePath) {
-        connection = new VeloxConnection(limsConnectionFilePath);
+        connection = VeloxUtils.getVeloxConnection(limsConnectionFilePath);
         try {
-            connection.openFromFile();
+            connection.open();
 
             if (connection.isConnected())
                 user = connection.getUser();

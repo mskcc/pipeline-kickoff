@@ -1,5 +1,10 @@
 package org.mskcc.kickoff.config;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.apache.log4j.helpers.Loader;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.validator.LimsProjectNameValidator;
 import org.mskcc.kickoff.validator.ProjectNamePredicate;
@@ -14,12 +19,15 @@ import java.util.function.Predicate;
 
 @Configuration
 public class AppConfiguration {
-
     @Bean
     @Profile(Constants.PROD_PROFILE)
     public static PropertySourcesPlaceholderConfigurer propertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/application.properties"));
+
+        LogManager.resetConfiguration();
+        PropertyConfigurator.configure(Loader.getResource("log4j.properties"));
+
         propertySourcesPlaceholderConfigurer.setOrder(0);
         propertySourcesPlaceholderConfigurer.setIgnoreUnresolvablePlaceholders(true);
 
@@ -31,6 +39,12 @@ public class AppConfiguration {
     public static PropertySourcesPlaceholderConfigurer devPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/application-dev.properties"));
+
+        LogManager.resetConfiguration();
+        PropertyConfigurator.configure(Loader.getResource("log4j-dev.properties"));
+        Logger.getRootLogger().setLevel(Level.OFF);
+
+
         propertySourcesPlaceholderConfigurer.setOrder(0);
         propertySourcesPlaceholderConfigurer.setIgnoreUnresolvablePlaceholders(true);
 

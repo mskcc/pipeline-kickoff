@@ -74,7 +74,7 @@ runCurrent() {
 	mkdir -p ${outputPath}
 	argToPass=$(getArgToPass $2)
 	echo "Argument passed: ${argToPass}"
-	./gradlew run -Dspring.profiles.active=dev,tango -PprogramArgs=-p,${1},-o,${outputPath},-rerunReason,TEST,${argToPass}
+	./gradlew run -Dspring.profiles.active=dev,igo -PprogramArgs=-p,${1},-o,${outputPath},-rerunReason,TEST,${argToPass}
 	#${java8} -cp .:libs/*:build/classes/main:build/resources/main -Dspring.profiles.active=dev org.mskcc.kickoff.lims.CreateManifestSheet -p ${1} -o ${outputPath} -rerunReason TEST ${argToPass}
 	cd ~
 }

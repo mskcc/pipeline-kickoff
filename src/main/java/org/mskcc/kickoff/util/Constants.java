@@ -1,7 +1,6 @@
 package org.mskcc.kickoff.util;
 
 public class Constants {
-
     public static final String BAIT_VERSION = "BAIT_VERSION";
     public static final String BANANNA_GRAM_72 = "banannaGram72";
     public static final String BIC_AUTORUNNABLE = "BicAutorunnable";
