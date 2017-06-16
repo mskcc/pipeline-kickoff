@@ -1973,12 +1973,12 @@ class CreateManifestSheet {
                             // Confirm there is a SampleSheet.csv in the path:
                             File samp_sheet = new File(p + "/SampleSheet.csv");
                             if (!samp_sheet.isFile() && ReqType.equals(Constants.IMPACT)) {
-                                if (shiny) {
-                                    System.out.print("[ERROR] ");
-                                } else {
-                                    System.out.print("[WARNING] ");
-                                }
                                 String message = String.format("Sample %s from run %s does not have a sample sheet in the sample directory. This will not pass the validator.", sample, RunIDFull);
+                                if (shiny) {
+                                    pmLogger.error(message);
+                                } else {
+                                    pmLogger.log(PmLogPriority.WARNING, message);
+                                }
                                 devLogger.warn(message);
                             }
 
