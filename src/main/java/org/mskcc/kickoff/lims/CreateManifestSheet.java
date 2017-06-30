@@ -1086,7 +1086,7 @@ class CreateManifestSheet {
                     strand.add(Strand.REVERSE);
                     ReqType = Constants.RNASEQ;
                 }
-                if (rec.getChildrenOfType(VeloxConstants.NIMBLE_GEN_HYB_PROTOCOL_2, apiUser).length != 0) {
+                if (rec.getChildrenOfType(VeloxConstants.NIMBLE_GEN_HYB_PROTOCOL, apiUser).length != 0) {
                     ReqType = Constants.IMPACT;
                 }
                 if (rec.getChildrenOfType(VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_1, apiUser).length != 0) {
