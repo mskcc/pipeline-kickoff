@@ -6,10 +6,7 @@ import org.junit.Rule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.mskcc.kickoff.characterisationTest.comparator.*;
-import org.mskcc.kickoff.characterisationTest.listener.ActualOutputFailingTestListener;
-import org.mskcc.kickoff.characterisationTest.listener.ArchiveOutputFailingTestListener;
-import org.mskcc.kickoff.characterisationTest.listener.ExpectedOutputFailingTestListener;
-import org.mskcc.kickoff.characterisationTest.listener.FailingNumberOfFilesListener;
+import org.mskcc.kickoff.characterisationTest.listener.*;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
@@ -42,13 +39,14 @@ public class RegressionTest {
     public WriteToTestReportOnFailure ruleExample = new WriteToTestReportOnFailure();
     private boolean isShiny = false;
     private String project = "06907_J";
-    private Path expectedOutputPath = Paths.get("src/test/resources/expectedOutput/06907_J/noArg");
-    private Path actualOutputPath = Paths.get("src/test/resources/actualOutput/06907_J/noArg");
+    private Path expectedOutputPath = Paths.get("src/integration-test/resources/expectedOutput/06907_J/noArg");
+    private Path actualOutputPath = Paths.get("src/integration-test/resources/actualOutput/06907_J/noArg");
     private String succeededProjectsListPath = "testResults/succeededProjects.txt";
     private Path failingOutputPathForCurrentRun;
     private String fullProjectName;
     private String failingOutputPath = "testResults/failing";
     private String arg;
+    private BiPredicate<String, String> areLinesEqualExceptPathsAndDatesPredicate;
 
     @Before
     public void setUp() throws Exception {
@@ -67,6 +65,7 @@ public class RegressionTest {
 
         failingOutputPathForCurrentRun = Paths.get(String.format("%s/%s/%s", failingOutputPath, project, arg));
         fullProjectName = Utils.getFullProjectNameWithPrefix(project);
+        areLinesEqualExceptPathsAndDatesPredicate = new LinesEqualExceptPathsAndDatesPredicate(actualOutputPath, expectedOutputPath);
     }
 
     @org.junit.Test
@@ -85,15 +84,16 @@ public class RegressionTest {
     }
 
     private void assertOutputFilesContent() throws Exception {
-        BiPredicate<String, String> areLinesEqualExceptPathsAndDatesPredicate = new LinesEqualExceptPathsAndDatesPredicate(actualOutputPath, expectedOutputPath);
         FolderComparator folderComparator = new FileContentFolderComparator.Builder()
                 .setAreLinesEqualPredicate(areLinesEqualExceptPathsAndDatesPredicate)
                 .build();
 
         folderComparator.registerFailingComparisonListener(new ActualOutputFailingTestListener(failingOutputPathForCurrentRun, project));
         folderComparator.registerFailingComparisonListener(new ExpectedOutputFailingTestListener(failingOutputPathForCurrentRun, project));
+        folderComparator.registerFailingComparisonListener(new RunInfoFailingTestListener(actualOutputPath, failingOutputPathForCurrentRun));
 
         folderComparator.registerFailingNumberOfFilesListener(new FailingNumberOfFilesListener(failingOutputPathForCurrentRun));
+        folderComparator.registerFailingNumberOfFilesListener(new RunInfoFailingTestListener(actualOutputPath, failingOutputPathForCurrentRun));
 
         LOGGER.info(String.format("Comparing actual dir: %s and expected dir: %s", actualOutputPath, expectedOutputPath));
 
@@ -132,14 +132,14 @@ public class RegressionTest {
 
             folderComparator.registerFailingComparisonListener(new ArchiveOutputFailingTestListener(failingOutputPathForCurrentRun, project));
             folderComparator.registerFailingComparisonListener(new ActualOutputFailingTestListener(failingOutputPathForCurrentRun, project));
+            folderComparator.registerFailingComparisonListener(new RunInfoFailingTestListener(actualOutputPath, failingOutputPathForCurrentRun));
 
             folderComparator.registerFailingNumberOfFilesListener(new FailingNumberOfFilesListener(failingOutputPathForCurrentRun));
+            folderComparator.registerFailingNumberOfFilesListener(new RunInfoFailingTestListener(actualOutputPath, failingOutputPathForCurrentRun));
 
             LOGGER.info(String.format("Comparing actual dir: %s and archive dir: %s", actualOutputPathForProject, archiveProjectTodayPath));
 
-            assertThat(folderComparator.compare(actualOutputPathForProject, archiveProjectTodayPath), is(true));
-        } else {
-            LOGGER.info("Omitting comparing archive files as there are no output files to compare with");
+            assertThat(folderComparator.compare(archiveProjectTodayPath, actualOutputPathForProject), is(true));
         }
     }
 
@@ -169,34 +169,16 @@ public class RegressionTest {
     private class WriteToTestReportOnFailure extends TestWatcher {
         @Override
         protected void succeeded(Description description) {
-            Path succeeded = Paths.get(succeededProjectsListPath);
+            LOGGER.info(String.format("Saving information about succeeded projects to file: %s", succeededProjectsListPath));
+            Path succeeded;
             try {
+                succeeded = Paths.get(succeededProjectsListPath);
                 createFileIfNeeded(succeeded);
                 List<String> succeededProject = Collections.singletonList(String.format("%s%s", project, arg));
                 Files.write(succeeded, succeededProject, StandardOpenOption.APPEND);
-            } catch (IOException e) {
-                throw new RuntimeException(String.format("Unable to create file: %s", succeeded.toString()), e);
+            } catch (Exception e) {
+                throw new RuntimeException(String.format("Unable to create file: %s", succeededProjectsListPath, e));
             }
-        }
-
-        @Override
-        protected void failed(Throwable e, Description description) {
-            saveFailedProjectsListToFile();
-        }
-
-        private void saveFailedProjectsListToFile() {
-            Path failedProjectsList = Paths.get(succeededProjectsListPath);
-            try {
-                createFileIfNeeded(failedProjectsList);
-                writeToFile(failedProjectsList);
-            } catch (IOException e1) {
-                throw new RuntimeException(String.format("Unable to create file: %s", failedProjectsList), e1);
-            }
-        }
-
-        private void writeToFile(Path failedProjectsList) throws IOException {
-            List<String> failedInfo = Collections.singletonList(project);
-            Files.write(failedProjectsList, failedInfo, StandardOpenOption.APPEND);
         }
 
         private void createFileIfNeeded(Path path) throws IOException {

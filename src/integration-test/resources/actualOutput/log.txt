@@ -1,0 +1,35 @@
+[WARNING] RECIPE: ChIPSeq
+[WARNING] Request Name doesn't match one of the supported request types: ChIPSeq. Information will be pulled as if it is an rnaseq/unknown run.
+[WARNING] Checking the parent samples of Pool-04657_D-Tube1_2_1_1_1 for SampleCMOInfoRecords.
+[INFO] Overwriting default dir to /home/reza/test/actualOutput/04657_D/noArg/Proj_04657_D
+[SAMPLE_QC_ERROR] Sample Liver_CBMG2_Fli1 from RunID BRAD_0040 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample Liver_CBMG3_IgG from RunID BRAD_0040 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample Liver_CBMG1_Fli1 from RunID BRAD_0040 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample Liver_CBMG2_IgG from RunID BRAD_0040 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample LEC_CB6_Fli1 from RunID LIZ_0605 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample LEC_CB6_Fli1 from RunID BRAD_0040 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample Liver_CBMG1_IgG from RunID BRAD_0040 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample LEC_CB5_Fli1 from RunID LIZ_0605 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample LEC_CB5_Fli1 from RunID BRAD_0040 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample LEC_CB6_IgG from RunID LIZ_0605 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample LEC_CB6_IgG from RunID BRAD_0040 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample LEC_CB5_IgG,LEC_CB6_IgG,LEC_CB5_Fli1,LEC_CB6_Fli1 from RunID LIZ_0605 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample LEC_CB5_IgG from RunID LIZ_0605 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample LEC_CB5_IgG from RunID BRAD_0040 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[SAMPLE_QC_ERROR] Sample Liver_CBMG3_Fli1 from RunID BRAD_0040 needed additional reads. This status should change when the extra reads are sequenced. Please check.
+[ERROR] For this project the sample specific QC is not present. My script is looking at the pool specific QC instead, which assumes that if the pool passed, every sample in the pool also passed. This is not necessarily true and you might want to check the delivery email to make sure it includes every sample name that is on the manifest. This doesn’t mean you can’t put the project through, it just means that the script doesn’t know if the samples failed sequencing QC.
+[POOL_QC_ERROR] RunID BRAD_0040 is still under review for pool Pool-04657_D-Tube1_1_1_1_1_1 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID BRAD_0040 is still under review for pool Pool-04657_D-Tube1_1_1_1_1_1 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID BRAD_0040 is still under review for pool Pool-04657_D-Tube1_1_1_1_1_1 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID BRAD_0040 is still under review for pool Pool-04657_D-Tube1_1_1_1_1_1 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID LIZ_0605 is still under review for pool Pool-04657_D-Tube1_2_1_1_1_2 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID BRAD_0040 is still under review for pool Pool-04657_D-Tube1_1_1_1_1_1 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID BRAD_0040 is still under review for pool Pool-04657_D-Tube1_1_1_1_1_1 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID LIZ_0605 is still under review for pool Pool-04657_D-Tube1_2_1_1_1_2 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID BRAD_0040 is still under review for pool Pool-04657_D-Tube1_1_1_1_1_1 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID LIZ_0605 is still under review for pool Pool-04657_D-Tube1_2_1_1_1_2 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID BRAD_0040 is still under review for pool Pool-04657_D-Tube1_1_1_1_1_1 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID LIZ_0605 is still under review for pool Pool-04657_D-Tube1_2_1_1_1_2 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID LIZ_0605 is still under review for pool Pool-04657_D-Tube1_2_1_1_1_2 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID BRAD_0040 is still under review for pool Pool-04657_D-Tube1_1_1_1_1_1 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID BRAD_0040 is still under review for pool Pool-04657_D-Tube1_1_1_1_1_1 I cannot guarantee this is DONE!

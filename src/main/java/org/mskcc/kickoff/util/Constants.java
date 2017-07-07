@@ -2,8 +2,7 @@ package org.mskcc.kickoff.util;
 
 public class Constants {
     public static final String BAIT_VERSION = "BAIT_VERSION";
-    public static final String BANANNA_GRAM_72 = "banannaGram72";
-    public static final String BIC_AUTORUNNABLE = "BicAutorunnable";
+    public static final String RESERVED_TEST_PHRASE = "banannaGram72";
     public static final String CAPTURE_BAIT_SET = "CAPTURE_BAIT_SET";
     public static final String CMO_PATIENT_ID = "CMO_PATIENT_ID";
     public static final String CMO_SAMPLE_ID = "CMO_SAMPLE_ID";
@@ -29,7 +28,6 @@ public class Constants {
     public static final String INVESTIGATOR_SAMPLE_ID = "INVESTIGATOR_SAMPLE_ID";
     public static final String LOG_FILE_PATH = "logs";
     public static final String MANIFEST_SAMPLE_ID = "MANIFEST_SAMPLE_ID";
-    public static final String MANUAL_DEMUX = "ManualDemux";
     public static final String MANUAL_EXOME_BAIT_VERSION_HUMAN = "AgilentExon_51MB_b37_v3";
     public static final String MANUAL_EXOME_XENOGRAFT_BAIT_VERSION_HUMAN_MOUSE = "AgilentExon_51MB_b37_mm10_v3";
     public static final String MATCHED_NORMAL = "MatchedNormal";
@@ -38,7 +36,6 @@ public class Constants {
     public static final String NA_LOWER_CASE = "na";
     public static final String NORMAL = "Normal";
     public static final String NORMAL_POOL = "NormalPool";
-    public static final String NOT_AUTORUNNABLE = "NOT_AUTORUNNABLE";
     public static final String NULL = "null";
     public static final String ONCOTREE_CODE = "ONCOTREE_CODE";
     public static final String OTHER = "other";
@@ -72,7 +69,23 @@ public class Constants {
     public static final String TUMOR = "Tumor";
     public static final String UNKNOWN = "Unknown";
     public static final String LOG_FILE_PREFIX = "Log_";
-    public static final String RECIPE = "Recipe";
+    public static final String FFPEPOOLEDNORMAL = "FFPEPOOLEDNORMAL";
+    public static final String FROZENPOOLEDNORMAL = "FROZENPOOLEDNORMAL";
+    public static final String MOUSEPOOLEDNORMAL = "MOUSEPOOLEDNORMAL";
+    public static final String BARCODE_ID = "BARCODE_ID";
+    public static final String BARCODE_INDEX = "BARCODE_INDEX";
+    public static final String UNDER_REVIEW = "Under-Review";
+    public static final String FAILED_REPROCESS = "Failed-Reprocess";
+    public static final String REQUIRED_ADDITIONAL_READS = "Required-Additional-Reads";
+    public static final String FORCED = "#FORCED";
+    public static final String FAILED_COMPLETED = "Failed - Completed";
+    public static final String CAPTURE_INPUT = "CAPTURE_INPUT";
+    public static final String RECIPE = "recipe";
+    public static final String ASSAY = "Assay";
+    public static final String INNOVATION_PROJECT_ID = "05500";
+    public static final int MINIMUM_NUMBER_OF_READS = 1000000;
+    public static final String TEST_PROFILE = "test";
+    public static final String UNDEFINED = "undefined";
 
     public static class Manifest {
         public static final String SAMPLE_INFO = "SampleInfo";

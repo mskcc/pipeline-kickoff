@@ -2,13 +2,21 @@
 
 source "${BASH_SOURCE%/*}/utils.sh"
 
-#arguments=("noArg" "-s")
+#arguments=("noArg")
 arguments=("noArg" "-noPortal" "-f" "-exome" "-s")
 
 init() {
-	jdk8="/home/kristakaz/jdk/jdk1.8.0_121"
+	jdk8=~/jdk
 	java8="${jdk8}/bin/java"
-	testDir=~/test
+
+    projectDir=~/work
+    if [ "${1}" == "prod" ]; then
+        projectDir=~/prod
+        echo "Running integration test for production version in ${projectDir}"
+    fi
+
+    testDir="${projectDir}/test"
+
 	echo "Clearing test directory ${testDir}"
 	find ${testDir} -mindepth 1 -delete
 
@@ -18,11 +26,11 @@ init() {
 	actualPath="${testDir}/actualOutput"
 	mkdir -p ${actualPath}
 
-	prodKickoff=~/pipeline_kickoff_prod
+	prodKickoff=~/krista/pipeline_kickoff_prod
 	prodTestKickoff="${testDir}/pipeline_kickoff_prod/exemplar"
 
-	currentKickoff=~/pipeline-kickoff-refactored
-	currentTestKickoff="${testDir}/pipeline-kickoff-refactored"
+	currentKickoff="${projectDir}/pipeline-kickoff"
+	currentTestKickoff="${testDir}/pipeline-kickoff"
 
 	testResults="${testDir}/testResults"
 	failingDir="${testResults}/failing"
@@ -74,7 +82,7 @@ runCurrent() {
 	mkdir -p ${outputPath}
 	argToPass=$(getArgToPass $2)
 	echo "Argument passed: ${argToPass}"
-	./gradlew run -Dspring.profiles.active=dev,igo -PprogramArgs=-p,${1},-o,${outputPath},-rerunReason,TEST,${argToPass}
+	./gradlew run -Dspring.profiles.active=test,igo -PprogramArgs=-p,${1},-o,${outputPath},-rerunReason,TEST,${argToPass}
 	#${java8} -cp .:libs/*:build/classes/main:build/resources/main -Dspring.profiles.active=dev org.mskcc.kickoff.lims.CreateManifestSheet -p ${1} -o ${outputPath} -rerunReason TEST ${argToPass}
 	cd ~
 }
@@ -87,7 +95,7 @@ runTest() {
 	expected=$(getOutputPath $expectedPath $1 $2)
 	echo "Actual output path: $actual"
 	echo "Expected output path: $expected"
-	./gradlew integrationTest -Dspring.profiles.active=dev -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList}
+	./gradlew integrationTest -Dspring.profiles.active=test,igo -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList}
 	#${java8} -cp .:libs/*:build/classes/main:build/classes/integrationTest:build/resources/integrationTest -Dspring.profiles.active=dev -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList} org.junit.runner.JUnitCore org.mskcc.kickoff.characterisationTest.RegressionTest
 	cd ~
 }
@@ -142,7 +150,7 @@ forceTrunk="false"
 if [ $# -gt 0 ] && [ $1 = "force" ]; then
 	forceTrunk="true"
 fi	
-init
+init $1
 
 projects=(
 "01234_EWA" # not exising project
@@ -151,7 +159,6 @@ projects=(
 "04298_C" # Recipe WholeGenomeSeq
 "04298_D" # !manual Demux
 "04495" # manual Demux
-"04525_J" # Exemplar Sample status Failed-Complete
 "04657_D" # ChIPSeq recipe
 "04919_G" # Exemplar Sample status Failed-Complete
 "05257_AX" # investigator patient IDs are problematic
@@ -163,27 +170,37 @@ projects=(
 "05667_AB"  #pairing changes
 "05667_AT"  #pairing changes
 "05667_AW"  #pairing changes
+"05667_AY"
 "05684_D" # KK- NimlegenHybridizationProtocol1
 "05737_R" # HEMEPACT_v3 bait set, species in Xenograft
+"05816_AA"
 "05873_H" # Failed Sequence Analysis QC
 "05971_G" # IMPACT bait set, species in Xenograft
 "06049_I"  #pairing changes
 "06049_R"  #pairing changes
 "06049_U"  #pairing changes
 "06208_D" # Agilient Capture KAPA Libary
-"06477_E" # !KAPAAgilentCaptureProtocol2
+"06259_B"
+#"06477_E" # !KAPAAgilentCaptureProtocol2, very slow project
 "06507" # Request with 2 samples with same name
 "06507_D" # rename FASTQ
 "06507_E"
 "06836_E" # IMPACT bait set, two samples are failed in post process QC
 "06907_J"
 "06912_B" # Failed Reprocess Sequence Analysis QC
+"06938_M" # Exemplar Sample status Failed-Complete
+"06990_E"
+"07037_O"
+"07165_D"
 "07275" # germline-no pipeline run
 "07306_D" # Request with 2 samples with same name
 "07323_F"  #pairing changes
+"07372_B"
 "07437_B" # BR7 and BR11 match each other, neither one matches corresponding DMP normal
 "07473" # Under review Sequence Analysis QC
 "07507_B" # no recipe in the sample sheet
+"07520"
+"07527_B"
 "08192_E" # no tumor
 )
 
@@ -216,4 +233,3 @@ do
 done
 
 printResults
-

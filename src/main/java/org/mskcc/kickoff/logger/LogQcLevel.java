@@ -1,9 +1,9 @@
-package org.mskcc.kickoff.lims;
+package org.mskcc.kickoff.logger;
 
 import org.apache.log4j.Level;
 
 class LogQcLevel extends Level {
-    public LogQcLevel(int level, String levelStr, int syslogEquivalent) {
+    LogQcLevel(int level, String levelStr, int syslogEquivalent) {
         super(level, levelStr, syslogEquivalent);
     }
 }

@@ -2,7 +2,7 @@
 
 echo "Project ${1}"
 echo "Argument ${2}"
-cd ~/pipeline-kickoff-refactored
+cd ~/work/pipeline-kickoff
 
 debugMode="false"
 if [ "${2}" == "debug" ] || [ "${3}" == "debug" ]; then

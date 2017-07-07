@@ -4,26 +4,22 @@ import com.sampullara.cli.Args;
 import com.sampullara.cli.Argument;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
-import com.velox.api.datarecord.IoError;
-import com.velox.api.datarecord.NotFound;
 import com.velox.api.user.User;
 import com.velox.api.util.ServerException;
 import com.velox.sapioutils.client.standalone.VeloxConnection;
 import com.velox.sapioutils.client.standalone.VeloxStandalone;
 import com.velox.sapioutils.client.standalone.VeloxStandaloneException;
 import com.velox.sapioutils.client.standalone.VeloxTask;
-import com.velox.util.LogWriter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
+import org.apache.log4j.Logger;
+import org.mskcc.kickoff.domain.Request;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.util.Utils;
 import org.mskcc.kickoff.velox.util.VeloxConstants;
 import org.mskcc.kickoff.velox.util.VeloxUtils;
+import org.springframework.beans.factory.annotation.Value;
 
-import java.io.*;
-import java.rmi.RemoteException;
-import java.text.DateFormat;
-import java.text.Normalizer;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -32,100 +28,68 @@ import java.util.regex.Pattern;
  *
  * @author Krista Kaz
  */
-class QueryImpactProjectInfo {
-    private static final PrintStream console = System.err;
-    // Make HashMap for Project Manager emails
+public class QueryImpactProjectInfo {
+    private static final Logger DEV_LOGGER = Logger.getLogger(QueryImpactProjectInfo.class);
     private static final LinkedHashMap<String, String> pmEmail = new LinkedHashMap<>();
     @Argument(alias = "p", description = "Project to get samples for")
     private static String project;
     private final HashSet<String> platforms = new HashSet<>();
-    private final Map<String, String> ProjectInfoMap = new LinkedHashMap<>();
-    private LogWriter logger;
+    private Map<String, String> projectInfo = new LinkedHashMap<>();
+
+    @Value("${limsConnectionFilePath}")
+    private String limsConnectionFilePath;
 
     public static void main(String[] args) throws ServerException {
         QueryImpactProjectInfo qe = new QueryImpactProjectInfo();
-
-
-        System.setErr(new PrintStream(new OutputStream() {
-            public void write(int b) {
-            }
-        }));
 
         if (args.length == 0) {
             Args.usage(qe);
         } else {
             Args.parse(qe, args);
-            qe.connectServer();
         }
-    }
-
-    /**
-     * Connect to a server, then execute the rest of code.
-     */
-    private void connectServer() {
-        try {
-            File logsDir = new File("logs");
-            if (!logsDir.exists()) {
-                logsDir.mkdir();
-            }
-
-            DateFormat logDateFormat = new SimpleDateFormat("dd-MMM-yy");
-
-            String filename = "Log_" + logDateFormat.format(new Date()) + ".txt";
-            File file = new File(logsDir, filename);
-            PrintWriter printWriter = new PrintWriter(new FileWriter(file, true), true);
-            try {
-                LogWriter.setPrintWriter("kristakaz", printWriter);
-
-                logger = new LogWriter(getClass());
-
-                VeloxConnection connection = VeloxUtils.getVeloxConnection("Connection.txt");
-                System.setErr(console);
-                try {
-
-                    connection.open();
-                    // Execute the program
-                    VeloxStandalone.run(connection, new VeloxTask<Object>() {
-                        @Override
-                        public Object performTask() throws VeloxStandaloneException {
-                            queryProjectInfo(user, dataRecordManager, project);
-                            return new Object();
-                        }
-                    });
-                } finally {
-                    connection.close();
-                }
-            } finally {
-                printWriter.close();
-            }
-        } catch (com.velox.sapioutils.client.standalone.VeloxConnectionException e) {
-            System.err.println("com.velox.sapioutils.client.standalone.VeloxConnectionException: Connection refused for all users.1 ");
-            System.out.println("[ERROR] There was an issue connecting with LIMs. Someone or something else may be using this connection. Please try again in a minute or two.");
-            System.exit(0);
-        } catch (Throwable e) {
-            logger.logError(e);
-            e.printStackTrace(console);
-        }
-    }
-    private void queryProjectInfo(User apiUser, DataRecordManager drm, String requestID) {
-        queryProjectInfo(apiUser, drm, requestID, null);
     }
 
     public String getPI() {
-        if (ProjectInfoMap.containsKey("Lab_Head_E-mail")) {
-            return ProjectInfoMap.get("Lab_Head_E-mail");
+        if (projectInfo.containsKey("Lab_Head_E-mail")) {
+            return projectInfo.get("Lab_Head_E-mail");
         }
         return Constants.NULL;
     }
 
     public String getInvest() {
-        if (ProjectInfoMap.containsKey("Requestor_E-mail")) {
-            return ProjectInfoMap.get("Requestor_E-mail");
+        if (projectInfo.containsKey("Requestor_E-mail")) {
+            return projectInfo.get("Requestor_E-mail");
         }
         return Constants.NULL;
     }
 
-    public void queryProjectInfo(User apiUser, DataRecordManager drm, String requestID, String reqType) {
+    public Map<String, String> queryProjectInfo(Request request) {
+        try {
+            VeloxConnection connection = VeloxUtils.getVeloxConnection(limsConnectionFilePath);
+            try {
+                connection.open();
+                VeloxStandalone.run(connection, new VeloxTask<Object>() {
+                    @Override
+                    public Object performTask() throws VeloxStandaloneException {
+                        projectInfo = queryProjectInfo(user, dataRecordManager, request);
+                        return new Object();
+                    }
+                });
+            } finally {
+                connection.close();
+            }
+        } catch (com.velox.sapioutils.client.standalone.VeloxConnectionException e) {
+            System.err.println("com.velox.sapioutils.client.standalone.VeloxConnectionException: Connection refused for all users.1 ");
+            System.out.println("[ERROR] There was an issue connecting with LIMs. Someone or something else may be using this connection. Please try again in a minute or two.");
+            System.exit(0);
+        } catch (Exception e) {
+            DEV_LOGGER.warn(e.getMessage(), e);
+        }
+
+        return projectInfo;
+    }
+
+    public Map<String, String> queryProjectInfo(User apiUser, DataRecordManager drm, Request request) {
         // Adding PM emails to the hashmap
         pmEmail.put("Bouvier, Nancy", "bouviern@mskcc.org");
         pmEmail.put("Selcuklu, S. Duygu", "selcukls@mskcc.org");
@@ -133,9 +97,10 @@ class QueryImpactProjectInfo {
 
         // If request ID includes anything besides A-Za-z_0-9 exit
         Pattern reqPattern = Pattern.compile("^[0-9]{5,}[A-Z_]*$");
+        String requestID = request.getId();
         if (!reqPattern.matcher(requestID).matches()) {
             System.out.println("Malformed request ID.");
-            return;
+            return null;
         }
 
         try {
@@ -144,18 +109,18 @@ class QueryImpactProjectInfo {
 
             //initalizing empty map
             for (String field : ProjectFields) {
-                ProjectInfoMap.put(field, "NA");
+                projectInfo.put(field, Constants.NA);
             }
 
-
-            for (DataRecord request : requests) {
+            String reqType = request.getRequestType();
+            for (DataRecord requestDataRecord : requests) {
                 if (reqType == null) {
-                    reqType = figureOutReqType(request, apiUser, drm);
+                    reqType = figureOutReqType(requestDataRecord, apiUser, drm);
                 }
 
                 // Sample Preservation Types
                 // Get samples - get their sample preservation
-                List<DataRecord> Samps = Arrays.asList(request.getChildrenOfType(VeloxConstants.SAMPLE, apiUser));
+                List<DataRecord> Samps = Arrays.asList(requestDataRecord.getChildrenOfType(VeloxConstants.SAMPLE, apiUser));
                 HashSet<String> preservations = new HashSet<>();
                 if (Samps.size() > 0) {
                     List<Object> pres = drm.getValueList(Samps, VeloxConstants.PRESERVATION, apiUser);
@@ -165,7 +130,7 @@ class QueryImpactProjectInfo {
                     }
                 }
                 // Get Samples that are in Plates
-                for (DataRecord child : request.getChildrenOfType(VeloxConstants.PLATE, apiUser)) {
+                for (DataRecord child : requestDataRecord.getChildrenOfType(VeloxConstants.PLATE, apiUser)) {
                     List<DataRecord> Samps2 = Arrays.asList(child.getChildrenOfType(VeloxConstants.SAMPLE, apiUser));
                     if (Samps2.size() > 0) {
                         List<Object> pres = drm.getValueList(Samps, VeloxConstants.PRESERVATION, apiUser);
@@ -175,58 +140,58 @@ class QueryImpactProjectInfo {
                         }
                     }
                 }
-                ProjectInfoMap.put("Sample_Type", StringUtils.join(preservations, ","));
+                projectInfo.put("Sample_Type", StringUtils.join(preservations, ","));
 
                 if (!platforms.isEmpty()) {
-                    ProjectInfoMap.put("Platform", StringUtils.join(platforms, ","));
+                    projectInfo.put("Platform", StringUtils.join(platforms, ","));
                 } else {
-                    ProjectInfoMap.put("Platform", request.getPickListVal(VeloxConstants.REQUEST_NAME, apiUser));
+                    projectInfo.put("Platform", requestDataRecord.getPickListVal(VeloxConstants.REQUEST_NAME, apiUser));
                 }
                 // ## Get Project Associated with it, print out necessary details
-                List<DataRecord> parents = request.getParentsOfType(VeloxConstants.PROJECT, apiUser);
+                List<DataRecord> parents = requestDataRecord.getParentsOfType(VeloxConstants.PROJECT, apiUser);
                 if (parents != null && parents.size() > 0) {
                     DataRecord p = parents.get(0);
 
-                    ProjectInfoMap.put("IGO_Project_ID", requestID);
-                    ProjectInfoMap.put("Final_Project_Title", p.getStringVal("CMOFinalProjectTitle", apiUser));
-                    ProjectInfoMap.put("CMO_Project_ID", p.getStringVal("CMOProjectID", apiUser));
+                    projectInfo.put("IGO_Project_ID", requestID);
+                    projectInfo.put("Final_Project_Title", p.getStringVal("CMOFinalProjectTitle", apiUser));
+                    projectInfo.put("CMO_Project_ID", p.getStringVal("CMOProjectID", apiUser));
                     // From projct brief you have to take out the \n.
-                    ProjectInfoMap.put("CMO_Project_Brief", p.getStringVal("CMOProjectBrief", apiUser).replace("\n", "").replace("\r", ""));
+                    projectInfo.put("CMO_Project_Brief", p.getStringVal("CMOProjectBrief", apiUser).replace("\n", "").replace("\r", ""));
                 }
 
-                ProjectInfoMap.put("Project_Manager", request.getPickListVal("ProjectManager", apiUser));
-                ProjectInfoMap.put("Project_Manager_Email", String.valueOf(pmEmail.get(request.getPickListVal("ProjectManager", apiUser))));
-                ProjectInfoMap.put("Readme_Info", request.getStringVal("ReadMe", apiUser));
+                projectInfo.put("Project_Manager", requestDataRecord.getPickListVal("ProjectManager", apiUser));
+                projectInfo.put("Project_Manager_Email", String.valueOf(pmEmail.get(requestDataRecord.getPickListVal("ProjectManager", apiUser))));
+                projectInfo.put("Readme_Info", requestDataRecord.getStringVal("ReadMe", apiUser));
 
 
                 // ******************************* NEW FIELDS - will probably be moved
                 // Bioinformatic Request: FASTQ and BICAnalysis (bools, request specific)
-                ProjectInfoMap.put("Bioinformatic_Request", request.getPickListVal("DataDeliveryType", apiUser));
+                projectInfo.put("Bioinformatic_Request", requestDataRecord.getPickListVal("DataDeliveryType", apiUser));
 
                 // Data Analyst, Data Analyst E-mail
-                ProjectInfoMap.put("Data_Analyst", request.getStringVal("DataAnalyst", apiUser));
-                ProjectInfoMap.put("Data_Analyst_E-mail", request.getStringVal("DataAnalystEmail", apiUser));
+                projectInfo.put("Data_Analyst", requestDataRecord.getStringVal("DataAnalyst", apiUser));
+                projectInfo.put("Data_Analyst_E-mail", requestDataRecord.getStringVal("DataAnalystEmail", apiUser));
 
                 // ******************************* END OF NEW FIELDS
 
                 // Values saved because they will be used to remove duplicated emails in email child
-                String LabHeadEmail = request.getStringVal("LabHeadEmail", apiUser).toLowerCase();
-                String InvestigatorEmail = request.getStringVal("Investigatoremail", apiUser).toLowerCase();
-                String[] LabHeadName = WordUtils.capitalizeFully(request.getStringVal("LaboratoryHead", apiUser)).split(" ", 2);
-                String[] RequesterName = WordUtils.capitalizeFully(request.getStringVal("Investigator", apiUser)).split(" ", 2);
+                String LabHeadEmail = requestDataRecord.getStringVal("LabHeadEmail", apiUser).toLowerCase();
+                String InvestigatorEmail = requestDataRecord.getStringVal("Investigatoremail", apiUser).toLowerCase();
+                String[] LabHeadName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("LaboratoryHead", apiUser)).split(" ", 2);
+                String[] RequesterName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("Investigator", apiUser)).split(" ", 2);
 
                 if (LabHeadName.length > 1) {
-                    ProjectInfoMap.put("Lab_Head", LabHeadName[1] + ", " + LabHeadName[0]);
+                    projectInfo.put("Lab_Head", LabHeadName[1] + ", " + LabHeadName[0]);
                 }
-                ProjectInfoMap.put("Lab_Head_E-mail", LabHeadEmail);
+                projectInfo.put("Lab_Head_E-mail", LabHeadEmail);
                 if (RequesterName.length > 1) {
-                    ProjectInfoMap.put("Requestor", RequesterName[1] + ", " + RequesterName[0]);
+                    projectInfo.put("Requestor", RequesterName[1] + ", " + RequesterName[0]);
                 }
-                ProjectInfoMap.put("Requestor_E-mail", InvestigatorEmail);
+                projectInfo.put("Requestor_E-mail", InvestigatorEmail);
 
 
                 // Get the Child e-mail records, if there are any
-                List<DataRecord> emailList = Arrays.asList(request.getChildrenOfType("Email", apiUser));
+                List<DataRecord> emailList = Arrays.asList(requestDataRecord.getChildrenOfType("Email", apiUser));
                 if (emailList.size() > 0) {
                     List<String> allELists = new LinkedList<>();
                     for (DataRecord email : emailList) {
@@ -248,19 +213,17 @@ class QueryImpactProjectInfo {
                     }
                     if (allELists.size() > 0) {
                         String AlternateEmails = StringUtils.join(allELists, ",");
-                        ProjectInfoMap.put("Alternate_E-mails", AlternateEmails);
+                        projectInfo.put("Alternate_E-mails", AlternateEmails);
                     }
                 }
             }
 
-            printMap(ProjectInfoMap);
-
-        } catch (NotFound | IoError | RemoteException nf) {
-            logger.logError(nf);
-            nf.printStackTrace(console);
+            return getTransformedProjectInfo(projectInfo);
         } catch (Exception e) {
-            e.printStackTrace(console);
+            DEV_LOGGER.warn(String.format("Exception thrown while retrieving project info for request: %s", requestID), e);
         }
+
+        return Collections.emptyMap();
     }
 
     private String figureOutReqType(DataRecord request, User apiUser, DataRecordManager drm) {
@@ -304,30 +267,28 @@ class QueryImpactProjectInfo {
                     }
                 }
             }
-        } catch (NotFound | RemoteException nf) {
-            logger.logError(nf);
-            nf.printStackTrace(console);
         } catch (Exception e) {
-            e.printStackTrace(console);
+            DEV_LOGGER.warn("Exception thrown while retrieving request type for request", e);
         }
 
         return reqType;
     }
 
-    private void printMap(Map<String, String> hm) {
-        for (String key : hm.keySet()) {
-            String val = hm.get(key);
+    private Map<String, String> getTransformedProjectInfo(Map<String, String> projectInfo) {
+        Map<String, String> transformedProjectInfo = new HashMap<>();
+        for (Map.Entry<String, String> entry : projectInfo.entrySet()) {
+            String val = entry.getValue();
             if (val.equals(Constants.NULL) || val.isEmpty()) {
-                val = "NA";
+                val = Constants.NA;
             }
-            System.out.println(filterToAscii(key + ": " + val));
+            String transformedKey = Utils.filterToAscii(entry.getKey());
+            String transformedValue = Utils.filterToAscii(val);
+            transformedProjectInfo.put(transformedKey, transformedValue);
         }
+
+        return transformedProjectInfo;
     }
 
-    private String filterToAscii(String highUnicode) {
-        String lettersAdded = highUnicode.replaceAll("ß", "ss").replaceAll("æ", "ae").replaceAll("Æ", "Ae");
-        return Normalizer.normalize(lettersAdded, Normalizer.Form.NFD).replaceAll("[^\\p{ASCII}]", "");
-    }
 }
 
 

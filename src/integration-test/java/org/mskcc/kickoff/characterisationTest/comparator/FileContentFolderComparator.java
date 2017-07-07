@@ -1,15 +1,11 @@
 package org.mskcc.kickoff.characterisationTest.comparator;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
-import org.apache.poi.xssf.extractor.XSSFExcelExtractor;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.mskcc.kickoff.characterisationTest.listener.FailingTestListener;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.ArrayList;
@@ -21,25 +17,26 @@ import java.util.stream.Collectors;
 
 public class FileContentFolderComparator implements FolderComparator {
     private static final Logger LOGGER = Logger.getLogger(FileContentFolderComparator.class);
-    private static final String LOGS_FOLDER = "logs";
 
     private final List<FailingTestListener> failingComparisonListeners = new ArrayList<>();
     private final List<FailingTestListener> failingNumberOfFilesListeners = new ArrayList<>();
 
-    private final BiPredicate<String, String> areLinesEqualPredicate;
     private final BooleanSupplier shouldCompareLogFilePredicate;
+    private final BiPredicate<File, File> areFilesEqualPredicate;
+    private final XslxComparator xslxComparator;
 
     private FileContentFolderComparator(BiPredicate<String, String> areLinesEqualPredicate, BooleanSupplier shouldCompareLogFilePredicate) {
-        this.areLinesEqualPredicate = areLinesEqualPredicate;
+        areFilesEqualPredicate = new FilesEqualWithoutLinesOrdering(areLinesEqualPredicate);
         this.shouldCompareLogFilePredicate = shouldCompareLogFilePredicate;
+        xslxComparator = new XslxComparator(areLinesEqualPredicate);
     }
 
     public static String getShinyLogFileName() {
-        return Constants.LOG_FILE_PREFIX + Utils.LOG_DATE_FORMAT.format(new Date()) + "_" + Utils.SHINY + ".txt";
+        return String.format("%s%s_%s.txt", Constants.LOG_FILE_PREFIX, Utils.LOG_DATE_FORMAT.format(new Date()), Utils.SHINY);
     }
 
     public static String getLogFileName() {
-        return Constants.LOG_FILE_PREFIX + Utils.LOG_DATE_FORMAT.format(new Date()) + ".txt";
+        return String.format("%s%s.txt", Constants.LOG_FILE_PREFIX, Utils.LOG_DATE_FORMAT.format(new Date()));
     }
 
     @Override
@@ -57,7 +54,7 @@ public class FileContentFolderComparator implements FolderComparator {
                     return false;
 
                 Path actualSubPath = getActualSubPath(actualPath, expectedSubPath);
-                if (isLogFolder(expectedSubPath) && !shouldCompareLogFilePredicate.getAsBoolean()) {
+                if (isLogFolder(expectedSubPath)) {// && !shouldCompareLogFilePredicate.getAsBoolean()) {
                     LOGGER.info(String.format("Omitting comparing actual log files in path: %s with expected path: %s", actualSubPath, expectedSubPath));
                     continue;
                 }
@@ -68,7 +65,6 @@ public class FileContentFolderComparator implements FolderComparator {
 
         return true;
     }
-
 
     @Override
     public void registerFailingComparisonListener(FailingTestListener failingTestListener) {
@@ -97,7 +93,8 @@ public class FileContentFolderComparator implements FolderComparator {
 
     private boolean expectedFileExistsInActualDir(Path actualPath, Path expectedSubPath) {
         if (!Files.exists(getActualSubPath(actualPath, expectedSubPath))) {
-            LOGGER.error(String.format("Expected file: %s does not exist in test path: %s", expectedSubPath, actualPath));
+            LOGGER.error(String.format("Expected file: %s " +
+                    "does not exist in test path: %s", expectedSubPath, actualPath));
             return false;
         }
 
@@ -110,19 +107,19 @@ public class FileContentFolderComparator implements FolderComparator {
     }
 
     private String getActualFileName(Path expectedSubPath) {
-        if(isLogFile(expectedSubPath))
+        if (isLogFile(expectedSubPath))
             return getLogFileName(expectedSubPath);
         return expectedSubPath.getFileName().toString();
     }
 
     private String getLogFileName(Path expectedSubPath) {
-        if(expectedSubPath.getFileName().toString().contains(Utils.SHINY))
+        if (expectedSubPath.getFileName().toString().contains(Utils.SHINY))
             return getShinyLogFileName();
         return getLogFileName();
     }
 
-    private boolean isLogFile(Path expectedSubPath) {
-        return expectedSubPath.getFileName().toString().startsWith(Constants.LOG_FILE_PREFIX);
+    public static boolean isLogFile(Path path) {
+        return path.getFileName().toString().startsWith(Constants.LOG_FILE_PREFIX);
     }
 
     private boolean isNumberOfFilesInDirsEqual(Path actualPath, Path expectedPath) {
@@ -153,87 +150,23 @@ public class FileContentFolderComparator implements FolderComparator {
     }
 
     private boolean isLogFolder(Path directoryFile) {
-        return directoryFile.toFile().getName().equals(LOGS_FOLDER);
+        return directoryFile.toFile().getName().equals(Constants.LOG_FILE_PATH);
     }
 
     private boolean areFilesEqual(File actualFile, File expectedFile) throws Exception {
         if (isXlsxFile(actualFile))
-            return areXslxFilesEqual(actualFile, expectedFile);
-        if(isPmLogFile(actualFile))
-            return arePmLogsEqualWithoutLineOrdering(actualFile, expectedFile);
-        return areFilesEqualExcludingPathsAndDates(actualFile, expectedFile);
+            return areXslxFilesEqualWithoutLineOrder(actualFile, expectedFile);
+        return areFilesEqualPredicate.test(actualFile, expectedFile);
     }
 
-    private boolean arePmLogsEqualWithoutLineOrdering(File actualFile, File expectedFile) throws IOException {
-        List<String> actualLines = Files.readAllLines(actualFile.toPath());
-        List<String> expectedLines = Files.readAllLines(expectedFile.toPath());
-
-        for (String expectedLine : getNonEmptyLines(expectedLines)) {
-            LOGGER.info(String.format("Looking for expected line: %s in actual file", expectedLine));
-            boolean expectedLineExists=false;
-            for (String actualLine : actualLines) {
-                if(areLinesEqualPredicate.test(actualLine, expectedLine)) {
-                    expectedLineExists=true;
-                    break;
-                }
-            }
-
-            if(!expectedLineExists) {
-                LOGGER.error(String.format("Expected line: %s is not present in actual file", expectedLine));
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private List<String> getNonEmptyLines(List<String> expectedLines) {
-        return expectedLines.stream().filter(l -> !StringUtils.isEmpty(l)).collect(Collectors.toList());
-    }
-
-    private boolean isPmLogFile(File file) {
-        return file.getPath().contains(Constants.PROJECT_PREFIX) && file.getName().startsWith(Constants.LOG_FILE_PREFIX);
-    }
-
-    private boolean areFilesEqualExcludingPathsAndDates(File actualFile, File expectedFile) throws IOException {
-        LOGGER.info(String.format("Comparing two files: %s and %s", actualFile, expectedFile));
-        List<String> actualLines = Files.readAllLines(actualFile.toPath());
-        List<String> expectedLines = Files.readAllLines(expectedFile.toPath());
-
-        for (int i = 0; i < expectedLines.size(); i++) {
-            String expectedLine = expectedLines.get(i);
-            String actualLine = actualLines.get(i);
-
-            if (!areLinesEqualPredicate.test(actualLine, expectedLine)) {
-                LOGGER.error(String.format("Different lines found while comparing files: expected file: \nline: %s <--- Expected from file: %s\nline: %s <--- Actual from file: %s", expectedLine, expectedFile, actualLine, actualFile));
-                return false;
-            }
-        }
-
-        return true;
+    private boolean areXslxFilesEqualWithoutLineOrder(File actualFile, File expectedFile) throws IOException {
+        LOGGER.info(String.format("Comparing two xlsx files: %s and %s", actualFile, expectedFile));
+        return xslxComparator.compareWithoutLinesOrdering(actualFile, expectedFile);
     }
 
     private boolean isXlsxFile(File testFile) {
         PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:*.xlsx");
         return pathMatcher.matches(Paths.get(testFile.getName()));
-    }
-
-    private boolean areXslxFilesEqual(File testFile, File expectedFile) throws IOException {
-        LOGGER.info(String.format("Comparing two xlsx files: %s and %s", testFile, expectedFile));
-
-        String testFileText = xslxToText(testFile);
-        String expectedFileText = xslxToText(expectedFile);
-
-        if (!testFileText.equals(expectedFileText)) {
-            LOGGER.error(String.format("Xlsx files: %s and %s are not equal", testFile, expectedFile));
-            return false;
-        }
-
-        return true;
-    }
-
-    private String xslxToText(File testFile) throws IOException {
-        return new XSSFExcelExtractor(new XSSFWorkbook(new FileInputStream(testFile))).getText();
     }
 
     public static class Builder {

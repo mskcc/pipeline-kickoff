@@ -1,0 +1,29 @@
+Pipelines: variants
+Run_Pipeline: variants
+PI_Name: Ganly, Ian
+PI_E-mail: ganlyi@mskcc.org
+PI: ganlyi
+Investigator_Name: Deraje Vasudeva, Shyamprasad
+Investigator_E-mail: derajevs@mskcc.org
+Investigator: derajevs
+DeliverTo: NA
+ProjectID: Proj_02756_B
+ProjectTitle: NA
+ProjectName: NA
+ProjectDesc: NA
+Project_Manager: NA
+Data_Analyst: NA
+Data_Analyst_E-mail: NA
+Project_Manager_Email: NA
+NumberOfSamples: 3
+Species: Human
+AssayPath: NA
+Assay: #NoKAPACaptureProtocol2
+RunNumber: 1
+RunID: PITT_0034_BH5FGMBBXX
+Institution: cmo
+AmplificationTypes: NA
+LibraryTypes: NA
+Strand: NA
+ProjectFolder: /home/reza/test/expectedOutput/02756_B/noArg/Proj_02756_B
+DateOfLastUpdate: 2017-06-14

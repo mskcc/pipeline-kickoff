@@ -1,0 +1,26 @@
+Run_Pipeline: other
+PI_Name: Van Den Brink, Marcel
+PI_E-mail: m-van-den-brink@ski.mskcc.org
+PI: m-van-den-brink
+Investigator_Name: Slingerland, Ann
+Investigator_E-mail: slingera@mskcc.org
+Investigator: slingera
+DeliverTo: NA
+ProjectID: Proj_07473
+ProjectTitle: NA
+ProjectName: NA
+ProjectDesc: NA
+Project_Manager: NA
+Data_Analyst: NA
+Data_Analyst_E-mail: NA
+Project_Manager_Email: NA
+NumberOfSamples: 4
+Species: Bacteria
+RunNumber: 1
+RunID: KIM_0581_AHCV3CBCXY
+Institution: cmo
+Recipe: shRNASeq
+AmplificationTypes: NA
+LibraryTypes: NA
+Strand: NA
+DateOfLastUpdate: 2017-06-06
