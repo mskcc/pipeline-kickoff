@@ -4,15 +4,11 @@ import com.sampullara.cli.Args;
 import com.sampullara.cli.Argument;
 import org.mskcc.kickoff.util.Constants;
 
-import java.util.Arrays;
-
 public class Arguments {
     private static final org.apache.log4j.Logger LOGGER = org.apache.log4j.Logger.getLogger(Constants.DEV_LOGGER);
 
     @Argument(alias = "k", description = "Krista's argument. For her testing")
     public static Boolean krista = false;
-    @Argument(alias = "prod", description = "Production project files (goes in specific path) default to draft directory")
-    public static Boolean prod = false;
     @Argument(alias = "noPortal", description = "This is suppress creation of portal config file.")
     public static Boolean noPortal = false;
     @Argument(alias = "f", description = "Force pulling all samples even if they don't have QC passed.")
@@ -27,33 +23,32 @@ public class Arguments {
     public static String outdir;
     @Argument(alias = "rerunReason", description = "Reason for rerun, *REQUIRED if this is not the first run for this project*")
     public static String rerunReason;
-    @Argument(alias = "options", description = "Pipeline files output dir")
-    public static String[] pipeline_options;
-    @Argument(alias = "t", description = "Testing projects")
-    private static Boolean test = false;
 
     public static String toPrintable() {
         return "Arguments {" +
                 "\nproject=" + project +
                 ",\nkrista=" + krista +
-                ",\nprod=" + prod +
                 ",\nnoPortal=" + noPortal +
                 ",\nforced=" + forced +
                 ",\nrunAsExome=" + runAsExome +
                 ",\nshiny=" + shiny +
                 ",\noutdir=" + outdir +
                 ",\nrerunReason=" + rerunReason +
-                ",\npipeline_options=" + Arrays.toString(pipeline_options) +
-                ",\ntest=" + test +
                 "\n}";
     }
 
     public static void parseArguments(String[] args) {
         try {
             Args.parse(Arguments.class, args);
+            saveCurrentArgumentToFile();
         } catch (Exception e) {
             LOGGER.error("Wrong arguments provided", e);
             Args.usage(Arguments.class);
         }
+    }
+
+    public static void saveCurrentArgumentToFile() {
+        ArgumentsFileReporter argumentsFileReporter = new ArgumentsFileReporter();
+        argumentsFileReporter.printCurrentArgumentsToFile();
     }
 }

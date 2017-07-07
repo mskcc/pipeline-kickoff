@@ -3,7 +3,13 @@ package org.mskcc.kickoff.lims;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.mskcc.domain.QcStatus;
+import org.mskcc.domain.RequestSpecies;
+import org.mskcc.domain.Sample;
+import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.mskcc.kickoff.velox.util.VeloxConstants;
@@ -13,9 +19,6 @@ import java.rmi.RemoteException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import static org.mskcc.kickoff.util.Utils.DEV_LOGGER;
-import static org.mskcc.kickoff.util.Utils.PM_LOGGER;
-
 /**
  * SampleInfo.java
  * <p>
@@ -24,7 +27,7 @@ import static org.mskcc.kickoff.util.Utils.PM_LOGGER;
  *
  * @author Krista Kazmierkiewicz
  */
-class SampleInfo {
+public class SampleInfo {
     /**
      * Map of field defualts that were decided based on what the validator would accept
      **/
@@ -33,6 +36,8 @@ class SampleInfo {
      * Sample renames (old name -> new name) Old name is the name found on the fastq, new name is the corrected CMO Sample ID
      **/
     static final HashMap<String, String> sampleRenames = new HashMap<>();
+    private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
+    private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     // Keeping a list of all the fields seems like a good idea
     private static final List<String> base_fields = new ArrayList<>(Arrays.asList("IGO_ID", "EXCLUDE_RUN_ID", "INCLUDE_RUN_ID", "INVESTIGATOR_PATIENT_ID", "INVESTIGATOR_SAMPLE_ID", "SAMPLE_CLASS", "SAMPLE_TYPE", "SPECIMEN_PRESERVATION_TYPE", "SPECIES", "STATUS", "MANIFEST_SAMPLE_ID", "CORRECTED_CMO_ID", "CMO_SAMPLE_ID"));
     /**
@@ -73,7 +78,7 @@ class SampleInfo {
      * All fields of CMO Sample Level Info supersede sample data record fields<br> - Check to see if project is Xenograft and flag accordingly<br> - Add to
      * sample renames if necessary<br> - Check for genetically modified data record (*** More things need to be done if this is found, but have not yet been done***)
      **/
-    public SampleInfo(String req, User apiUser, DataRecordManager drm, DataRecord rec, Map<String, Set<String>> SamplesAndRuns, Boolean force, Boolean poolNormal, Boolean transfer) {
+    public SampleInfo(User apiUser, DataRecordManager drm, DataRecord rec, Request request, Sample sample) {
         // Save logger
         this.valid_fields.addAll(base_fields);
 
@@ -85,7 +90,7 @@ class SampleInfo {
             // Make field map of all Sample fields
             fieldMap = rec.getFields(apiUser);
         } catch (Exception e) {
-            DEV_LOGGER.warn("Exception thrown while retrieving record's fields", e);
+            DEV_LOGGER.warn(String.format("Exception thrown while retrieving record's fields for sample: %s", sample), e);
         }
         // First assign everything from Sample data record
         assignValuesFromMap(fieldMap);
@@ -95,7 +100,7 @@ class SampleInfo {
             List<DataRecord> drList = new ArrayList<>();
             drList.add(rec);
             CMOInfoMap = drm.getFieldsForChildrenOfType(drList, "SampleCMOInfoRecords", apiUser);
-            if (transfer && CMOInfoMap.get(0).size() == 0) {
+            if (sample.isTransfer() && CMOInfoMap.get(0).size() == 0) {
                 logWarning(String.format("Checking the parent samples of %s for SampleCMOInfoRecords.", this.IGO_ID));
                 // Find all ancestors of type sample
                 // For each look for children for type Sample CMO Info Records
@@ -125,7 +130,7 @@ class SampleInfo {
             } else {
                 assignValuesFromMap(cmoInfoMap.get(0));
             }
-        } else if (!poolNormal) {
+        } else if (!sample.isPooledNormal()) {
             logWarning(String.format("Cannot find cmo sample info data record for %s", this.IGO_ID));
         }
 
@@ -133,6 +138,7 @@ class SampleInfo {
         // This will be used in downstream processing (mostly checking species types of samples AND sometimes figuring out bait version
         if (xenograftClasses.contains(this.SAMPLE_TYPE)) {
             xenograftProject = true;
+            request.setSpecies(RequestSpecies.XENOGRAFT);
         }
 
         // add a sample rename
@@ -151,15 +157,11 @@ class SampleInfo {
         this.MANIFEST_SAMPLE_ID = this.CMO_SAMPLE_ID + "_IGO_" + strippedIGO;
         // Check for gen modified
         if (this.SPECIES.equals("Mouse")) {
-            checkForMouseGenModified(rec, apiUser, drm, transfer);
+            checkForMouseGenModified(rec, apiUser, drm, sample.isTransfer());
         }
 
         // Include RUN ID includes all runs that passed. Exclude RUN ID is just a place holder as of now.
-        if (!force) {
-            this.INCLUDE_RUN_ID = StringUtils.join(SamplesAndRuns.get(this.CMO_SAMPLE_ID), ";");
-        } else {
-            this.INCLUDE_RUN_ID = "#FORCED";
-        }
+        this.INCLUDE_RUN_ID = request.getIncludeRunId(sample.getRuns(s -> s.getSampleLevelQcStatus() == QcStatus.PASSED));
     }
 
     public static HashMap<String, String> getSampleRenames() {
@@ -170,16 +172,11 @@ class SampleInfo {
         return xenograftProject;
     }
 
-    public static void logWarning(String message) {
-        PM_LOGGER.log(PmLogPriority.WARNING, message);
-        DEV_LOGGER.warn(message);
-    }
-
     /**
      * Assigns default values for hash map keys that are necessary for this request type
      **/
     void populateDefaultFields() {
-        fieldDefaults.put("SampleId", Constants.EMPTY);
+        fieldDefaults.put(VeloxConstants.SAMPLE_ID, Constants.EMPTY);
         fieldDefaults.put("OtherSampleId", Constants.EMPTY);
         fieldDefaults.put("PatientId", Constants.EMPTY);
         fieldDefaults.put("UserSampleID", Constants.EMPTY);
@@ -207,7 +204,7 @@ class SampleInfo {
         // IGO ID: Because the CMO Sample Level info will have an IGO ID stored, and
         // Is not necessarily the correct one for THIS request, ignore if the class field is not emtpy.
         if (this.IGO_ID.isEmpty() || Objects.equals(this.IGO_ID, Constants.EMPTY)) {
-            this.IGO_ID = setFromMap(this.IGO_ID, "SampleId", fieldMap);
+            this.IGO_ID = setFromMap(this.IGO_ID, VeloxConstants.SAMPLE_ID, fieldMap);
         }
         String OLD_sampleID = this.CMO_SAMPLE_ID;
         this.CMO_SAMPLE_ID = setFromMap(this.CMO_SAMPLE_ID, VeloxConstants.OTHER_SAMPLE_ID, fieldMap);
@@ -302,7 +299,7 @@ class SampleInfo {
     /**
      * Adds and returns all declared fields in hashmap (does this work??)
      **/
-    public LinkedHashMap<String, String> SendInfoToMap() {
+    public LinkedHashMap<String, String> sendInfoToMap() {
         LinkedHashMap<String, String> myMap = new LinkedHashMap<>();
         for (String field : this.valid_fields) {
             String val = "";
@@ -316,4 +313,23 @@ class SampleInfo {
         }
         return myMap;
     }
+
+    public void logWarning(String message) {
+        PM_LOGGER.log(PmLogPriority.WARNING, message);
+        DEV_LOGGER.warn(message);
+    }
+
+    public void logError(String message) {
+        logError(message, Level.ERROR, Level.ERROR);
+    }
+
+    public void logError(String message, Level pmLogLevel, Level devLogLevel) {
+        Utils.setExitLater(true);
+        PM_LOGGER.log(pmLogLevel, message);
+        DEV_LOGGER.log(devLogLevel, message);
+    }
 }
+
+
+
+

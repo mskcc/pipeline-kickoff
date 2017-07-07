@@ -1,4 +1,4 @@
-package org.mskcc.kickoff;
+package org.mskcc.kickoff.logger;
 
 import org.apache.log4j.Priority;
 

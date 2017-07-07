@@ -1,14 +1,12 @@
 package org.mskcc.kickoff.config;
 
-import org.apache.log4j.DailyRollingFileAppender;
-import org.apache.log4j.FileAppender;
-import org.apache.log4j.Logger;
+import org.apache.log4j.*;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
-public class PmAndDevLogConfigurator implements LogConfigurator {
+public class ProjectAndDevLogConfigurator implements LogConfigurator {
     @Override
-    public void configurePmLog(String projectFilePath) {
+    public void configureProjectLog(String projectFilePath) {
         Logger devLogger = Logger.getLogger(Constants.PM_LOGGER);
         FileAppender appender = (FileAppender) devLogger.getAppender(Constants.PM_LOGGER);
         appender.setFile(String.format("%s/logs/%s", projectFilePath, Utils.getPmLogFileName()));

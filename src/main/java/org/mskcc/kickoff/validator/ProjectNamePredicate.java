@@ -7,6 +7,6 @@ public class ProjectNamePredicate implements Predicate<String> {
 
     @Override
     public boolean test(String projectName) {
-        return !(projectName == null || !projectName.matches(PROJECT_NAME_REGEX));
+        return projectName != null && projectName.matches(PROJECT_NAME_REGEX);
     }
 }

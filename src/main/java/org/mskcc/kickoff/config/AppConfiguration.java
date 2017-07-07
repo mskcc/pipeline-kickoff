@@ -5,70 +5,42 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.helpers.Loader;
-import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.archive.FilesArchiver;
+import org.mskcc.kickoff.archive.ProjectFilesArchiver;
+import org.mskcc.kickoff.archive.RunPipelineLogger;
+import org.mskcc.domain.PassedRunPredicate;
+import org.mskcc.kickoff.generator.FilesGenerator;
+import org.mskcc.kickoff.generator.ManifestGenerator;
+import org.mskcc.kickoff.lims.QueryImpactProjectInfo;
+import org.mskcc.kickoff.printer.MappingFilePrinter;
+import org.mskcc.kickoff.printer.OutputFilesPrinter;
+import org.mskcc.kickoff.printer.SampleKeyPrinter;
+import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.validator.LimsProjectNameValidator;
 import org.mskcc.kickoff.validator.ProjectNamePredicate;
 import org.mskcc.kickoff.validator.ProjectNameValidator;
+import org.mskcc.kickoff.validator.RequestValidator;
+import org.mskcc.kickoff.velox.VeloxRequestProxy;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
-import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
 
+import java.io.IOException;
 import java.util.function.Predicate;
 
 @Configuration
+@Import({ProdConfiguration.class, DevConfiguration.class, TestConfiguration.class})
 public class AppConfiguration {
-    @Bean
-    @Profile(Constants.PROD_PROFILE)
-    public static PropertySourcesPlaceholderConfigurer propertyConfigurer() {
-        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
-        propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/application.properties"));
-
+    static void configureLogger(String loggerPropertiesPath) {
         LogManager.resetConfiguration();
-        PropertyConfigurator.configure(Loader.getResource("log4j.properties"));
+        try {
+            PropertyConfigurator.configure(new ClassPathResource(loggerPropertiesPath).getURL());
+        } catch (IOException e) {
+            PropertyConfigurator.configure(Loader.getResource(loggerPropertiesPath));
+        }
 
-        propertySourcesPlaceholderConfigurer.setOrder(0);
-        propertySourcesPlaceholderConfigurer.setIgnoreUnresolvablePlaceholders(true);
-
-        return propertySourcesPlaceholderConfigurer;
-    }
-
-    @Bean
-    @Profile(Constants.DEV_PROFILE)
-    public static PropertySourcesPlaceholderConfigurer devPropertyConfigurer() {
-        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
-        propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/application-dev.properties"));
-
-        LogManager.resetConfiguration();
-        PropertyConfigurator.configure(Loader.getResource("log4j-dev.properties"));
         Logger.getRootLogger().setLevel(Level.OFF);
-
-
-        propertySourcesPlaceholderConfigurer.setOrder(0);
-        propertySourcesPlaceholderConfigurer.setIgnoreUnresolvablePlaceholders(true);
-
-        return propertySourcesPlaceholderConfigurer;
-    }
-
-    @Bean
-    @Profile(Constants.IGO_PROFILE)
-    public static PropertySourcesPlaceholderConfigurer igoPropertyConfigurer() {
-        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
-        propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/lims-igo.properties"));
-        propertySourcesPlaceholderConfigurer.setOrder(1);
-
-        return propertySourcesPlaceholderConfigurer;
-    }
-
-    @Bean
-    @Profile(Constants.TANGO_PROFILE)
-    public static PropertySourcesPlaceholderConfigurer tangoPropertyConfigurer() {
-        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
-        propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/lims-tango.properties"));
-        propertySourcesPlaceholderConfigurer.setOrder(1);
-
-        return propertySourcesPlaceholderConfigurer;
     }
 
     @Bean
@@ -83,7 +55,62 @@ public class AppConfiguration {
 
     @Bean
     public LogConfigurator logConfigurer() {
-        PmAndDevLogConfigurator pmAndDevLogConfigurator = new PmAndDevLogConfigurator();
-        return pmAndDevLogConfigurator;
+        LogConfigurator logConfigurator = new ProjectAndDevLogConfigurator();
+        return logConfigurator;
+    }
+
+    @Bean
+    public ManifestGenerator manifestGenerator() {
+        return new FilesGenerator();
+    }
+
+    @Bean
+    public RequestProxy requestProxy() {
+        return new VeloxRequestProxy(projectFilesArchiver());
+    }
+
+    @Bean
+    public MappingFilePrinter mappingFilePrinter() {
+        return new MappingFilePrinter();
+    }
+
+    @Bean
+    public SampleKeyPrinter sampleKeyFileGenerator() {
+        return new SampleKeyPrinter();
+    }
+
+    @Bean
+    public ProjectFilesArchiver projectFilesArchiver() {
+        return new ProjectFilesArchiver();
+    }
+
+    @Bean
+    public RunPipelineLogger runPipelineLogger() {
+        return new RunPipelineLogger();
+    }
+
+    @Bean
+    public PassedRunPredicate passedRunPredicate() {
+        return new PassedRunPredicate();
+    }
+
+    @Bean
+    public QueryImpactProjectInfo queryImpactProjectInfo() {
+        return new QueryImpactProjectInfo();
+    }
+
+    @Bean
+    public OutputFilesPrinter manifestFilesPrinter() {
+        return new OutputFilesPrinter(mappingFilePrinter(), sampleKeyFileGenerator());
+    }
+
+    @Bean
+    public FilesArchiver filesArchiver() {
+        return new FilesArchiver();
+    }
+
+    @Bean
+    public RequestValidator requestValidator() {
+        return new RequestValidator();
     }
 }

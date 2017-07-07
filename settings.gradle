@@ -1,3 +1,1 @@
 rootProject.name = 'pipeline-kickoff'
-include ':exemplar'
-project(':exemplar').projectDir = new File(settingsDir, '../exemplar')

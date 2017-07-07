@@ -1,0 +1,27 @@
+Run_Pipeline: other
+PI_E-mail: venturaa@mskcc.org
+PI: venturaa
+ProjectID: Proj_06912_B
+Data_Analyst_E-mail: NA
+Project_Manager_Email: NA
+DeliverTo: NA
+ProjectDesc: NA
+ProjectTitle: NA
+NumberOfSamples: 6
+Project_Manager: NA
+ProjectName: NA
+Investigator_E-mail: lix@sloankettering.edu
+Investigator: lix
+Investigator_Name: Li, Xiaoyi
+Data_Analyst: NA
+Species: Mouse
+PI_Name: Ventura, Andrea
+RunNumber: 1
+RunID: LIZ_0711_AHWN3CBCXX
+Institution: cmo
+Recipe:
+AmplificationTypes: NA
+LibraryTypes: NA
+Strand: NA
+ProjectFolder: /home/reza/work/test/actualOutput/06912_B/noArg/Proj_06912_B
+DateOfLastUpdate: 2017-06-18

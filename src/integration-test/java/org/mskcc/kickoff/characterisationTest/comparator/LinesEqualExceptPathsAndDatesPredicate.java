@@ -2,7 +2,7 @@ package org.mskcc.kickoff.characterisationTest.comparator;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
-import org.mskcc.kickoff.domain.Recipe;
+import org.mskcc.domain.Recipe;
 import org.mskcc.kickoff.util.Constants;
 
 import java.nio.file.Path;
@@ -28,13 +28,15 @@ public class LinesEqualExceptPathsAndDatesPredicate implements BiPredicate<Strin
         actualLogLine = getStringWithoutDates(actualLogLine);
         expectedLogLine = getStringWithoutDates(expectedLogLine);
 
-        if (isUnsupportedRecipeLine(expectedLogLine))
+        if (isUnsupportedRecipeLine(actualLogLine, expectedLogLine))
             return true;
         return actualLogLine.equals(expectedLogLine);
     }
 
-    private boolean isUnsupportedRecipeLine(String expectedLogLine) {
-        return StringUtils.containsIgnoreCase(expectedLogLine, Constants.RECIPE) && isUnsupportedRecipe(expectedLogLine);
+    private boolean isUnsupportedRecipeLine(String actualLogLine, String expectedLogLine) {
+        return StringUtils.containsIgnoreCase(actualLogLine, Constants.RECIPE)
+                && StringUtils.containsIgnoreCase(expectedLogLine, Constants.RECIPE)
+                && isUnsupportedRecipe(expectedLogLine);
     }
 
     private boolean isUnsupportedRecipe(String expectedLogLine) {

@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.lims;
+package org.mskcc.kickoff.logger;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Priority;

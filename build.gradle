@@ -2,6 +2,7 @@ group 'org.mskcc.kickoff.lims'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'application'
+apply plugin: "maven"
 
 mainClassName = "org.mskcc.kickoff.lims.CreateManifestSheet"
 
@@ -9,6 +10,7 @@ sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
+    mavenLocal()
 }
 
 dependencies {
@@ -22,7 +24,7 @@ dependencies {
     compile group: 'log4j', name: 'log4j', version: '1.2.16'
     compile group: 'org.dbunit', name: 'dbunit', version: '2.4.3'
     compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.5'
-    compile files('libs/cli-10.jar', 'libs/sapioutils.jar', 'libs/veloxapi.jar', 'libs/veloxclientutil.jar')
+    compile files('libs/cli-10.jar', 'libs/sapioutils.jar', 'libs/veloxapi.jar', 'libs/veloxclientutil.jar', 'libs/common-domain.jar')
 
     compile group: 'junit', name: 'junit', version: '4.12'
     compile group: 'org.springframework', name: 'spring-test', version: '4.3.7.RELEASE'
@@ -43,7 +45,7 @@ tasks.withType(Test) {
 run {
     if (System.getProperty('DEBUG', 'false') == 'true') {
         jvmArgs '-Xdebug',
-                '-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005'
+                '-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5006'
     }
 
     if(project.hasProperty('programArgs')){
@@ -62,13 +64,12 @@ sourceSets {
         }
         resources.srcDir file('src/integration-test/resources')
         compileClasspath += sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
-        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
     }
 }
 
 configurations {
     integrationTestCompile.extendsFrom compile
-    integrationTestRuntime.extendsFrom compile
+    integrationTestRuntime.extendsFrom runtime
 }
 
 task integrationTest(type: Test) {
