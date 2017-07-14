@@ -3,21 +3,22 @@ package org.mskcc.kickoff.lims;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
-import com.velox.util.LogWriter;
+import org.apache.log4j.Logger;
+import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.Request;
 import org.mskcc.kickoff.util.Constants;
-import org.mskcc.kickoff.util.Utils;
 import org.mskcc.kickoff.velox.util.VeloxConstants;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class SampleInfoExome extends SampleInfoImpact {
-    public SampleInfoExome(String req, User apiUser, DataRecordManager drm, DataRecord rec, Map<String, Set<String>> SamplesAndRuns, Boolean force, Boolean poolNormal, Boolean transfer, LogWriter l) {
-        super(req, apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer, l);
+    private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
-        getSpreadOutInfo(apiUser, drm, rec, SamplesAndRuns, force, poolNormal, transfer);
-        if (poolNormal) {
-            addPooledNormalDefaults(rec, apiUser, drm, SamplesAndRuns);
-        }
+    public SampleInfoExome(User apiUser, DataRecordManager drm, DataRecord rec, Request request, Sample sample) {
+        super(apiUser, drm, rec, request, sample);
     }
 
     /*
@@ -31,19 +32,19 @@ public class SampleInfoExome extends SampleInfoImpact {
     }
 
     @Override
-    protected void getSpreadOutInfo(User apiUser, DataRecordManager drm, DataRecord rec, Map<String, Set<String>> SamplesAndRuns, Boolean force, Boolean poolNormal, Boolean transfer) {
+    protected void getSpreadOutInfo(User apiUser, DataRecordManager drm, DataRecord rec, Request request, Sample sample) {
         // Spread out information available for IMPACT includes this.BARCODE_ID, this.BARCODE_INDEX
         // this.LIBRARY_YIELD this.LIBRARY_INPUT
         // this.CAPTURE_NAME this.CAPTURE_CONCENTRATION
         // this.CAPTURE_INPUT
         // TODO: Find IGO_ID of pool sample that is between
-        getBarcodeInfo(drm, apiUser, SamplesAndRuns, poolNormal, force);
+        getBarcodeInfo(drm, apiUser, request, sample);
 
         if (this.LIBRARY_INPUT == null || this.LIBRARY_INPUT.startsWith("#")) {
             this.LIBRARY_INPUT = Constants.EMPTY;
-            grabLibInput(drm, rec, apiUser, false, poolNormal);
-            if (this.LIBRARY_INPUT.startsWith("#") && transfer) {
-                grabLibInputFromPrevSamps(drm, rec, apiUser, poolNormal);
+            grabLibInput(drm, rec, apiUser, false, sample.isPooledNormal());
+            if (this.LIBRARY_INPUT.startsWith("#") && sample.isTransfer()) {
+                grabLibInputFromPrevSamps(drm, rec, apiUser, sample.isPooledNormal());
             }
             if (this.LIBRARY_INPUT.startsWith("#")) {
                 logWarning(String.format("Unable to find DNA Lib Protocol for Library Input method (sample %s)", this.CMO_SAMPLE_ID));
@@ -66,14 +67,14 @@ public class SampleInfoExome extends SampleInfoImpact {
             if (libVol <= 0) {
                 libVol = getLibraryVolume(rec, apiUser, false, "DNALibraryPrepProtocol2");
             }
-            if (libVol <= 0 && transfer) {
+            if (libVol <= 0 && sample.isTransfer()) {
                 libVol = getLibraryVolumeFromPrevSamps(rec, apiUser, "DNALibraryPrepProtocol3");
                 if (libVol <= 0) {
                     libVol = getLibraryVolumeFromPrevSamps(rec, apiUser, "DNALibraryPrepProtocol2");
                 }
             }
 
-            double libConc = getLibraryConcentration(rec, drm, apiUser, transfer, "KAPAAgilentCaptureProtocol1");
+            double libConc = getLibraryConcentration(rec, drm, apiUser, sample.isTransfer(), "KAPAAgilentCaptureProtocol1");
             if (libVol <= 0 && (this.LIBRARY_YIELD == null || this.LIBRARY_YIELD.startsWith("#"))) {
                 // No matter what I cannot get LIBRARY_YIELD
                 this.LIBRARY_YIELD = "-2";
@@ -103,7 +104,7 @@ public class SampleInfoExome extends SampleInfoImpact {
             kapa1FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_1, apiUser);
             kapa2FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_2, apiUser);
         } catch (Exception e) {
-            Utils.DEV_LOGGER.error("Exception thrown while retrieving information about process capture", e);
+            DEV_LOGGER.error("Exception thrown while retrieving information about process capture", e);
         }
 
         if (kapa1FieldsList == null || kapa1FieldsList.size() == 0 || kapa1FieldsList.get(0) == null || kapa1FieldsList.get(0).size() == 0) {

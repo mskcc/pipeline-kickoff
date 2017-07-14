@@ -1,0 +1,6 @@
+[INFO] Overwriting default dir to /home/reza/test/expectedOutput/04657_D/noArg/Proj_04657_D
+[ERROR] For this project the sample specific QC is not present. My script is looking at the pool specific QC instead, which assumes that if the pool passed, every sample in the pool also passed. This is not necessarily true and you might want to check the delivery email to make sure it includes every sample name that is on the manifest. This doesn’t mean you can’t put the project through, it just means that the script doesn’t know if the samples failed sequencing QC.
+[POOL_QC_ERROR] RunID BRAD_0040 is still under review for pool Pool-04657_D-Tube1_1_1_1_1_1 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID LIZ_0605 is still under review for pool Pool-04657_D-Tube1_2_1_1_1_1 I cannot guarantee this is DONE!
+[POOL_QC_ERROR] RunID LIZ_0605 is still under review for pool Pool-04657_D-Tube1_2_1_1_1_2 I cannot guarantee this is DONE!
+
