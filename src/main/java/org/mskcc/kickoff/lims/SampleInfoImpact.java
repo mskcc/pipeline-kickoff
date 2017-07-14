@@ -107,9 +107,7 @@ public class SampleInfoImpact extends SampleInfo {
     }
 
     private String getPooledNormalRuns(DataRecord rec, User apiUser, DataRecordManager drm, Request request) {
-        //populating run ids
         Set<String> allRunIds = new HashSet<>();
-        //isPassed deleted to take into consideration failed runs as well, isPassed needed for 05583_F, 05816_AA, 05737_R
         Set<Run> runs = request.getAllValidSamples().values().stream().flatMap(s -> s.getValidRuns().stream()).collect(Collectors.toSet());
         for (Run run : runs) {
             allRunIds.add(run.getId());
@@ -159,6 +157,7 @@ public class SampleInfoImpact extends SampleInfo {
         }
 
         if (goodRunIds.size() > 0) {
+            Collections.sort(goodRunIds);
             return StringUtils.join(goodRunIds, ";");
         }
         return "";

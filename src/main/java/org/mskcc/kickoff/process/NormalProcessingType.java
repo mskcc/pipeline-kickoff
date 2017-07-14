@@ -17,10 +17,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class NormalProcessingType implements ProcessingType {
     private static Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);

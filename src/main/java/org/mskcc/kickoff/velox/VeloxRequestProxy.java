@@ -378,10 +378,10 @@ public class VeloxRequestProxy implements RequestProxy {
                         DEV_LOGGER.info(String.format("Combining Two Pooled Normals: %s", sample));
 
                         Map<String, String> originalPooledNormalSample = getPooledNormal(request, cmoNormalId).getProperties();
-                        Set<String> currIncludeRuns = new HashSet<>(Arrays.asList(originalPooledNormalSample.get(Constants.INCLUDE_RUN_ID).split(";")));
+                        Set<String> currIncludeRuns = new TreeSet<>(Arrays.asList(originalPooledNormalSample.get(Constants.INCLUDE_RUN_ID).split(";")));
 
                         DEV_LOGGER.info(String.format("OLD include runs: %s", originalPooledNormalSample.get(Constants.INCLUDE_RUN_ID)));
-                        Set<String> currExcludeRuns = new HashSet<>(Arrays.asList(originalPooledNormalSample.get(Constants.EXCLUDE_RUN_ID).split(";")));
+                        Set<String> currExcludeRuns = new TreeSet<>(Arrays.asList(originalPooledNormalSample.get(Constants.EXCLUDE_RUN_ID).split(";")));
 
                         currIncludeRuns.addAll(Arrays.asList(tempHashMap.get(Constants.INCLUDE_RUN_ID).split(";")));
                         currExcludeRuns.addAll(Arrays.asList(originalPooledNormalSample.get(Constants.EXCLUDE_RUN_ID).split(";")));

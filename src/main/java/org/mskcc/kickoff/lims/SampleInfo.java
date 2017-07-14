@@ -7,6 +7,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.QcStatus;
 import org.mskcc.domain.RequestSpecies;
+import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.Request;
 import org.mskcc.kickoff.logger.PmLogPriority;
@@ -18,6 +19,7 @@ import java.lang.reflect.Field;
 import java.rmi.RemoteException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * SampleInfo.java
@@ -161,7 +163,11 @@ public class SampleInfo {
         }
 
         // Include RUN ID includes all runs that passed. Exclude RUN ID is just a place holder as of now.
-        this.INCLUDE_RUN_ID = request.getIncludeRunId(sample.getRuns(s -> s.getSampleLevelQcStatus() == QcStatus.PASSED).values());
+        Set<Run> runs = sample.getRuns(s -> s.getSampleLevelQcStatus() == QcStatus.PASSED).values().stream().collect(Collectors.toSet());
+        TreeSet<Run> sortedRuns = new TreeSet<>(Comparator.comparing(r -> r.getId()));
+        sortedRuns.addAll(runs);
+
+        this.INCLUDE_RUN_ID = request.getIncludeRunId(sortedRuns);
     }
 
     public static HashMap<String, String> getSampleRenames() {
