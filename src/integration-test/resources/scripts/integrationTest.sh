@@ -9,13 +9,12 @@ init() {
 	jdk8=~/jdk
 	java8="${jdk8}/bin/java"
 
-    projectDir=~/work
-    if [ "${1}" == "prod" ]; then
-        projectDir=~/prod
-        echo "Running integration test for production version in ${projectDir}"
-    fi
+    cd "${BASH_SOURCE%/*}"
+    cd "../../../../.."
+    echo "Project directory: ${projectDir}"
+    pwd
 
-    testDir="${projectDir}/test"
+    testDir="$(pwd)/test"
 
 	echo "Clearing test directory ${testDir}"
 	find ${testDir} -mindepth 1 -delete
@@ -29,7 +28,7 @@ init() {
 	prodKickoff=~/krista/pipeline_kickoff_prod
 	prodTestKickoff="${testDir}/pipeline_kickoff_prod/exemplar"
 
-	currentKickoff="${projectDir}/pipeline-kickoff"
+	currentKickoff="pipeline-kickoff"
 	currentTestKickoff="${testDir}/pipeline-kickoff"
 
 	testResults="${testDir}/testResults"
