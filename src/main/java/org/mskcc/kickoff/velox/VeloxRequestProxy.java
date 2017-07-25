@@ -111,7 +111,6 @@ public class VeloxRequestProxy implements RequestProxy {
                 setReadMe(request, dataRecordRequest);
                 setName(request, dataRecordRequest);
                 setRecipe(request, dataRecordRequest);
-                setRequestName(request, dataRecordRequest);
                 setProperties(request, dataRecordRequest);
 
                 validateSequencingRuns(request);
@@ -334,15 +333,6 @@ public class VeloxRequestProxy implements RequestProxy {
         return pairing;
     }
 
-    private void setRequestName(Request request, DataRecord dataRecordRequest) {
-        try {
-            String requestName = dataRecordRequest.getPickListVal(Constants.REQUEST_NAME, user);
-            request.setRequestName(requestName);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private void processPooledNormals(Request request, DataRecord dataRecordRequest) {
         try {
             Map<DataRecord, Set<String>> pooledNormals = new LinkedHashMap<>(SampleInfoImpact.getPooledNormals());
@@ -462,7 +452,7 @@ public class VeloxRequestProxy implements RequestProxy {
                 } else if (runAsExome) {
                     request.setRequestType(Constants.EXOME);
                 } else {
-                    logWarning("Request Name doesn't match one of the supported request types: " + request.getRequestName() + ". Information will be pulled as if it is an rnaseq/unknown run.");
+                    logWarning("Request Name doesn't match one of the supported request types: " + request.getName() + ". Information will be pulled as if it is an rnaseq/unknown run.");
                     request.setRequestType(Constants.OTHER);
                 }
             }

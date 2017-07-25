@@ -40,15 +40,9 @@ public class Arguments {
     public static void parseArguments(String[] args) {
         try {
             Args.parse(Arguments.class, args);
-            saveCurrentArgumentToFile();
         } catch (Exception e) {
             LOGGER.error("Wrong arguments provided", e);
             Args.usage(Arguments.class);
         }
-    }
-
-    public static void saveCurrentArgumentToFile() {
-        ArgumentsFileReporter argumentsFileReporter = new ArgumentsFileReporter();
-        argumentsFileReporter.printCurrentArgumentsToFile();
     }
 }
