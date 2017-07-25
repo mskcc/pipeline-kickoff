@@ -7,8 +7,8 @@ import org.mskcc.domain.Pool;
 import org.mskcc.domain.QcStatus;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.*;
 import org.mskcc.kickoff.config.Arguments;
+import org.mskcc.kickoff.domain.Request;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.logger.PriorityAwareLogMessage;
 import org.mskcc.kickoff.util.Constants;
@@ -42,18 +42,20 @@ public class RequestValidator {
 
     private void validateOutputDir(Request request) {
         //@TODO after finishing comparing with current prod version refactor it to check outdir only once, as for now it stays fo tests to pass
-        File outputDir = new File(outdir);
+        if(!StringUtils.isEmpty(outdir)) {
+            File outputDir = new File(outdir);
 
-        if (!StringUtils.isEmpty(outdir)) {
-            if (outputDir.exists() && outputDir.isDirectory()) {
-                String message = String.format("Overwriting default dir to %s", request.getOutputPath());
-                PM_LOGGER.info(message);
-                DEV_LOGGER.info(message);
-            } else {
-                String message = String.format("The outdir directory you gave me is empty or does not exist: %s", outdir);
-                Utils.setExitLater(true);
-                PM_LOGGER.error(message);
-                DEV_LOGGER.error(message);
+            if (!StringUtils.isEmpty(outdir)) {
+                if (outputDir.exists() && outputDir.isDirectory()) {
+                    String message = String.format("Overwriting default dir to %s", request.getOutputPath());
+                    PM_LOGGER.info(message);
+                    DEV_LOGGER.info(message);
+                } else {
+                    String message = String.format("The outdir directory you gave me is empty or does not exist: %s", outdir);
+                    Utils.setExitLater(true);
+                    PM_LOGGER.error(message);
+                    DEV_LOGGER.error(message);
+                }
             }
         }
     }

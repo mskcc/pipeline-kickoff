@@ -1,15 +1,21 @@
 package org.mskcc.kickoff.lims;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.config.AppConfiguration;
 import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.kickoff.generator.ManifestGenerator;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 
+import java.io.File;
+
+import static org.mskcc.kickoff.config.Arguments.outdir;
 import static org.mskcc.kickoff.config.Arguments.parseArguments;
 
 /**
@@ -21,6 +27,9 @@ class CreateManifestSheet {
 
     @Autowired
     private ManifestGenerator manifestGenerator;
+
+    @Value("${draftProjectFilePath}")
+    private String draftProjectFilePath;
 
     public static void main(String[] args) {
         try {
@@ -58,7 +67,21 @@ class CreateManifestSheet {
     }
 
     private void generate() {
+        outdir = getProjectOutputDir(Arguments.project);
         manifestGenerator.generate();
+    }
+
+    private String getProjectOutputDir(String requestID) {
+        String projectFilePath = String.format("%s/%s", draftProjectFilePath, Utils.getFullProjectNameWithPrefix(requestID));
+        if (!StringUtils.isEmpty(outdir)) {
+            File f = new File(outdir);
+            if (f.exists() && f.isDirectory())
+                return String.format("%s/%s", outdir, Utils.getFullProjectNameWithPrefix(requestID));
+        }
+
+        new File(projectFilePath).mkdirs();
+
+        return projectFilePath;
     }
 
     public static class MySafeShutdown extends Thread {

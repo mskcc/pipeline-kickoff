@@ -66,8 +66,7 @@ public class FilesGenerator implements ManifestGenerator {
 
         DEV_LOGGER.info("Received program arguments: " + toPrintable());
 
-        String projectFilePath = getProjectOutputDir(Arguments.project);
-        logConfigurator.configureProjectLog(projectFilePath);
+        logConfigurator.configureProjectLog(outdir);
 
         if (projectNameValidator.isValid(Arguments.project)) {
             List<Request> requests = requestProxy.getRequests(Arguments.project);
@@ -75,7 +74,7 @@ public class FilesGenerator implements ManifestGenerator {
             validateRequestExists(requests);
 
             for (Request request : requests) {
-                request.setOutputPath(projectFilePath);
+                request.setOutputPath(outdir);
                 generate(request);
             }
         }
@@ -225,19 +224,6 @@ public class FilesGenerator implements ManifestGenerator {
                 && !oncotreeCode.equals(Constants.EMPTY);
     }
 
-    private String getProjectOutputDir(String requestID) {
-        String projectFilePath = String.format("%s/%s", draftProjectFilePath, Utils.getFullProjectNameWithPrefix(requestID));
-        if (!StringUtils.isEmpty(outdir)) {
-            File f = new File(outdir);
-            if (f.exists() && f.isDirectory())
-                return String.format("%s/%s", outdir, Utils.getFullProjectNameWithPrefix(requestID));
-        }
-
-        new File(projectFilePath).mkdirs();
-
-        return projectFilePath;
-    }
-
     private void getManualOverrides(Request request) {
         // Manual overrides are found in the readme file:
         // Current Manual overrides "OVERRIDE_BAIT_SET" - resents all bait sets (and assay) as whatever is there.
@@ -358,7 +344,7 @@ public class FilesGenerator implements ManifestGenerator {
                     PM_LOGGER.log(Level.ERROR, message);
                     DEV_LOGGER.log(Level.ERROR, message);
                 }
-            } else if (request.getSpecies() == null) {
+            } else if (request.getSpecies() == RequestSpecies.EMPTY) {
                 request.setSpecies(sampleSpecies);
             } else if (request.getSpecies() != sampleSpecies) {
                 // Requests that are not xenograft must have 100% the same sampleSpecies for each sample. If that is not true, it will output issue here:
