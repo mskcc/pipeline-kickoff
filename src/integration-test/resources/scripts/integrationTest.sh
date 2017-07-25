@@ -180,6 +180,7 @@ projects=(
 "06049_U"  #pairing changes
 "06208_D" # Agilient Capture KAPA Libary
 "06259_B"
+"06362" #no sample level qc
 #"06477_E" # !KAPAAgilentCaptureProtocol2, very slow project
 "06507" # Request with 2 samples with same name
 "06507_D" # rename FASTQ

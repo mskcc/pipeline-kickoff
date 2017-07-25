@@ -234,7 +234,7 @@ public class PairingFilePrinter implements FilePrinter  {
             // populating the tumors and normals for this patient
             for (Sample sample : patient.getSamples()) {
                 Map<String, String> samp = sample.getProperties();
-                if (samp.get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL)) {
+                if (samp.getOrDefault(Constants.SAMPLE_CLASS, "").contains(Constants.NORMAL)) {
                     allNormals.add(sample.getIgoId());
                 } else {
                     tumors.add(sample);

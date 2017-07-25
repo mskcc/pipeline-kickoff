@@ -218,11 +218,11 @@ public class FilesGenerator implements ManifestGenerator {
     }
 
     private boolean isOncoTreeValid(String oncotreeCode) {
-        return !oncotreeCode.equals(Constants.TUMOR)
-                && !oncotreeCode.equals(Constants.NORMAL)
-                && !oncotreeCode.equals(Constants.NA_LOWER_CASE)
-                && !oncotreeCode.equals(Constants.UNKNOWN)
-                && !oncotreeCode.equals(Constants.EMPTY);
+        return !Objects.equals(oncotreeCode, Constants.TUMOR)
+                && !Objects.equals(oncotreeCode, Constants.NORMAL)
+                && !Objects.equals(oncotreeCode, Constants.NA_LOWER_CASE)
+                && !Objects.equals(oncotreeCode, Constants.UNKNOWN)
+                && !Objects.equals(oncotreeCode, Constants.EMPTY);
     }
 
     private String getProjectOutputDir(String requestID) {
@@ -286,7 +286,7 @@ public class FilesGenerator implements ManifestGenerator {
         Boolean bvChanged = false;
         for (Sample sample : request.getAllValidSamples().values()) {
             //@TODO check if can use sample.isPooledNormal()
-            if (sample.getProperties().get(Constants.SAMPLE_TYPE).equals(Constants.NORMAL_POOL) || sample.getProperties().get(Constants.SPECIES).equals(Constants.POOLNORMAL)) {
+            if (sample.isPooledNormal()) {
                 continue;
             }
 
@@ -358,7 +358,7 @@ public class FilesGenerator implements ManifestGenerator {
                     PM_LOGGER.log(Level.ERROR, message);
                     DEV_LOGGER.log(Level.ERROR, message);
                 }
-            } else if (request.getSpecies() == null) {
+            } else if (request.getSpecies() == RequestSpecies.EMPTY) {
                 request.setSpecies(sampleSpecies);
             } else if (request.getSpecies() != sampleSpecies) {
                 // Requests that are not xenograft must have 100% the same sampleSpecies for each sample. If that is not true, it will output issue here:

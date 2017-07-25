@@ -140,7 +140,7 @@ public class Request {
     }
 
     public void addRunIDlist(String runIDFull) {
-        request.addRunIDlist(runIDFull);
+        request.addRunID(runIDFull);
     }
 
     public String getBaitVersion() {
@@ -271,7 +271,7 @@ public class Request {
         return request.getRunIdList();
     }
 
-    public List<String> getAmpType() {
+    public Set<String> getAmpType() {
         return request.getAmpType();
     }
 
@@ -285,10 +285,6 @@ public class Request {
 
     public void setManualDemux(boolean manualDemux) {
         request.setManualDemux(manualDemux);
-    }
-
-    public void setRequestName(String requestName) {
-        request.setRequestName(requestName);
     }
 
     public void setRecipe(List<Recipe> recipes) {
@@ -309,10 +305,6 @@ public class Request {
 
     public String getName() {
         return request.getName();
-    }
-
-    public String getRequestName() {
-        return request.getRequestName();
     }
 
     public Optional<Sample> getSampleByCmoId(String cmoSampleId) {
