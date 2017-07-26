@@ -217,11 +217,11 @@ public class FilesGenerator implements ManifestGenerator {
     }
 
     private boolean isOncoTreeValid(String oncotreeCode) {
-        return !oncotreeCode.equals(Constants.TUMOR)
-                && !oncotreeCode.equals(Constants.NORMAL)
-                && !oncotreeCode.equals(Constants.NA_LOWER_CASE)
-                && !oncotreeCode.equals(Constants.UNKNOWN)
-                && !oncotreeCode.equals(Constants.EMPTY);
+        return !Objects.equals(oncotreeCode, Constants.TUMOR)
+                && !Objects.equals(oncotreeCode, Constants.NORMAL)
+                && !Objects.equals(oncotreeCode, Constants.NA_LOWER_CASE)
+                && !Objects.equals(oncotreeCode, Constants.UNKNOWN)
+                && !Objects.equals(oncotreeCode, Constants.EMPTY);
     }
 
     private void getManualOverrides(Request request) {
@@ -272,7 +272,7 @@ public class FilesGenerator implements ManifestGenerator {
         Boolean bvChanged = false;
         for (Sample sample : request.getAllValidSamples().values()) {
             //@TODO check if can use sample.isPooledNormal()
-            if (sample.getProperties().get(Constants.SAMPLE_TYPE).equals(Constants.NORMAL_POOL) || sample.getProperties().get(Constants.SPECIES).equals(Constants.POOLNORMAL)) {
+            if (sample.isPooledNormal()) {
                 continue;
             }
 

@@ -35,7 +35,7 @@ public class RequestValidator {
         validateSampleQcAgainstPoolQC(request);
         validatePostSeqQC(request);
 //        validateNimbleGen(request);
-        validateSequencingRuns(request);
+        validateHasSamples(request);
         validateBarcodeInfo(request);
         validateReadCounts(request);
     }
@@ -69,14 +69,9 @@ public class RequestValidator {
         }
     }
 
-    private void validateSequencingRuns(Request request) {
-        long numberOfSampleLevelQcs = request.getSamples().values().stream()
-                .flatMap(s -> s.getRuns().values().stream()
-                        .filter(r -> r.getSampleLevelQcStatus() != null))
-                .count();
-
-        if (numberOfSampleLevelQcs == 0 && !forced && !request.isManualDemux())
-            throw new RuntimeException("There are no sample level qc set.");
+    private void validateHasSamples(Request request) {
+        if (request.getAllValidSamples().size() == 0)
+            throw new RuntimeException(String.format("There are no samples in request: %s", request.getId()));
     }
 
     public void validateSampleUniqueness(Request request) {
