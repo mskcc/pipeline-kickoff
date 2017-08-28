@@ -30,7 +30,7 @@ public class FilePermissionConfigurator {
         DIRperms.add(GROUP_EXECUTE);
 
         DIRperms.add(OTHERS_READ);
-        DIRperms.add(OTHERS_WRITE);
+        DIRperms.add(OTHERS_EXECUTE);
 
         FILEperms.add(OWNER_READ);
         FILEperms.add(OWNER_WRITE);
