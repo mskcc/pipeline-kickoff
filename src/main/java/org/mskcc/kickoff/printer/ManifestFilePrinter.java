@@ -120,7 +120,7 @@ public class ManifestFilePrinter implements FilePrinter  {
             // If this is the old mapping scheme, don't make the CMO Sample ID include IGO ID.
             if (request.getNewMappingScheme() == 0) {
                 int indexHeader = header.indexOf(Constants.MANIFEST_SAMPLE_ID);
-                header.set(indexHeader, Constants.CMO_SAMPLE_ID);
+                header.set(indexHeader, Constants.CORRECTED_CMO_ID);
             }
             XSSFRow row = sheet.createRow(rowNum);
             int cellNum = 0;

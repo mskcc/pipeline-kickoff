@@ -156,7 +156,7 @@ public class SampleInfo {
 
         // Manifest sample ID must match the fastq sample name
         this.CMO_SAMPLE_ID = setFromMap(this.CMO_SAMPLE_ID, VeloxConstants.OTHER_SAMPLE_ID, fieldMap);
-        this.MANIFEST_SAMPLE_ID = this.CMO_SAMPLE_ID + "_IGO_" + strippedIGO;
+        this.MANIFEST_SAMPLE_ID = this.CORRECTED_CMO_ID + "_IGO_" + strippedIGO;
         // Check for gen modified
         if (this.SPECIES.equals("Mouse")) {
             checkForMouseGenModified(rec, apiUser, drm, sample.isTransfer());
