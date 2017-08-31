@@ -20,6 +20,7 @@ public class OutputFilesPrinter {
     private ReadMePrinter readMePrinter = new ReadMePrinter();
     private ManifestFilePrinter manifestFilePrinter = new ManifestFilePrinter();
     private SampleKeyPrinter sampleKeyPrinter;
+    private CidToPidMappingPrinter cidToPidMappingPrinter = new CidToPidMappingPrinter();
 
     public OutputFilesPrinter(MappingFilePrinter mappingFilePrinter, SampleKeyPrinter sampleKeyPrinter) {
         this.mappingFilePrinter = mappingFilePrinter;
@@ -38,6 +39,7 @@ public class OutputFilesPrinter {
         filePrinters.add(pairingFilePrinter);
         filePrinters.add(readMePrinter);
         filePrinters.add(sampleKeyPrinter);
+        filePrinters.add(cidToPidMappingPrinter);
     }
 
     public void print(Request request) {
