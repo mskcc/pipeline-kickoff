@@ -88,7 +88,7 @@ public class SampleInfoImpact extends SampleInfo {
         if (this.CMO_SAMPLE_ID.contains("MOUSE")) {
             this.SPECIES = "Mouse";
         }
-        this.MANIFEST_SAMPLE_ID = this.CMO_SAMPLE_ID + "_IGO_" + this.BAIT_VERSION + "_" + this.BARCODE_INDEX;
+        this.MANIFEST_SAMPLE_ID = this.CORRECTED_CMO_ID + "_IGO_" + this.BAIT_VERSION + "_" + this.BARCODE_INDEX;
 
         // According to Katenlynd the preservation type of all mouse samples will ALWAYS be Frozen. (2/20/2017)
         if (this.CMO_SAMPLE_ID.toUpperCase().contains("FROZEN") || this.SPECIES.equals("Mouse")) {
