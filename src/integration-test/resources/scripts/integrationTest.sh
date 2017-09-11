@@ -25,8 +25,8 @@ init() {
 	actualPath="${testDir}/actualOutput"
 	mkdir -p ${actualPath}
 
-	prodKickoff=~/krista/pipeline_kickoff_prod
-	prodTestKickoff="${testDir}/pipeline_kickoff_prod/exemplar"
+	prodKickoff=~/prod-master/pipeline-kickoff
+	prodTestKickoff="${testDir}/pipeline-kickoff"
 
 	currentKickoff="pipeline-kickoff"
 	currentTestKickoff="${testDir}/pipeline-kickoff"
@@ -68,7 +68,7 @@ runTrunk() {
 	mkdir -p ${outputPath}
 	argToPass=$(getArgToPass $2)
 	echo "Argument passed: ${argToPass}"
-	${java8} -cp lib/*:classes org.mskcc.kickoff.lims.CreateManifestSheet -p ${1} -o ${outputPath} -rerunReason TEST ${argToPass}
+	./gradlew run -Dspring.profiles.active=test,igo -PprogramArgs=-p,${1},-o,${outputPath},-rerunReason,TEST,${argToPass}
 	cd ~
 }
 
@@ -226,7 +226,7 @@ do
 			echo "To force always running trunk even when trunk output is already generated pass 'force' argument to script"
 		else
 			runTrunk $project $arg
-		fi	
+		fi
 		runCurrent $project $arg
 		runTest $project $arg
 	done

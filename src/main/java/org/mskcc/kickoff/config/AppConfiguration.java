@@ -9,8 +9,7 @@ import org.mskcc.kickoff.archive.FilesArchiver;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.archive.RunPipelineLogger;
 import org.mskcc.domain.PassedRunPredicate;
-import org.mskcc.kickoff.generator.FilesGenerator;
-import org.mskcc.kickoff.generator.ManifestGenerator;
+import org.mskcc.kickoff.generator.*;
 import org.mskcc.kickoff.lims.QueryImpactProjectInfo;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.printer.OutputFilesPrinter;
@@ -101,12 +100,27 @@ public class AppConfiguration {
 
     @Bean
     public OutputFilesPrinter manifestFilesPrinter() {
-        return new OutputFilesPrinter(mappingFilePrinter(), sampleKeyFileGenerator());
+        return new OutputFilesPrinter(pairingsResolver(), mappingFilePrinter(), sampleKeyFileGenerator());
     }
 
     @Bean
     public FilesArchiver filesArchiver() {
         return new FilesArchiver();
+    }
+
+    @Bean
+    public PairingsResolver pairingsResolver() {
+        return new PairingsResolver(pairingInfoRetriever(), smartPairingRetriever());
+    }
+
+    @Bean
+    public PairingInfoRetriever pairingInfoRetriever() {
+        return new PairingInfoRetriever();
+    }
+
+    @Bean
+    public SmartPairingRetriever smartPairingRetriever() {
+        return new SmartPairingRetriever();
     }
 
     @Bean
