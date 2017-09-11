@@ -1,0 +1,118 @@
+package org.mskcc.kickoff.generator;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
+import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.logger.PmLogPriority;
+import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.util.Utils;
+
+import java.util.*;
+
+public class PairingInfoRetriever {
+    private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
+    private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+
+    public Map<String, String> retrieve(Map<String, String> tumorIgoToCmoId, Request request) {
+        Map<String, String> pairings = new LinkedHashMap<>();
+        for (Sample sample : getValidTumorSamples(request)) {
+            if (sample.getCmoSampleId().startsWith("CTRL-")) {
+                String message = String.format("A CTRL- igo ID is listed as Tumor?? " + sample.getCmoSampleId());
+                Utils.setExitLater(true);
+                PM_LOGGER.error(message);
+                DEV_LOGGER.error(message);
+                continue;
+            }
+
+            Sample pairingSample = sample.getPairing();
+            if (pairingSample == null)
+                continue;
+
+            String tumorIgoId = sample.getIgoId();
+            String normalCmoId = getInitialNormalId(pairingSample);
+
+            if (StringUtils.isEmpty(pairingSample.getIgoId()) && (StringUtils.isEmpty(pairingSample.getCmoSampleId()) || Objects.equals(pairingSample.getCmoSampleId(), Constants.UNDEFINED))) {
+                if (Objects.equals(request.getRequestType(), Constants.EXOME))
+                    normalCmoId = Constants.NA_LOWER_CASE;
+                else continue;
+            } else {
+                if (!isSampleFromRequest(request, pairingSample)) {
+                    String message = String.format("Normal matching with this tumor is NOT a valid sample in this request: Tumor: %s Norm: %s. The normal will be changed to na.", tumorIgoToCmoId.get(tumorIgoId), normalCmoId);
+                    PM_LOGGER.log(PmLogPriority.WARNING, message);
+                    DEV_LOGGER.warn(message);
+                    normalCmoId = Constants.NA_LOWER_CASE;
+                } else {
+                    normalCmoId = getNormalCmoId(request, pairingSample);
+                }
+            }
+
+            if (pairings.keySet().contains(tumorIgoId)) {
+                String message = String.format("Multiple pairing records for %s! This is not supposed to happen.", tumorIgoId);
+                PM_LOGGER.log(PmLogPriority.WARNING, message);
+                DEV_LOGGER.warn(message);
+                String message1 = String.format("Tumor is matched with two different normals. I have no idea how this happened! Tumor: %s Normal: %s", sample.getCmoSampleId(), normalCmoId);
+                Utils.setExitLater(true);
+                PM_LOGGER.error(message1);
+                DEV_LOGGER.error(message1);
+                continue;
+            }
+
+            pairings.put(sample.get(Constants.CORRECTED_CMO_ID), normalCmoId);
+        }
+
+        // checking to see if all exome records are empty!
+        if (isPairingInfo(request) && Objects.equals(request.getRequestType(), Constants.EXOME)) {
+            Set<String> normals = new HashSet<>(pairings.values());
+            if (normals.size() == 1 && normals.contains(Constants.NA_LOWER_CASE)) {
+                return Collections.emptyMap();
+            }
+        }
+
+        if (isPairingInfo(request) && pairings.size() > 0) {
+            Set<String> temp1 = new HashSet<>(tumorIgoToCmoId.values());
+            Set<String> temp2 = new HashSet<>(pairings.keySet());
+            temp1.removeAll(temp2);
+            if (temp1.size() > 0) {
+                String message = String.format("one or more pairing records was not found! %s", Arrays.toString(temp1.toArray()));
+                PM_LOGGER.log(PmLogPriority.WARNING, message);
+                DEV_LOGGER.warn(message);
+            }
+        }
+
+        return pairings;
+    }
+
+    private Collection<Sample> getValidTumorSamples(Request request) {
+        return request.getAllValidSamples(s -> s.isTumor()).values();
+    }
+
+    private String getInitialNormalId(Sample pairingSample) {
+        if (!Objects.equals(pairingSample.getCmoSampleId(), Constants.UNDEFINED))
+            return pairingSample.getCmoSampleId();
+        if (!StringUtils.isEmpty(pairingSample.getIgoId()))
+            return pairingSample.getIgoId();
+        return Constants.NA_LOWER_CASE;
+    }
+
+    private boolean isSampleFromRequest(Request request, Sample pairingSample) {
+        if (isPairingInfo(request))
+            return request.getSamples().containsKey(pairingSample.getIgoId());
+        return request.getSampleByCorrectedCmoId(pairingSample.getCmoSampleId()).isPresent();
+    }
+
+    private String getNormalCmoId(Request request, Sample pairingSample) {
+        if (isPairingInfo(request))
+            return request.getSample(pairingSample.getIgoId()).get(Constants.CORRECTED_CMO_ID);
+
+        Optional<Sample> sample = request.getSampleByCorrectedCmoId(pairingSample.getCmoSampleId());
+        if (sample.isPresent())
+            return pairingSample.getCmoSampleId();
+        return "";
+    }
+
+    private boolean isPairingInfo(Request request) {
+        return request.getSamples().values().stream()
+                .allMatch(s -> s.getPairing() == null || (s.getPairing() != null && Objects.equals(s.getPairing().getCmoSampleId(), Constants.UNDEFINED)));
+    }
+}

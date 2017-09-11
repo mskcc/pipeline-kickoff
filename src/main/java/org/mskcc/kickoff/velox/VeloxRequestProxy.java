@@ -202,10 +202,10 @@ public class VeloxRequestProxy implements RequestProxy {
         Set<Run> sampleRuns = request.getSamples().values().stream().flatMap(s -> s.getRuns().values().stream()).collect(Collectors.toSet());
         Set<Run> poolRuns = request.getPools().values().stream()
                 .flatMap(s -> s.getRuns().values().stream()
-                .filter(r -> r.getPoolQcStatus() != QcStatus.UNDER_REVIEW))
+                        .filter(r -> r.getPoolQcStatus() != QcStatus.UNDER_REVIEW))
                 .collect(Collectors.toSet());
 
-        if(poolRuns.size() > sampleRuns.size()) {
+        if (poolRuns.size() > sampleRuns.size()) {
             for (Sample sample : request.getSamples().values()) {
                 addPoolRunsToSample(request, sample);
             }
@@ -265,32 +265,14 @@ public class VeloxRequestProxy implements RequestProxy {
     private void setPairings(Request request, DataRecord dataRecordRequest) {
         try {
             for (Sample sample : request.getAllValidSamples().values()) {
-                sample.setPairing(getPairings(sample, dataRecordRequest));
+                sample.setPairing(getPairingSample(sample, dataRecordRequest));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private Sample getPairings(Sample sample, DataRecord requestDataRecord) throws NotFound, IoError, RemoteException {
-        if (hasPairingInfoPairings(requestDataRecord))
-            return getPairingInfoPairings(sample, requestDataRecord);
-        return getSamplePairings(sample);
-    }
-
-    private boolean hasPairingInfoPairings(DataRecord requestDataRecord) throws IoError, RemoteException {
-        DataRecord[] pairingInfos = requestDataRecord.getChildrenOfType(VeloxConstants.PAIRING_INFO, user);
-
-        return Arrays.stream(pairingInfos).anyMatch(p -> {
-            try {
-                return !StringUtils.isEmpty(p.getStringVal(VeloxConstants.NORMAL_ID, user));
-            } catch (Exception e) {
-                return false;
-            }
-        });
-    }
-
-    private Sample getPairingInfoPairings(Sample sample, DataRecord requestDataRecord) throws IoError, RemoteException, NotFound {
+    private Sample getPairingSample(Sample sample, DataRecord requestDataRecord) throws IoError, RemoteException, NotFound {
         Sample pairing = null;
         List<DataRecord> records = Arrays.asList(requestDataRecord.getChildrenOfType(VeloxConstants.PAIRING_INFO, user));
         for (DataRecord record : records) {
@@ -306,30 +288,6 @@ public class VeloxRequestProxy implements RequestProxy {
 //                pairing.setIsTumor(true);
             }
         }
-        return pairing;
-    }
-
-    private String getIgoId(String cmoId) throws NotFound, IoError, RemoteException {
-        if (StringUtils.isEmpty(cmoId))
-            return "";
-        if (Objects.equals(cmoId, Constants.NA_LOWER_CASE))
-            return Constants.NA_LOWER_CASE;
-        List<DataRecord> dataRecords = dataRecordManager.queryDataRecords(VeloxConstants.SAMPLE, "OtherSampleId = '" + cmoId + "'", user);
-        if (dataRecords.isEmpty())
-            return "";
-        //@TODO check which one to choose if there are multiple samples with same cmoid
-        return dataRecords.get(dataRecords.size() - 1).getStringVal(VeloxConstants.SAMPLE_ID, user);
-    }
-
-    private Sample getSamplePairings(Sample sample) throws NotFound, IoError, RemoteException {
-        Sample pairing = null;
-        List<DataRecord> records = dataRecordManager.queryDataRecords(VeloxConstants.SAMPLE_PAIRING, "SampleId = '" + sample.get(Constants.IGO_ID) + "'", user);
-        if (records.size() > 0) {
-            String samplePairCmoId = records.get(0).getStringVal(VeloxConstants.SAMPLE_PAIR, user);
-            pairing = new Sample(getIgoId(samplePairCmoId));
-            pairing.setCmoSampleId(samplePairCmoId);
-        }
-
         return pairing;
     }
 
@@ -416,7 +374,7 @@ public class VeloxRequestProxy implements RequestProxy {
             for (String pooledNormalPool : pooledNormalPools) {
                 if (request.getPools().keySet().stream().anyMatch(p -> p.contains(pooledNormalPool))) {
                     Optional<Map.Entry<String, Pool>> pool = request.getPools().entrySet().stream().filter(p -> p.getKey().contains(pooledNormalPool)).findFirst();
-                    if(pool.isPresent()) {
+                    if (pool.isPresent()) {
                         Collection<Run> poolRuns = pool.get().getValue().getRuns().values();
                         poolRuns.forEach(r -> r.setValid(true));
                         runs.addAll(poolRuns);
@@ -559,7 +517,7 @@ public class VeloxRequestProxy implements RequestProxy {
         Set<Pool> poolsWithCurrentSample = request.getPools().values().stream().filter(p -> p.getSamples().contains(sample)).collect(Collectors.toSet());
         for (Pool pool : poolsWithCurrentSample) {
             for (Run run : pool.getRuns().values()) {
-                if(!sample.getRuns().values().contains(run))
+                if (!sample.getRuns().values().contains(run))
                     sample.addRun(run);
             }
         }

@@ -1,6 +1,7 @@
 package org.mskcc.kickoff.printer;
 
 import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.generator.PairingsResolver;
 
 import java.io.File;
 import java.util.HashSet;
@@ -13,7 +14,7 @@ public class OutputFilesPrinter {
     private final PatientFilePrinter patientFilePrinter = new PatientFilePrinter();
     private final ClinicalFilePrinter clinicalFilePrinter = new ClinicalFilePrinter();
     private final GroupingFilePrinter groupingFilePrinter = new GroupingFilePrinter();
-    private final PairingFilePrinter pairingFilePrinter = new PairingFilePrinter();
+    private final PairingFilePrinter pairingFilePrinter;
     private Set<FilePrinter> filePrinters = new LinkedHashSet<>();
     private MappingFilePrinter mappingFilePrinter;
     private RequestFilePrinter requestFilePrinter = new RequestFilePrinter();
@@ -22,9 +23,10 @@ public class OutputFilesPrinter {
     private SampleKeyPrinter sampleKeyPrinter;
     private CidToPidMappingPrinter cidToPidMappingPrinter = new CidToPidMappingPrinter();
 
-    public OutputFilesPrinter(MappingFilePrinter mappingFilePrinter, SampleKeyPrinter sampleKeyPrinter) {
+    public OutputFilesPrinter(PairingsResolver pairingsResolver, MappingFilePrinter mappingFilePrinter, SampleKeyPrinter sampleKeyPrinter) {
         this.mappingFilePrinter = mappingFilePrinter;
         this.sampleKeyPrinter = sampleKeyPrinter;
+        pairingFilePrinter = new PairingFilePrinter(pairingsResolver);
         init();
     }
 
