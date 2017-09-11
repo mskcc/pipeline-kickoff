@@ -98,7 +98,18 @@ public class PairingFilePrinter implements FilePrinter  {
         // Generate Pool Normal Map
         Map<String, String> pair_info = grabPairingInfo(tumorIgoToCmoId, request);
         if (pair_info != null && pair_info.size() > 0) {
-            return pair_info;
+            //first try to do smart pairing then overload anything that isn't blank pairing
+            Map<String, String> mixedPairing = new HashMap<>();
+            if (!request.getPatients().isEmpty()) {
+                mixedPairing = smartPairing(request);
+            }
+            for(Map.Entry<String, String> kvPair : pair_info.entrySet()){
+                if(!kvPair.getKey().equals("na") && !kvPair.getValue().equals("na")){
+                    mixedPairing.put(kvPair.getKey(), kvPair.getValue());
+                }
+            }
+            return mixedPairing;
+            //return pair_info;
         }
 
         //Last, Do smart Pairing.
