@@ -1,5 +1,5 @@
 group 'org.mskcc.kickoff.lims'
-version '1.0'
+version '1.1-SNAPSHOT'
 
 apply plugin: 'application'
 apply plugin: "maven"
