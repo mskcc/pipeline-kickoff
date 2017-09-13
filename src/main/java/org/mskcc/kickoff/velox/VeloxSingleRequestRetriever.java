@@ -5,30 +5,24 @@ import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.datarecord.IoError;
 import com.velox.api.datarecord.NotFound;
 import com.velox.api.user.User;
-import com.velox.sapioutils.client.standalone.VeloxConnection;
-import com.velox.sapioutils.client.standalone.VeloxStandalone;
-import com.velox.sapioutils.client.standalone.VeloxStandaloneException;
-import com.velox.sapioutils.client.standalone.VeloxTask;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.*;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.config.Arguments;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.lims.SampleInfo;
 import org.mskcc.kickoff.lims.SampleInfoExome;
 import org.mskcc.kickoff.lims.SampleInfoImpact;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.process.ForcedProcessingType;
-import org.mskcc.kickoff.process.NormalProcessingType;
-import org.mskcc.kickoff.proxy.RequestProxy;
+import org.mskcc.kickoff.process.ProcessingType;
+import org.mskcc.kickoff.retriever.SingleRequestRetriever;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
-import org.mskcc.kickoff.velox.util.VeloxConstants;
-import org.mskcc.kickoff.velox.util.VeloxUtils;
-import org.springframework.beans.factory.annotation.Value;
+import org.mskcc.util.VeloxConstants;
 
 import java.rmi.RemoteException;
 import java.util.*;
@@ -37,104 +31,82 @@ import java.util.stream.Collectors;
 
 import static org.mskcc.kickoff.config.Arguments.forced;
 import static org.mskcc.kickoff.config.Arguments.runAsExome;
-import static org.mskcc.kickoff.util.Utils.getJoinedCollection;
 
-public class VeloxRequestProxy implements RequestProxy {
+public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
+    private final User user;
+    private final DataRecordManager dataRecordManager;
+
     private final Map<Sample, DataRecord> sampleToDataRecord = new HashMap<>();
+    private ProjectInfoRetriever projectInfoRetriever;
 
-    private DataRecordManager dataRecordManager;
-    private User user;
-    private List<Request> requests = new ArrayList<>();
-    private VeloxConnection connection;
-
-    @Value("${limsConnectionFilePath}")
-    private String limsConnectionFilePath;
-    private List<DataRecord> originalSampRec;
-    private ProjectFilesArchiver projectFilesArchiver;
-
-    public VeloxRequestProxy(ProjectFilesArchiver projectFilesArchiver) {
-        this.projectFilesArchiver = projectFilesArchiver;
+    public VeloxSingleRequestRetriever(User user, DataRecordManager dataRecordManager, ProjectInfoRetriever projectInfoRetriever) {
+        this.user = user;
+        this.dataRecordManager = dataRecordManager;
+        this.projectInfoRetriever = projectInfoRetriever;
     }
 
     @Override
-    public List<Request> getRequests(String requestId) {
-        initVeloxConnection();
+    public KickoffRequest retrieve(String requestId, List<String> sampleIds, ProcessingType processingType) throws Exception {
+        List<DataRecord> requestsDataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestId + "'", user);
+        if (requestsDataRecords != null && requestsDataRecords.size() > 0) {
+            KickoffRequest kickoffRequest = new KickoffRequest(requestId, processingType);
 
-        try {
-            VeloxStandalone.run(connection, new VeloxTask<Object>() {
-                @Override
-                public Object performTask() throws VeloxStandaloneException {
-                    retrieveRequest(requestId);
-                    return new Object();
-                }
-            });
-        } catch (VeloxStandaloneException e) {
-            DEV_LOGGER.error(e.getMessage(), e);
+            DataRecord dataRecordRequest = requestsDataRecords.get(0);
+
+            List<DataRecord> originalSampRec = getOriginalSampleRecords(dataRecordRequest);
+
+            setReadMe(kickoffRequest, dataRecordRequest);
+            setName(kickoffRequest, dataRecordRequest);
+            setRecipe(kickoffRequest, dataRecordRequest);
+            setProperties(kickoffRequest, dataRecordRequest);
+
+            getLibTypes(kickoffRequest, dataRecordRequest);
+            setReqType(kickoffRequest);
+
+            //@TODO cehck if I cant pool after process samples
+            addPoolSeqQc(kickoffRequest, dataRecordRequest, originalSampRec);
+            processPlates(kickoffRequest, dataRecordRequest);
+            processSamples(kickoffRequest, dataRecordRequest, sampleIds);
+            addPoolRunsToSamples(kickoffRequest);
+
+            addSampleInfo(kickoffRequest);
+
+            processPooledNormals(kickoffRequest, dataRecordRequest);
+
+            setPairings(kickoffRequest, dataRecordRequest);
+            kickoffRequest.setProjectInfo(getProjectInfo(kickoffRequest));
+
+            return kickoffRequest;
         }
-        return requests;
+        throw new RuntimeException(String.format("Request: %s doesn't exist", requestId));
     }
 
-    private void initVeloxConnection() {
-        try {
-            connection = VeloxUtils.getVeloxConnection(limsConnectionFilePath);
-            connection.open();
-
-            if (connection.isConnected()) {
-                user = connection.getUser();
-                dataRecordManager = connection.getDataRecordManager();
+    @Override
+    public KickoffRequest retrieve(String requestId, ProcessingType processingType) throws Exception {
+        List<DataRecord> requestsDataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestId + "'", user);
+        if (requestsDataRecords != null && requestsDataRecords.size() > 0) {
+            List<DataRecord> samples = Arrays.asList(requestsDataRecords.get(0).getChildrenOfType(VeloxConstants.SAMPLE, user));
+            List<String> allSampleIds = new ArrayList<>();
+            for (DataRecord sample : samples) {
+                String igoId = sample.getStringVal(VeloxConstants.SAMPLE_ID, user);
+                allSampleIds.add(igoId);
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+
+            return retrieve(requestId, allSampleIds, processingType);
         }
+
+        throw new RuntimeException(String.format("Request: %s doesn't exist", requestId));
     }
 
-    private void closeConnection() {
-        if (connection.isConnected()) {
-            try {
-                connection.close();
-            } catch (Throwable e) {
-                DEV_LOGGER.error(e.getMessage(), e);
-            }
-        }
-    }
+    private Map<String, String> getProjectInfo(KickoffRequest kickoffRequest) {
+        Map<String, String> projectInfo = projectInfoRetriever.queryProjectInfo(user, dataRecordManager, kickoffRequest);
+        kickoffRequest.setPi(projectInfoRetriever.getPI().split("@")[0]);
+        kickoffRequest.setInvest(projectInfoRetriever.getInvest().split("@")[0]);
 
-    private void retrieveRequest(String requestId) {
-        try {
-            List<DataRecord> requestsDataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestId + "'", user);
-
-            for (DataRecord dataRecordRequest : requestsDataRecords) {
-                originalSampRec = getOriginalSampleRecords(dataRecordRequest);
-                Request request = new Request(requestId, new NormalProcessingType(projectFilesArchiver));
-                setReadMe(request, dataRecordRequest);
-                setName(request, dataRecordRequest);
-                setRecipe(request, dataRecordRequest);
-                setProperties(request, dataRecordRequest);
-
-                validateSequencingRuns(request);
-                getLibTypes(request, dataRecordRequest);
-                setReqType(request);
-
-                //@TODO cehck if I cant pool after process samples
-                addPoolSeqQc(request, dataRecordRequest, originalSampRec);
-                processPlates(request, dataRecordRequest);
-                processSamples(request, dataRecordRequest);
-                addPoolRunsToSamples(request);
-
-                addSampleInfo(request);
-
-                processPooledNormals(request, dataRecordRequest);
-
-                setPairings(request, dataRecordRequest);
-                requests.add(request);
-            }
-        } catch (Exception e) {
-            DEV_LOGGER.error(e.getMessage(), e);
-        } finally {
-            closeConnection();
-        }
+        return projectInfo;
     }
 
     private List<DataRecord> getOriginalSampleRecords(DataRecord dataRecordRequest) throws RemoteException, IoError {
@@ -157,26 +129,27 @@ public class VeloxRequestProxy implements RequestProxy {
         return originalSampRec;
     }
 
-    private void setReadMe(Request request, DataRecord dataRecordRequest) {
+    private void setReadMe(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         String readMe = "";
         try {
             readMe = dataRecordRequest.getStringVal(Constants.READ_ME, user);
         } catch (Exception e) {
-
+            DEV_LOGGER.warn(e.getMessage(), e);
         }
-        request.setReadMe(readMe);
+        kickoffRequest.setReadMe(readMe);
     }
 
-    private void setName(Request request, DataRecord dataRecordRequest) {
+    private void setName(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         String requestName = "";
         try {
             requestName = dataRecordRequest.getPickListVal(Constants.REQUEST_NAME, user);
         } catch (Exception e) {
+            DEV_LOGGER.warn(e.getMessage(), e);
         }
-        request.setName(requestName);
+        kickoffRequest.setName(requestName);
     }
 
-    private void setRecipe(Request request, DataRecord dataRecordRequest) {
+    private void setRecipe(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         //this will get the recipes for all sampels under request
         List<Object> recipes = new ArrayList<>();
 
@@ -192,62 +165,40 @@ public class VeloxRequestProxy implements RequestProxy {
                     .map(r -> Recipe.getRecipeByValue(r.toString()))
                     .distinct()
                     .collect(Collectors.toList());
-            request.setRecipe(recipeList);
-        } catch (Recipe.UnsupportedRecipeException e) {
-            DEV_LOGGER.warn(e.getMessage(), e);
+
+            if(recipeList.size() == 1)
+                kickoffRequest.setRecipe(recipeList.get(0));
+        } catch (Recipe.UnsupportedRecipeException | Recipe.EmptyRecipeException e) {
+            DEV_LOGGER.warn(String.format("Request: %s issue: %s", kickoffRequest.getId(), e.getMessage()), e);
         }
     }
 
-    private void addPoolRunsToSamples(Request request) {
-        Set<Run> sampleRuns = request.getSamples().values().stream().flatMap(s -> s.getRuns().values().stream()).collect(Collectors.toSet());
-        Set<Run> poolRuns = request.getPools().values().stream()
+    private void addPoolRunsToSamples(KickoffRequest kickoffRequest) {
+        Set<Run> sampleRuns = kickoffRequest.getSamples().values().stream().flatMap(s -> s.getRuns().values().stream()).collect(Collectors.toSet());
+        Set<Run> poolRuns = kickoffRequest.getPools().values().stream()
                 .flatMap(s -> s.getRuns().values().stream()
                         .filter(r -> r.getPoolQcStatus() != QcStatus.UNDER_REVIEW))
                 .collect(Collectors.toSet());
 
         if (poolRuns.size() > sampleRuns.size()) {
-            for (Sample sample : request.getSamples().values()) {
-                addPoolRunsToSample(request, sample);
+            for (Sample sample : kickoffRequest.getSamples().values()) {
+                addPoolRunsToSample(kickoffRequest, sample);
             }
         }
     }
 
-    private void addSampleInfo(Request request) {
-        for (Sample sample : request.getValidNonPooledNormalSamples().values()) {
-            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(sampleToDataRecord.get(sample), sample, request);
-            sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(request.getId()));
+    private void addSampleInfo(KickoffRequest kickoffRequest) {
+        for (Sample sample : kickoffRequest.getValidNonPooledNormalSamples().values()) {
+            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(sampleToDataRecord.get(sample), sample, kickoffRequest);
+            sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
             sample.setProperties(sampleInfo);
             sample.setIsTumor(sample.get(Constants.SAMPLE_CLASS) != null && !sample.get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL));
         }
     }
 
-    private boolean validateSequencingRuns(Request request) {
-        long numberOfSampleLevelQcs = 0;
-        try {
-            numberOfSampleLevelQcs = dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC, "Request = '" + request.getId() + "'", user).size();
-        } catch (Exception e) {
-            DEV_LOGGER.warn(e.getMessage(), e);
-        }
-
-        if (numberOfSampleLevelQcs == 0) {
-            if (!forced && !request.isManualDemux()) {
-                DEV_LOGGER.error("No sequencing runs found for this Request ID.");
-                return false;
-            } else if (request.isManualDemux()) {
-                PM_LOGGER.log(PmLogPriority.WARNING, "MANUAL DEMULTIPLEXING was performed. Nothing but the request file should be output.");
-                DEV_LOGGER.warn("MANUAL DEMULTIPLEXING was performed. Nothing but the request file should be output.");
-            } else {
-                PM_LOGGER.log(PmLogPriority.WARNING, "ALERT: There are no sequencing runs passing QC for this run. Force is true, I will pull ALL samples for this project.");
-                DEV_LOGGER.warn("ALERT: There are no sequencing runs passing QC for this run. Force is true, I will pull ALL samples for this project.");
-                request.setProcessingType(new ForcedProcessingType());
-            }
-        }
-        return true;
-    }
-
-    private void setProperties(Request request, DataRecord dataRecordRequest) {
-        request.setBicAutorunnable(getBoolean(dataRecordRequest, VeloxConstants.BIC_AUTORUNNABLE));
-        request.setManualDemux(getBoolean(dataRecordRequest, VeloxConstants.MANUAL_DEMUX));
+    private void setProperties(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
+        kickoffRequest.setBicAutorunnable(getBoolean(dataRecordRequest, VeloxConstants.BIC_AUTORUNNABLE));
+        kickoffRequest.setManualDemux(getBoolean(dataRecordRequest, VeloxConstants.MANUAL_DEMUX));
     }
 
     private boolean getBoolean(DataRecord dataRecordRequest, String fieldName) {
@@ -262,9 +213,9 @@ public class VeloxRequestProxy implements RequestProxy {
         return false;
     }
 
-    private void setPairings(Request request, DataRecord dataRecordRequest) {
+    private void setPairings(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         try {
-            for (Sample sample : request.getAllValidSamples().values()) {
+            for (Sample sample : kickoffRequest.getAllValidSamples().values()) {
                 sample.setPairing(getPairingSample(sample, dataRecordRequest));
             }
         } catch (Exception e) {
@@ -291,7 +242,31 @@ public class VeloxRequestProxy implements RequestProxy {
         return pairing;
     }
 
-    private void processPooledNormals(Request request, DataRecord dataRecordRequest) {
+    private String getIgoId(String cmoId) throws NotFound, IoError, RemoteException {
+        if (StringUtils.isEmpty(cmoId))
+            return "";
+        if (Objects.equals(cmoId, Constants.NA_LOWER_CASE))
+            return Constants.NA_LOWER_CASE;
+        List<DataRecord> dataRecords = dataRecordManager.queryDataRecords(VeloxConstants.SAMPLE, "OtherSampleId = '" + cmoId + "'", user);
+        if (dataRecords.isEmpty())
+            return "";
+        //@TODO check which one to choose if there are multiple samples with same cmoid
+        return dataRecords.get(dataRecords.size() - 1).getStringVal(VeloxConstants.SAMPLE_ID, user);
+    }
+
+    private Sample getSamplePairings(Sample sample) throws NotFound, IoError, RemoteException {
+        Sample pairing = null;
+        List<DataRecord> records = dataRecordManager.queryDataRecords(VeloxConstants.SAMPLE_PAIRING, "SampleId = '" + sample.get(Constants.IGO_ID) + "'", user);
+        if (records.size() > 0) {
+            String samplePairCmoId = records.get(0).getStringVal(VeloxConstants.SAMPLE_PAIR, user);
+            pairing = new Sample(getIgoId(samplePairCmoId));
+            pairing.setCmoSampleId(samplePairCmoId);
+        }
+
+        return pairing;
+    }
+
+    private void processPooledNormals(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         try {
             Map<DataRecord, Set<String>> pooledNormals = new LinkedHashMap<>(SampleInfoImpact.getPooledNormals());
             if (pooledNormals != null && pooledNormals.size() > 0) {
@@ -302,15 +277,15 @@ public class VeloxRequestProxy implements RequestProxy {
                     String cmoNormalId = pooledNormalRecord.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
                     String igoNormalId = pooledNormalRecord.getStringVal(VeloxConstants.SAMPLE_ID, user);
 
-                    Sample sample = request.putPooledNormalIfAbsent(igoNormalId);
+                    Sample sample = kickoffRequest.putPooledNormalIfAbsent(igoNormalId);
                     sample.setCmoSampleId(cmoNormalId);
                     sample.setPooledNormal(true);
                     sample.setTransfer(false);
                     //@TODO check
-                    sample.addRuns(getPooledNormalRuns(pooledNormalToRuns.getValue(), request));
+                    sample.addRuns(getPooledNormalRuns(pooledNormalToRuns.getValue(), kickoffRequest));
 
-                    Map<String, String> tempHashMap = getSampleInfoMap(pooledNormalRecord, sample, request);
-                    tempHashMap.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(request.getId()));
+                    Map<String, String> tempHashMap = getSampleInfoMap(pooledNormalRecord, sample, kickoffRequest);
+                    tempHashMap.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
 
                     // If include run ID is 'null' skip.
                     // This could mess up some older projects, so I may have to change this
@@ -322,10 +297,10 @@ public class VeloxRequestProxy implements RequestProxy {
                     // If the sample pooled normal type (ex: FROZEN POOLED NORMAL) is already in the manfiest list
                     // Concatenate the include/ exclude run ids
                     //@TODO move to app side, combine in file generator
-                    if (hasPooledNormal(request, cmoNormalId) && tempHashMap.get(Constants.INCLUDE_RUN_ID) != null) {
+                    if (hasPooledNormal(kickoffRequest, cmoNormalId) && tempHashMap.get(Constants.INCLUDE_RUN_ID) != null) {
                         DEV_LOGGER.info(String.format("Combining Two Pooled Normals: %s", sample));
 
-                        Map<String, String> originalPooledNormalSample = getPooledNormal(request, cmoNormalId).getProperties();
+                        Map<String, String> originalPooledNormalSample = getPooledNormal(kickoffRequest, cmoNormalId).getProperties();
                         Set<String> currIncludeRuns = new TreeSet<>(Arrays.asList(originalPooledNormalSample.get(Constants.INCLUDE_RUN_ID).split(";")));
 
                         DEV_LOGGER.info(String.format("OLD include runs: %s", originalPooledNormalSample.get(Constants.INCLUDE_RUN_ID)));
@@ -351,8 +326,8 @@ public class VeloxRequestProxy implements RequestProxy {
                         sample.setProperties(tempHashMap);
                     }
 
-                    addPoolSeqQc(request, dataRecordRequest, Collections.singleton(pooledNormalRecord));
-                    addPoolRunsToSample(request, sample);
+                    addPoolSeqQc(kickoffRequest, dataRecordRequest, Collections.singleton(pooledNormalRecord));
+                    addPoolRunsToSample(kickoffRequest, sample);
                 }
             }
         } catch (Exception e) {
@@ -360,20 +335,20 @@ public class VeloxRequestProxy implements RequestProxy {
         }
     }
 
-    private Sample getPooledNormal(Request request, String cmoNormalId) {
-        return request.getSamples().values().stream().filter(s -> s.getCmoSampleId().equals(cmoNormalId)).findFirst().get();
+    private Sample getPooledNormal(KickoffRequest kickoffRequest, String cmoNormalId) {
+        return kickoffRequest.getSamples().values().stream().filter(s -> s.getCmoSampleId().equals(cmoNormalId)).findFirst().get();
     }
 
-    private boolean hasPooledNormal(Request request, String cmoNormalId) {
-        return request.getSamples().values().stream().anyMatch(s -> Objects.equals(s.getCmoSampleId(), cmoNormalId) && s.getProperties() != null && s.getProperties().size() > 0);
+    private boolean hasPooledNormal(KickoffRequest kickoffRequest, String cmoNormalId) {
+        return kickoffRequest.getSamples().values().stream().anyMatch(s -> Objects.equals(s.getCmoSampleId(), cmoNormalId) && s.getProperties() != null && s.getProperties().size() > 0);
     }
 
-    private Set<Run> getPooledNormalRuns(Set<String> pooledNormalPools, Request request) {
+    private Set<Run> getPooledNormalRuns(Set<String> pooledNormalPools, KickoffRequest kickoffRequest) {
         Set<Run> runs = new HashSet<>();
         try {
             for (String pooledNormalPool : pooledNormalPools) {
-                if (request.getPools().keySet().stream().anyMatch(p -> p.contains(pooledNormalPool))) {
-                    Optional<Map.Entry<String, Pool>> pool = request.getPools().entrySet().stream().filter(p -> p.getKey().contains(pooledNormalPool)).findFirst();
+                if (kickoffRequest.getPools().keySet().stream().anyMatch(p -> p.contains(pooledNormalPool))) {
+                    Optional<Map.Entry<String, Pool>> pool = kickoffRequest.getPools().entrySet().stream().filter(p -> p.getKey().contains(pooledNormalPool)).findFirst();
                     if (pool.isPresent()) {
                         Collection<Run> poolRuns = pool.get().getValue().getRuns().values();
                         poolRuns.forEach(r -> r.setValid(true));
@@ -388,46 +363,57 @@ public class VeloxRequestProxy implements RequestProxy {
         return runs;
     }
 
-    private void setReqType(Request request) {
-        if (StringUtils.isEmpty(request.getRequestType())) {
+    private void setReqType(KickoffRequest kickoffRequest) {
+        if (kickoffRequest.getRequestType() == null) {
             // Here I will pull the childs field recipe
-            List<Recipe> recipes = request.getRecipe();
-            logWarning("RECIPE: " + getJoinedCollection(request.getRecipe(), ","));
-            if (request.getName().matches("(.*)PACT(.*)")) {
-                request.setRequestType(Constants.IMPACT);
+            Recipe recipe = kickoffRequest.getRecipe();
+            logWarning(String.format("RECIPE for request %s is: %s", kickoffRequest.getId(), kickoffRequest.getRecipe()));
+            if (kickoffRequest.getName().matches("(.*)PACT(.*)")) {
+                kickoffRequest.setRequestType(RequestType.IMPACT);
             }
 
-            if (recipes.size() == 1 && recipes.get(0) == Recipe.SMARTER_AMP_SEQ) {
-                request.getLibTypes().add(LibType.SMARTER_AMPLIFICATION);
-                request.getStrands().add(Strand.NONE);
-                request.setRequestType(Constants.RNASEQ);
-
+            if (isSmarterAmpSeqRecipe(recipe)) {
+                kickoffRequest.getLibTypes().add(LibType.SMARTER_AMPLIFICATION);
+                kickoffRequest.getStrands().add(Strand.NONE);
+                kickoffRequest.setRequestType(RequestType.RNASEQ);
             }
-            if (StringUtils.isEmpty(request.getRequestType())) {
-                if (request.getId().startsWith(Constants.REQUEST_05500)) {
+            if (kickoffRequest.getRequestType() == null) {
+                if (kickoffRequest.isInnovation()) {
                     logWarning("05500 project. This should be pulled as an impact.");
-                    request.setRequestType(Constants.IMPACT);
+                    kickoffRequest.setRequestType(RequestType.IMPACT);
                 } else if (runAsExome) {
-                    request.setRequestType(Constants.EXOME);
+                    kickoffRequest.setRequestType(RequestType.EXOME);
                 } else {
-                    logWarning("Request Name doesn't match one of the supported request types: " + request.getName() + ". Information will be pulled as if it is an rnaseq/unknown run.");
-                    request.setRequestType(Constants.OTHER);
+                    logWarning("Request Name doesn't match one of the supported request types: " + kickoffRequest.getName() + ". Information will be pulled as if it is an rnaseq/unknown run.");
+                    kickoffRequest.setRequestType(RequestType.OTHER);
                 }
             }
         }
     }
 
-    private void processSamples(Request request, DataRecord dataRecordRequest) {
+    private boolean isSmarterAmpSeqRecipe(Recipe recipe) {
+        return recipe == Recipe.SMARTER_AMP_SEQ;
+    }
+
+    private void processSamples(KickoffRequest kickoffRequest, DataRecord dataRecordRequest, List<String> sampleIds) {
         try {
-            for (DataRecord dataRecordSample : dataRecordRequest.getChildrenOfType(VeloxConstants.SAMPLE, user)) {
-                processSample(request, dataRecordSample);
+            List<DataRecord> childSamplesToProcess = new ArrayList<>();
+            List<DataRecord> childSamples = new LinkedList<>(Arrays.asList(dataRecordRequest.getChildrenOfType(VeloxConstants.SAMPLE, user)));
+            for (DataRecord childSample : childSamples) {
+                String igoId = childSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
+                if(sampleIds.contains(igoId))
+                    childSamplesToProcess.add(childSample);
+            }
+
+            for (DataRecord dataRecordSample : childSamplesToProcess) {
+                processSample(kickoffRequest, dataRecordSample);
             }
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
         }
     }
 
-    private void processSample(Request request, DataRecord dataRecordSample) throws NotFound, RemoteException, IoError {
+    private void processSample(KickoffRequest kickoffRequest, DataRecord dataRecordSample) throws NotFound, RemoteException, IoError {
         // Is this sample sequenced?
         String cmoSampleId = dataRecordSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
         String igoSampleId = dataRecordSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
@@ -435,20 +421,17 @@ public class VeloxRequestProxy implements RequestProxy {
         // Added because we were getting samples that had the same name as a sequenced sample, but then it was failed so it shouldn't be used (as per Aaron).
         String status = dataRecordSample.getSelectionVal(VeloxConstants.EXEMPLAR_SAMPLE_STATUS, user);
         if (status != Constants.FAILED_COMPLETED) {
-            if (request.getSampleByCmoId(cmoSampleId).isPresent()) {
-                logError("This request has two samples that have the same name: " + cmoSampleId);
-            }
-
             Sample sample;
             if (isPool(cmoSampleId)) {
-                Pool pool = request.putPoolIfAbsent(igoSampleId);
-                sample = request.putSampleIfAbsent(igoSampleId);
+                Pool pool = kickoffRequest.putPoolIfAbsent(igoSampleId);
+                sample = kickoffRequest.putSampleIfAbsent(igoSampleId);
                 pool.setCmoSampleId(cmoSampleId);
                 sample.setCmoSampleId(cmoSampleId);
             } else {
-                sample = request.putSampleIfAbsent(igoSampleId);
+                sample = kickoffRequest.putSampleIfAbsent(igoSampleId);
                 sample.setCmoSampleId(cmoSampleId);
-                addSampleQcInformation(request, sample);
+                sample.setRequestId(kickoffRequest.getId());
+                addSampleQcInformation(kickoffRequest, sample);
                 addPostAnalysisQc(dataRecordSample, sample);
             }
 
@@ -471,11 +454,11 @@ public class VeloxRequestProxy implements RequestProxy {
         return isPoolPredicateByCmoId.test(cmoSampleId);
     }
 
-    private void processPlates(Request request, DataRecord dataRecordRequest) {
+    private void processPlates(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         try {
             for (DataRecord plate : dataRecordRequest.getChildrenOfType(VeloxConstants.PLATE, user)) {
                 for (DataRecord dataRecordSample : plate.getChildrenOfType(VeloxConstants.SAMPLE, user)) {
-                    processSample(request, dataRecordSample);
+                    processSample(kickoffRequest, dataRecordSample);
                 }
             }
         } catch (Exception e) {
@@ -483,9 +466,9 @@ public class VeloxRequestProxy implements RequestProxy {
         }
     }
 
-    private void addSampleQcInformation(Request request, Sample sample) {
+    private void addSampleQcInformation(KickoffRequest kickoffRequest, Sample sample) {
         try {
-            List<DataRecord> sampleQCList = dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC, "Request = '" + request.getId() + "' AND OtherSampleId = '" + sample.getCmoSampleId() + "'", user);
+            List<DataRecord> sampleQCList = dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC, "Request = '" + kickoffRequest.getId() + "' AND OtherSampleId = '" + sample.getCmoSampleId() + "'", user);
 
             if (sampleQCList.size() > 0) {
                 for (DataRecord sampleQc : sampleQCList) {
@@ -513,8 +496,8 @@ public class VeloxRequestProxy implements RequestProxy {
         }
     }
 
-    private void addPoolRunsToSample(Request request, Sample sample) {
-        Set<Pool> poolsWithCurrentSample = request.getPools().values().stream().filter(p -> p.getSamples().contains(sample)).collect(Collectors.toSet());
+    private void addPoolRunsToSample(KickoffRequest kickoffRequest, Sample sample) {
+        Set<Pool> poolsWithCurrentSample = kickoffRequest.getPools().values().stream().filter(p -> p.getSamples().contains(sample)).collect(Collectors.toSet());
         for (Pool pool : poolsWithCurrentSample) {
             for (Run run : pool.getRuns().values()) {
                 if (!sample.getRuns().values().contains(run))
@@ -558,11 +541,11 @@ public class VeloxRequestProxy implements RequestProxy {
         return note;
     }
 
-    private void addPoolSeqQc(Request request, DataRecord dataRecordRequest, Collection<DataRecord> samplesToAddPoolQc) {
+    private void addPoolSeqQc(KickoffRequest kickoffRequest, DataRecord dataRecordRequest, Collection<DataRecord> samplesToAddPoolQc) {
         try {
             ArrayList<DataRecord> sequencingRuns = new ArrayList<>(dataRecordRequest.getDescendantsOfType(VeloxConstants.SEQ_ANALYSIS_QC, user));
             for (DataRecord seqrun : sequencingRuns) {
-                if (!verifySeqRun(seqrun, request.getId()))
+                if (!verifySeqRun(seqrun, kickoffRequest.getId()))
                     continue;
                 String status = String.valueOf(seqrun.getPickListVal(VeloxConstants.SEQ_QC_STATUS, user));
 
@@ -574,11 +557,11 @@ public class VeloxRequestProxy implements RequestProxy {
                 List<DataRecord> samplesFromSeqRun = seqrun.getAncestorsOfType(VeloxConstants.SAMPLE, user);
                 samplesFromSeqRun.retainAll(samplesToAddPoolQc);
 
-                Pool pool = request.putPoolIfAbsent(poolName);
+                Pool pool = kickoffRequest.putPoolIfAbsent(poolName);
                 for (DataRecord sampleRecord : samplesFromSeqRun) {
                     String igoSampleId = sampleRecord.getStringVal(VeloxConstants.SAMPLE_ID, user);
                     String cmoSampleId = sampleRecord.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
-                    Sample sample = request.getOrCreate(igoSampleId);
+                    Sample sample = kickoffRequest.getOrCreate(igoSampleId);
                     sample.setCmoSampleId(cmoSampleId);
 
                     pool.addSample(sample);
@@ -601,11 +584,6 @@ public class VeloxRequestProxy implements RequestProxy {
     }
 
     private boolean verifySeqRun(DataRecord seqrun, String requestId) {
-        // This is to verify this sequencing run is found
-        // Get the parent sample data type
-        // See what the request ID (s) are, search for reqID.
-        // Return (is found?)
-
         boolean sameReq = false;
 
         try {
@@ -636,10 +614,10 @@ public class VeloxRequestProxy implements RequestProxy {
         return RunID;
     }
 
-    private void getLibTypes(Request request, DataRecord dataRecordRequest) {
+    private void getLibTypes(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         try {
             // ONE: Get ancestors of type sample from the passing seq Runs.
-            List<Long> passingSeqRuns = getPassingSeqRuns(request, dataRecordRequest);
+            List<Long> passingSeqRuns = getPassingSeqRuns(kickoffRequest, dataRecordRequest);
             List<List<DataRecord>> samplesFromSeqRun = dataRecordManager.getAncestorsOfTypeById(passingSeqRuns, VeloxConstants.SAMPLE, user);
 
             // TWO: Get decendants of type sample from the request
@@ -653,86 +631,91 @@ public class VeloxRequestProxy implements RequestProxy {
                 finalSampleList.addAll(temp);
             }
 
-            if (request.isForced()) {
+            if (kickoffRequest.isForced()) {
                 finalSampleList.addAll(samplesFromRequest);
             }
 
             // Try finalSampleList FIRST. If this doesn't have any library types, just try samples from seq run.
-            checkSamplesForLibTypes(request, finalSampleList);
+            checkSamplesForLibTypes(kickoffRequest, finalSampleList);
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about Library Types for request id: %s", Arguments.project, e));
         }
     }
 
-    private void checkSamplesForLibTypes(Request request, Set<DataRecord> finalSampleList) {
+    private void checkSamplesForLibTypes(KickoffRequest kickoffRequest, Set<DataRecord> finalSampleList) {
         try {
-            // This is where I have to check all the overlapping samples for children of like 5 different types.
-            for (DataRecord rec : finalSampleList) {
-                List<DataRecord> truSeqRnaProtocolChildren = Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RNA_PROTOCOL, user));
-                if (checkValidBool(truSeqRnaProtocolChildren, dataRecordManager, user)) {
-                    for (DataRecord rnaProtocol : truSeqRnaProtocolChildren) {
-                        try {
-                            if (getBoolean(rnaProtocol, VeloxConstants.VALID)) {
-                                String exID = rnaProtocol.getStringVal(VeloxConstants.EXPERIMENT_ID, user);
-                                List<DataRecord> rnaExp = dataRecordManager.queryDataRecords(VeloxConstants.TRU_SEQ_RNA_EXPERIMENT, "ExperimentId='" + exID + "'", user);
-                                if (rnaExp.size() != 0) {
-                                    List<Object> strandedness = dataRecordManager.getValueList(rnaExp, VeloxConstants.TRU_SEQ_STRANDING, user);
-                                    for (Object x : strandedness) {
-                                        // Only check for Stranded, because older kits were not stranded and did not have this field, ie null"
-                                        if (String.valueOf(x).equals(Constants.STRANDED)) {
-                                            request.addLibType(LibType.TRU_SEQ_POLY_A_SELECTION_STRANDED);
-                                            request.addStrand(Strand.REVERSE);
-                                        } else {
-                                            request.addLibType(LibType.TRU_SEQ_POLY_A_SELECTION_NON_STRANDED);
-                                            request.addStrand(Strand.NONE);
-                                        }
-                                        request.setRequestType(Constants.RNASEQ);
-                                    }
-                                }
-                            }
-                        } catch (NullPointerException e) {
-                            String message = "You hit a null pointer exception while trying to find valid for library types. Please let BIC know.";
-                            DEV_LOGGER.warn(message);
-                            PM_LOGGER.warn(message);
-                        } catch (Exception e) {
-                            DEV_LOGGER.warn(String.format("Exception thrown while looking for valid for Library Types for request id: %s", Arguments.project), e);
-                        }
-                    }
-                }
-                if (Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RNA_SM_RNA_PROTOCOL_4, user)).size() > 0) {
-                    request.addLibType(LibType.TRU_SEQ_SM_RNA);
-                    request.addStrand(Strand.EMPTY);
-                    request.setRequestType(Constants.RNASEQ);
-                }
-                if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RIBO_DEPLETE_PROTOCOL_1, user)), dataRecordManager, user)) {
-                    request.addLibType(LibType.TRU_SEQ_RIBO_DEPLETE);
-                    request.addStrand(Strand.REVERSE);
-                    request.setRequestType(Constants.RNASEQ);
-                }
-                if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RNA_FUSION_PROTOCOL_1, user)), dataRecordManager, user)) {
-                    request.addLibType(LibType.TRU_SEQ_FUSION_DISCOVERY);
-                    request.addStrand(Strand.NONE);
-                    request.setRequestType(Constants.RNASEQ);
-                }
-                if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.SMAR_TER_AMPLIFICATION_PROTOCOL_1, user)), dataRecordManager, user)) {
-                    request.addLibType(LibType.SMARTER_AMPLIFICATION);
-                    request.addStrand(Strand.NONE);
-                    request.setRequestType(Constants.RNASEQ);
-                }
-                if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.KAPA_MRNA_STRANDED_SEQ_PROTOCOL_1, user)), dataRecordManager, user)) {
-                    request.addLibType(LibType.KAPA_M_RNA_STRANDED);
-                    request.addStrand(Strand.REVERSE);
-                    request.setRequestType(Constants.RNASEQ);
-                }
-                if (rec.getChildrenOfType(VeloxConstants.NIMBLE_GEN_HYB_PROTOCOL, user).length != 0) {
-                    request.setRequestType(Constants.IMPACT);
-                }
-                if (rec.getChildrenOfType(VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_1, user).length != 0) {
-                    request.setRequestType(Constants.EXOME);
-                }
+            for (DataRecord sampleRecord : finalSampleList) {
+                List<DataRecord> truSeqRnaProtocolChildren = Arrays.asList(sampleRecord.getChildrenOfType(VeloxConstants.TRU_SEQ_RNA_PROTOCOL, user));
+                if (checkValidBool(truSeqRnaProtocolChildren, dataRecordManager, user))
+                    for (DataRecord rnaProtocol : truSeqRnaProtocolChildren)
+                        setLibAndStrandForProtocol(kickoffRequest, rnaProtocol);
+                setLibAndStrandForSample(kickoffRequest, sampleRecord);
             }
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about protocols for request id: %s", Arguments.project), e);
+        }
+    }
+
+    private void setLibAndStrandForSample(KickoffRequest kickoffRequest, DataRecord rec) throws IoError, RemoteException {
+        if (Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RNA_SM_RNA_PROTOCOL_4, user)).size() > 0) {
+            kickoffRequest.addLibType(LibType.TRU_SEQ_SM_RNA);
+            kickoffRequest.addStrand(Strand.EMPTY);
+            kickoffRequest.setRequestType(RequestType.RNASEQ);
+        }
+        if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RIBO_DEPLETE_PROTOCOL_1, user)), dataRecordManager, user)) {
+            kickoffRequest.addLibType(LibType.TRU_SEQ_RIBO_DEPLETE);
+            kickoffRequest.addStrand(Strand.REVERSE);
+            kickoffRequest.setRequestType(RequestType.RNASEQ);
+        }
+        if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RNA_FUSION_PROTOCOL_1, user)), dataRecordManager, user)) {
+            kickoffRequest.addLibType(LibType.TRU_SEQ_FUSION_DISCOVERY);
+            kickoffRequest.addStrand(Strand.NONE);
+            kickoffRequest.setRequestType(RequestType.RNASEQ);
+        }
+        if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.SMAR_TER_AMPLIFICATION_PROTOCOL_1, user)), dataRecordManager, user)) {
+            kickoffRequest.addLibType(LibType.SMARTER_AMPLIFICATION);
+            kickoffRequest.addStrand(Strand.NONE);
+            kickoffRequest.setRequestType(RequestType.RNASEQ);
+        }
+        if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.KAPA_MRNA_STRANDED_SEQ_PROTOCOL_1, user)), dataRecordManager, user)) {
+            kickoffRequest.addLibType(LibType.KAPA_M_RNA_STRANDED);
+            kickoffRequest.addStrand(Strand.REVERSE);
+            kickoffRequest.setRequestType(RequestType.RNASEQ);
+        }
+        if (rec.getChildrenOfType(VeloxConstants.NIMBLE_GEN_HYB_PROTOCOL, user).length != 0) {
+            kickoffRequest.setRequestType(RequestType.IMPACT);
+        }
+        if (rec.getChildrenOfType(VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_1, user).length != 0) {
+            kickoffRequest.setRequestType(RequestType.EXOME);
+        }
+    }
+
+    private void setLibAndStrandForProtocol(KickoffRequest kickoffRequest, DataRecord rnaProtocol) {
+        try {
+            if (getBoolean(rnaProtocol, VeloxConstants.VALID)) {
+                String exID = rnaProtocol.getStringVal(VeloxConstants.EXPERIMENT_ID, user);
+                List<DataRecord> rnaExp = dataRecordManager.queryDataRecords(VeloxConstants.TRU_SEQ_RNA_EXPERIMENT, "ExperimentId='" + exID + "'", user);
+                if (rnaExp.size() != 0) {
+                    List<Object> strandedness = dataRecordManager.getValueList(rnaExp, VeloxConstants.TRU_SEQ_STRANDING, user);
+                    for (Object x : strandedness) {
+                        // Only check for Stranded, because older kits were not stranded and did not have this field, ie null"
+                        if (String.valueOf(x).equals(Constants.STRANDED)) {
+                            kickoffRequest.addLibType(LibType.TRU_SEQ_POLY_A_SELECTION_STRANDED);
+                            kickoffRequest.addStrand(Strand.REVERSE);
+                        } else {
+                            kickoffRequest.addLibType(LibType.TRU_SEQ_POLY_A_SELECTION_NON_STRANDED);
+                            kickoffRequest.addStrand(Strand.NONE);
+                        }
+                        kickoffRequest.setRequestType(RequestType.RNASEQ);
+                    }
+                }
+            }
+        } catch (NullPointerException e) {
+            String message = "You hit a null pointer exception while trying to find valid for library types. Please let BIC know.";
+            DEV_LOGGER.warn(message);
+            PM_LOGGER.warn(message);
+        } catch (Exception e) {
+            DEV_LOGGER.warn(String.format("Exception thrown while looking for valid for Library Types for request id: %s", Arguments.project), e);
         }
     }
 
@@ -759,10 +742,14 @@ public class VeloxRequestProxy implements RequestProxy {
         return false;
     }
 
-    private List<Long> getPassingSeqRuns(Request request, DataRecord dataRecordRequest) {
+    private List<Long> getPassingSeqRuns(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         List<Long> passingRuns = new ArrayList<>();
         try {
-            List<DataRecord> sampleQCList = dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC, "Request = '" + request.getId() + "'", user);
+            List<DataRecord> sampleQCList = dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC, "Request = '" + kickoffRequest.getId() + "'", user);
+
+            if (sampleQCList.size() == 0 && forced && !kickoffRequest.isManualDemux())
+                kickoffRequest.setProcessingType(new ForcedProcessingType());
+
             for (DataRecord sampleQc : sampleQCList)
                 passingRuns.add(sampleQc.getRecordId());
 
@@ -776,16 +763,16 @@ public class VeloxRequestProxy implements RequestProxy {
         return passingRuns;
     }
 
-    private LinkedHashMap<String, String> getSampleInfoMap(DataRecord dataRecord, Sample sample, Request request) {
+    private LinkedHashMap<String, String> getSampleInfoMap(DataRecord dataRecord, Sample sample, KickoffRequest kickoffRequest) {
         LinkedHashMap<String, String> sampleInfoMap;
         // Latest attempt at refactoring the code. Why does species come up so much?
         SampleInfo sampleInfo;
-        if (request.getRequestType().equals(Constants.IMPACT) || sample.isPooledNormal()) {
-            sampleInfo = new SampleInfoImpact(user, dataRecordManager, dataRecord, request, sample);
-        } else if (request.getRequestType().equals(Constants.EXOME)) {
-            sampleInfo = new SampleInfoExome(user, dataRecordManager, dataRecord, request, sample);
+        if (kickoffRequest.getRequestType() == RequestType.IMPACT || sample.isPooledNormal()) {
+            sampleInfo = new SampleInfoImpact(user, dataRecordManager, dataRecord, kickoffRequest, sample);
+        } else if (kickoffRequest.getRequestType() == RequestType.EXOME) {
+            sampleInfo = new SampleInfoExome(user, dataRecordManager, dataRecord, kickoffRequest, sample);
         } else {
-            sampleInfo = new SampleInfo(user, dataRecordManager, dataRecord, request, sample);
+            sampleInfo = new SampleInfo(user, dataRecordManager, dataRecord, kickoffRequest, sample);
         }
         sampleInfoMap = sampleInfo.sendInfoToMap();
 
@@ -816,5 +803,4 @@ public class VeloxRequestProxy implements RequestProxy {
         PM_LOGGER.log(pmLogLevel, message);
         DEV_LOGGER.log(devLogLevel, message);
     }
-
 }

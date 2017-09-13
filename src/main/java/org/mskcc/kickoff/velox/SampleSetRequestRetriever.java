@@ -1,0 +1,33 @@
+package org.mskcc.kickoff.velox;
+
+import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
+import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.domain.SampleSet;
+import org.mskcc.kickoff.process.ProcessingType;
+import org.mskcc.kickoff.retriever.RequestDataPropagator;
+import org.mskcc.kickoff.retriever.RequestsRetriever;
+
+public class SampleSetRequestRetriever implements RequestsRetriever {
+    private final RequestDataPropagator requestDataPropagator;
+    private final SampleSetToRequestConverter sampleSetToRequestConverter;
+    private final SampleSetRetriever sampleSetRetriever;
+
+    public SampleSetRequestRetriever(
+            RequestDataPropagator requestDataPropagator,
+            SampleSetToRequestConverter sampleSetToRequestConverter,
+            SampleSetRetriever sampleSetRetriever) {
+        this.requestDataPropagator = requestDataPropagator;
+        this.sampleSetToRequestConverter = sampleSetToRequestConverter;
+        this.sampleSetRetriever = sampleSetRetriever;
+    }
+
+    @Override
+    public KickoffRequest retrieve(String projectId, ProcessingType processingType) throws Exception {
+        SampleSet sampleSet = sampleSetRetriever.retrieve(projectId, processingType);
+
+        requestDataPropagator.propagateRequestData(sampleSet.getRequests());
+        KickoffRequest kickoffRequest = sampleSetToRequestConverter.convert(sampleSet);
+
+        return kickoffRequest;
+    }
+}

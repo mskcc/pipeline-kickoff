@@ -3,7 +3,7 @@ package org.mskcc.kickoff.process;
 import org.mskcc.domain.Pool;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.util.CommonUtils;
 
@@ -13,7 +13,7 @@ import java.util.function.Predicate;
 
 public class ForcedProcessingType implements ProcessingType {
     @Override
-    public void archiveFilesToOld(Request request) {
+    public void archiveFilesToOld(KickoffRequest request) {
 
     }
 

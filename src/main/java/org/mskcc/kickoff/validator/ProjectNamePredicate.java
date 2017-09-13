@@ -3,10 +3,20 @@ package org.mskcc.kickoff.validator;
 import java.util.function.Predicate;
 
 public class ProjectNamePredicate implements Predicate<String> {
-    private static final String PROJECT_NAME_REGEX = "^[0-9]{5,}[A-Z_]*$";
+    private final Predicate<String> sampleSetProjectPredicate;
+    private final Predicate<String> sampleSetNamePredicate;
+    private final Predicate<String> singleRequestNamePredicate;
+
+    public ProjectNamePredicate(Predicate<String> sampleSetProjectPredicate, Predicate<String> sampleSetNamePredicate, Predicate<String> singleRequestNamePredicate) {
+        this.sampleSetProjectPredicate = sampleSetProjectPredicate;
+        this.sampleSetNamePredicate = sampleSetNamePredicate;
+        this.singleRequestNamePredicate = singleRequestNamePredicate;
+    }
 
     @Override
     public boolean test(String projectName) {
-        return projectName != null && projectName.matches(PROJECT_NAME_REGEX);
+        if (sampleSetProjectPredicate.test(projectName))
+            return sampleSetNamePredicate.test(projectName);
+        return singleRequestNamePredicate.test(projectName);
     }
 }

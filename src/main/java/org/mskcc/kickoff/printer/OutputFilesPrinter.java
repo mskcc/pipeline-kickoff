@@ -1,6 +1,6 @@
 package org.mskcc.kickoff.printer;
 
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.PairingsResolver;
 
 import java.io.File;
@@ -9,8 +9,6 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 public class OutputFilesPrinter {
-    //@TODO think ghow to deal with files created and then delete them
-    static final Set<File> filesCreated = new HashSet<>();
     private final PatientFilePrinter patientFilePrinter = new PatientFilePrinter();
     private final ClinicalFilePrinter clinicalFilePrinter = new ClinicalFilePrinter();
     private final GroupingFilePrinter groupingFilePrinter = new GroupingFilePrinter();
@@ -44,14 +42,10 @@ public class OutputFilesPrinter {
         filePrinters.add(cidToPidMappingPrinter);
     }
 
-    public void print(Request request) {
+    public void print(KickoffRequest kickoffRequest) {
         for (FilePrinter filePrinter : filePrinters) {
-            if (filePrinter.shouldPrint(request))
-                filePrinter.print(request);
+            if (filePrinter.shouldPrint(kickoffRequest))
+                filePrinter.print(kickoffRequest);
         }
-    }
-
-    public Set<File> getFilesCreated() {
-        return filesCreated;
     }
 }

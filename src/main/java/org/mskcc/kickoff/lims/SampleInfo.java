@@ -9,11 +9,11 @@ import org.mskcc.domain.QcStatus;
 import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
-import org.mskcc.kickoff.velox.util.VeloxConstants;
+import org.mskcc.util.VeloxConstants;
 
 import java.lang.reflect.Field;
 import java.rmi.RemoteException;
@@ -80,7 +80,7 @@ public class SampleInfo {
      * All fields of CMO Sample Level Info supersede sample data record fields<br> - Check to see if project is Xenograft and flag accordingly<br> - Add to
      * sample renames if necessary<br> - Check for genetically modified data record (*** More things need to be done if this is found, but have not yet been done***)
      **/
-    public SampleInfo(User apiUser, DataRecordManager drm, DataRecord rec, Request request, Sample sample) {
+    public SampleInfo(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample sample) {
         // Save logger
         this.valid_fields.addAll(base_fields);
 
@@ -140,7 +140,7 @@ public class SampleInfo {
         // This will be used in downstream processing (mostly checking species types of samples AND sometimes figuring out bait version
         if (xenograftClasses.contains(this.SAMPLE_TYPE)) {
             xenograftProject = true;
-            request.setSpecies(RequestSpecies.XENOGRAFT);
+            kickoffRequest.setSpecies(RequestSpecies.XENOGRAFT);
         }
 
         // add a sample rename
@@ -167,7 +167,7 @@ public class SampleInfo {
         TreeSet<Run> sortedRuns = new TreeSet<>(Comparator.comparing(r -> r.getId()));
         sortedRuns.addAll(runs);
 
-        this.INCLUDE_RUN_ID = request.getIncludeRunId(sortedRuns);
+        this.INCLUDE_RUN_ID = kickoffRequest.getIncludeRunId(sortedRuns);
     }
 
     public static HashMap<String, String> getSampleRenames() {

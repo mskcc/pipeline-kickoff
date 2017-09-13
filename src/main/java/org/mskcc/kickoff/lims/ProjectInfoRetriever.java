@@ -13,11 +13,12 @@ import com.velox.sapioutils.client.standalone.VeloxTask;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.log4j.Logger;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.domain.RequestType;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
-import org.mskcc.kickoff.velox.util.VeloxConstants;
 import org.mskcc.kickoff.velox.util.VeloxUtils;
+import org.mskcc.util.VeloxConstants;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.util.*;
@@ -28,11 +29,10 @@ import java.util.regex.Pattern;
  *
  * @author Krista Kaz
  */
-public class QueryImpactProjectInfo {
-    private static final Logger DEV_LOGGER = Logger.getLogger(QueryImpactProjectInfo.class);
+public class ProjectInfoRetriever {
+    private static final Logger DEV_LOGGER = Logger.getLogger(ProjectInfoRetriever.class);
     private static final LinkedHashMap<String, String> pmEmail = new LinkedHashMap<>();
     @Argument(alias = "p", description = "Project to get samples for")
-    private static String project;
     private final HashSet<String> platforms = new HashSet<>();
     private Map<String, String> projectInfo = new LinkedHashMap<>();
 
@@ -40,7 +40,7 @@ public class QueryImpactProjectInfo {
     private String limsConnectionFilePath;
 
     public static void main(String[] args) throws ServerException {
-        QueryImpactProjectInfo qe = new QueryImpactProjectInfo();
+        ProjectInfoRetriever qe = new ProjectInfoRetriever();
 
         if (args.length == 0) {
             Args.usage(qe);
@@ -50,20 +50,14 @@ public class QueryImpactProjectInfo {
     }
 
     public String getPI() {
-        if (projectInfo.containsKey("Lab_Head_E-mail")) {
-            return projectInfo.get("Lab_Head_E-mail");
-        }
-        return Constants.NULL;
+        return projectInfo.getOrDefault(Constants.ProjectInfo.LAB_HEAD_E_MAIL, Constants.NA);
     }
 
     public String getInvest() {
-        if (projectInfo.containsKey("Requestor_E-mail")) {
-            return projectInfo.get("Requestor_E-mail");
-        }
-        return Constants.NULL;
+        return projectInfo.getOrDefault(Constants.ProjectInfo.REQUESTOR_E_MAIL, Constants.NA);
     }
 
-    public Map<String, String> queryProjectInfo(Request request) {
+    public Map<String, String> queryProjectInfo(KickoffRequest request) {
         try {
             VeloxConnection connection = VeloxUtils.getVeloxConnection(limsConnectionFilePath);
             try {
@@ -89,7 +83,7 @@ public class QueryImpactProjectInfo {
         return projectInfo;
     }
 
-    public Map<String, String> queryProjectInfo(User apiUser, DataRecordManager drm, Request request) {
+    public Map<String, String> queryProjectInfo(User apiUser, DataRecordManager drm, KickoffRequest kickoffRequest) {
         // Adding PM emails to the hashmap
         pmEmail.put("Bouvier, Nancy", "bouviern@mskcc.org");
         pmEmail.put("Selcuklu, S. Duygu", "selcukls@mskcc.org");
@@ -97,22 +91,36 @@ public class QueryImpactProjectInfo {
 
         // If request ID includes anything besides A-Za-z_0-9 exit
         Pattern reqPattern = Pattern.compile("^[0-9]{5,}[A-Z_]*$");
-        String requestID = request.getId();
+        String requestID = kickoffRequest.getId();
         if (!reqPattern.matcher(requestID).matches()) {
-            System.out.println("Malformed request ID.");
+            DEV_LOGGER.error("Malformed request ID.");
             return null;
         }
 
         try {
-            List<DataRecord> requests = drm.queryDataRecords("Request", "RequestId = '" + requestID + "'", apiUser);
-            List<String> ProjectFields = Arrays.asList("Lab_Head", "Lab_Head_E-mail", "Requestor", "Requestor_E-mail", "Platform", "Alternate_E-mails", "IGO_Project_ID", "Final_Project_Title", "CMO_Project_ID", "CMO_Project_Brief", "Project_Manager", "Readme_Info", "Data_Analyst", "Data_Analyst_E-mail");
+            List<DataRecord> requests = drm.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestID + "'", apiUser);
+            List<String> ProjectFields = Arrays.asList(
+                    Constants.ProjectInfo.LAB_HEAD,
+                    Constants.ProjectInfo.LAB_HEAD_E_MAIL,
+                    Constants.ProjectInfo.REQUESTOR,
+                    Constants.ProjectInfo.REQUESTOR_E_MAIL,
+                    Constants.ProjectInfo.PLATFORM,
+                    Constants.ProjectInfo.ALTERNATE_EMAILS,
+                    Constants.ProjectInfo.IGO_PROJECT_ID,
+                    Constants.ProjectInfo.FINAL_PROJECT_TITLE,
+                    Constants.ProjectInfo.CMO_PROJECT_ID,
+                    Constants.ProjectInfo.CMO_PROJECT_BRIEF,
+                    Constants.ProjectInfo.PROJECT_MANAGER,
+                    Constants.ProjectInfo.README_INFO,
+                    Constants.ProjectInfo.DATA_ANALYST,
+                    Constants.ProjectInfo.DATA_ANALYST_EMAIL);
 
             //initalizing empty map
             for (String field : ProjectFields) {
                 projectInfo.put(field, Constants.NA);
             }
 
-            String reqType = request.getRequestType();
+            RequestType reqType = kickoffRequest.getRequestType();
             for (DataRecord requestDataRecord : requests) {
                 if (reqType == null) {
                     reqType = figureOutReqType(requestDataRecord, apiUser, drm);
@@ -140,37 +148,37 @@ public class QueryImpactProjectInfo {
                         }
                     }
                 }
-                projectInfo.put("Sample_Type", StringUtils.join(preservations, ","));
+                projectInfo.put(Constants.ProjectInfo.SAMPLE_TYPE, StringUtils.join(preservations, ","));
 
                 if (!platforms.isEmpty()) {
-                    projectInfo.put("Platform", StringUtils.join(platforms, ","));
+                    projectInfo.put(Constants.ProjectInfo.PLATFORM, StringUtils.join(platforms, ","));
                 } else {
-                    projectInfo.put("Platform", requestDataRecord.getPickListVal(VeloxConstants.REQUEST_NAME, apiUser));
+                    projectInfo.put(Constants.ProjectInfo.PLATFORM, requestDataRecord.getPickListVal(VeloxConstants.REQUEST_NAME, apiUser));
                 }
                 // ## Get Project Associated with it, print out necessary details
                 List<DataRecord> parents = requestDataRecord.getParentsOfType(VeloxConstants.PROJECT, apiUser);
                 if (parents != null && parents.size() > 0) {
-                    DataRecord p = parents.get(0);
+                    DataRecord parentRecord = parents.get(0);
 
-                    projectInfo.put("IGO_Project_ID", requestID);
-                    projectInfo.put("Final_Project_Title", p.getStringVal("CMOFinalProjectTitle", apiUser));
-                    projectInfo.put("CMO_Project_ID", p.getStringVal("CMOProjectID", apiUser));
+                    projectInfo.put(Constants.ProjectInfo.IGO_PROJECT_ID, requestID);
+                    projectInfo.put(Constants.ProjectInfo.FINAL_PROJECT_TITLE, parentRecord.getStringVal("CMOFinalProjectTitle", apiUser));
+                    projectInfo.put(Constants.ProjectInfo.CMO_PROJECT_ID, parentRecord.getStringVal("CMOProjectID", apiUser));
                     // From projct brief you have to take out the \n.
-                    projectInfo.put("CMO_Project_Brief", p.getStringVal("CMOProjectBrief", apiUser).replace("\n", "").replace("\r", ""));
+                    projectInfo.put(Constants.ProjectInfo.CMO_PROJECT_BRIEF, parentRecord.getStringVal("CMOProjectBrief", apiUser).replace("\n", "").replace("\r", ""));
                 }
 
-                projectInfo.put("Project_Manager", requestDataRecord.getPickListVal("ProjectManager", apiUser));
-                projectInfo.put("Project_Manager_Email", String.valueOf(pmEmail.get(requestDataRecord.getPickListVal("ProjectManager", apiUser))));
-                projectInfo.put("Readme_Info", requestDataRecord.getStringVal("ReadMe", apiUser));
+                projectInfo.put(Constants.ProjectInfo.PROJECT_MANAGER, requestDataRecord.getPickListVal("ProjectManager", apiUser));
+                projectInfo.put(Constants.ProjectInfo.PROJECT_MANAGER_EMAIL, String.valueOf(pmEmail.get(requestDataRecord.getPickListVal("ProjectManager", apiUser))));
+                projectInfo.put(Constants.ProjectInfo.README_INFO, requestDataRecord.getStringVal("ReadMe", apiUser));
 
 
                 // ******************************* NEW FIELDS - will probably be moved
                 // Bioinformatic Request: FASTQ and BICAnalysis (bools, request specific)
-                projectInfo.put("Bioinformatic_Request", requestDataRecord.getPickListVal("DataDeliveryType", apiUser));
+                projectInfo.put(Constants.ProjectInfo.BIOINFORMATIC_REQUEST, requestDataRecord.getPickListVal("DataDeliveryType", apiUser));
 
                 // Data Analyst, Data Analyst E-mail
-                projectInfo.put("Data_Analyst", requestDataRecord.getStringVal("DataAnalyst", apiUser));
-                projectInfo.put("Data_Analyst_E-mail", requestDataRecord.getStringVal("DataAnalystEmail", apiUser));
+                projectInfo.put(Constants.ProjectInfo.DATA_ANALYST, requestDataRecord.getStringVal("DataAnalyst", apiUser));
+                projectInfo.put(Constants.ProjectInfo.DATA_ANALYST_EMAIL, requestDataRecord.getStringVal("DataAnalystEmail", apiUser));
 
                 // ******************************* END OF NEW FIELDS
 
@@ -181,22 +189,22 @@ public class QueryImpactProjectInfo {
                 String[] RequesterName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("Investigator", apiUser)).split(" ", 2);
 
                 if (LabHeadName.length > 1) {
-                    projectInfo.put("Lab_Head", LabHeadName[1] + ", " + LabHeadName[0]);
+                    projectInfo.put(Constants.ProjectInfo.LAB_HEAD, LabHeadName[1] + ", " + LabHeadName[0]);
                 }
-                projectInfo.put("Lab_Head_E-mail", LabHeadEmail);
+                projectInfo.put(Constants.ProjectInfo.LAB_HEAD_E_MAIL, LabHeadEmail);
                 if (RequesterName.length > 1) {
-                    projectInfo.put("Requestor", RequesterName[1] + ", " + RequesterName[0]);
+                    projectInfo.put(Constants.ProjectInfo.REQUESTOR, RequesterName[1] + ", " + RequesterName[0]);
                 }
-                projectInfo.put("Requestor_E-mail", InvestigatorEmail);
+                projectInfo.put(Constants.ProjectInfo.REQUESTOR_E_MAIL, InvestigatorEmail);
 
 
                 // Get the Child e-mail records, if there are any
-                List<DataRecord> emailList = Arrays.asList(requestDataRecord.getChildrenOfType("Email", apiUser));
+                List<DataRecord> emailList = Arrays.asList(requestDataRecord.getChildrenOfType(VeloxConstants.EMAIL, apiUser));
                 if (emailList.size() > 0) {
                     List<String> allELists = new LinkedList<>();
                     for (DataRecord email : emailList) {
                         // Grab main email
-                        String email_to_add = email.getStringVal("Email", apiUser).toLowerCase();
+                        String email_to_add = email.getStringVal(VeloxConstants.EMAIL, apiUser).toLowerCase();
                         if (!email_to_add.equals(LabHeadEmail) &&
                                 !email_to_add.equals(InvestigatorEmail) &&
                                 !allELists.contains(email_to_add) && email_to_add.length() != 0) {
@@ -213,7 +221,7 @@ public class QueryImpactProjectInfo {
                     }
                     if (allELists.size() > 0) {
                         String AlternateEmails = StringUtils.join(allELists, ",");
-                        projectInfo.put("Alternate_E-mails", AlternateEmails);
+                        projectInfo.put(Constants.ProjectInfo.ALTERNATE_EMAILS, AlternateEmails);
                     }
                 }
             }
@@ -226,12 +234,13 @@ public class QueryImpactProjectInfo {
         return Collections.emptyMap();
     }
 
-    private String figureOutReqType(DataRecord request, User apiUser, DataRecordManager drm) {
-        String reqType = Constants.NULL;
+    private RequestType figureOutReqType(DataRecord request, User apiUser, DataRecordManager drm) {
+        RequestType reqType = null;
+
         try {
             List<DataRecord> nymList = request.getDescendantsOfType(VeloxConstants.NIMBLE_GEN_HYB_PROTOCOL, apiUser);
             if (request.getPickListVal(VeloxConstants.REQUEST_NAME, apiUser).contains("PACT") || nymList.size() != 0) {
-                reqType = Constants.IMPACT;
+                reqType = RequestType.IMPACT;
 
                 // For each Nimb record in nymb list, get capture bait set and spike in
                 if (nymList.size() > 0) {
@@ -254,8 +263,8 @@ public class QueryImpactProjectInfo {
             } else {
                 List<DataRecord> kapaList = request.getDescendantsOfType(VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_1, apiUser);
                 String requestName = request.getPickListVal(VeloxConstants.REQUEST_NAME, apiUser);
-                if (requestName.contains("Exome") || requestName.equals("WES") || kapaList.size() != 0) {
-                    reqType = Constants.EXOME;
+                if (requestName.contains(VeloxConstants.EXOME) || requestName.equals(org.mskcc.util.Constants.WES) || kapaList.size() != 0) {
+                    reqType = RequestType.EXOME;
                     // For each kapa record, grab the capture type
                     List<Object> baitSets = drm.getValueList(kapaList, VeloxConstants.AGILENT_CAPTURE_KIT, apiUser);
                     for (Object baitSet : baitSets) {

@@ -2,7 +2,7 @@ package org.mskcc.kickoff.generator;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +17,7 @@ public class PairingsResolverTest {
     private PairingsResolver pairingsResolver;
     private PairingInfoRetriever pairingInfoRetriever = mock(PairingInfoRetriever.class);
     private SmartPairingRetriever smartPairingRetriever = mock(SmartPairingRetriever.class);
-    private Request request = mock(Request.class);
+    private KickoffRequest request = mock(KickoffRequest.class);
 
     @Before
     public void setUp() throws Exception {

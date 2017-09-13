@@ -1,9 +1,9 @@
 package org.mskcc.kickoff.printer;
 
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 
 public interface FilePrinter {
-    void print(Request request);
+    void print(KickoffRequest kickoffRequest);
 
-    boolean shouldPrint(Request request);
+    boolean shouldPrint(KickoffRequest kickoffRequest);
 }

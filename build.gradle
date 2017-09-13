@@ -24,18 +24,12 @@ dependencies {
     compile group: 'log4j', name: 'log4j', version: '1.2.16'
     compile group: 'org.dbunit', name: 'dbunit', version: '2.4.3'
     compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.5'
-    compile files('libs/cli-10.jar', 'libs/sapioutils.jar', 'libs/veloxapi.jar', 'libs/veloxclientutil.jar', 'libs/common-domain.jar')
-
+    compile group: 'com.google.guava', name: 'guava', version: '11.0.2'
+    compile fileTree(dir: 'libs', include: '*.jar')
     compile group: 'junit', name: 'junit', version: '4.12'
     compile group: 'org.springframework', name: 'spring-test', version: '4.3.7.RELEASE'
 
     testCompile group: 'org.mockito', name: 'mockito-all', version: '1.9.5'
-}
-
-task copyRuntimeLibs(type: Copy) {
-//    delete fileTree(dir: "libs/")
-    from configurations.testRuntime
-    into "libs/"
 }
 
 tasks.withType(Test) {
@@ -76,12 +70,15 @@ configurations {
 
 task integrationTest(type: Test) {
     filter {
-        includeTestsMatching "org.mskcc.kickoff.characterisationTest.RegressionTest"
+        includeTestsMatching "org.mskcc.kickoff.sampleset.SampleSetIntegrationTest"
     }
-    description = "Runs Integration Tests"
+   
+    if (System.getProperty('DEBUG', 'false') == 'true')
+        jvmArgs '-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5006'
+
     testClassesDir = sourceSets.integrationTest.output.classesDir
-    classpath += sourceSets.integrationTest.runtimeClasspath
-    systemProperties System.properties
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    description = "Integration Tests"
     outputs.upToDateWhen { false }
 }
 

@@ -4,8 +4,9 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.SampleInfo;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.util.Constants;
@@ -17,7 +18,6 @@ import java.util.*;
 
 import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.config.Arguments.shiny;
-import static org.mskcc.kickoff.printer.OutputFilesPrinter.filesCreated;
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
@@ -34,7 +34,7 @@ public class MappingFilePrinter implements FilePrinter {
     private String fastq_path;
 
     @Override
-    public void print(Request request) {
+    public void print(KickoffRequest request) {
         Map<String, String> sampleRenamesAndSwaps = SampleInfo.getSampleRenames();
 
         File mappingFile = null;
@@ -44,6 +44,7 @@ public class MappingFilePrinter implements FilePrinter {
 
             String mappingFileContents = "";
             String requestID = request.getId();
+
             for (Sample sample : request.getAllValidSamples().values()) {
                 for (String runId : sample.getValidRunIds()) {
                     sampleRuns.add(new SampleRun(sample, runId));
@@ -131,12 +132,12 @@ public class MappingFilePrinter implements FilePrinter {
                 }
 
                 // Grab RUN ID, save it for the request file.
-                request.addRunIDlist(RunIDFull);
+                request.addRunID(RunIDFull);
 
                 for (String S_Pattern : sample_pattern) {
                     String pattern;
                     if (!isPooledNormalSample(sample)) {
-                        pattern = dir.toString() + "/" + RunIDFull + "*/Proj*" + requestID.replaceFirst("^0+(?!$)", "") + "/Sample_" + S_Pattern;
+                        pattern = dir.toString() + "/" + RunIDFull + "*/Proj*" + sample.getRequestId().replaceFirst("^0+(?!$)", "") + "/Sample_" + S_Pattern;
                     } else {
                         pattern = dir.toString() + "/" + RunIDFull + "*/Proj*" + "/Sample_" + S_Pattern + "*";
                     }
@@ -214,7 +215,7 @@ public class MappingFilePrinter implements FilePrinter {
 
                         // Confirm there is a SampleSheet.csv in the path:
                         File samp_sheet = new File(path + "/SampleSheet.csv");
-                        if (!samp_sheet.isFile() && request.getRequestType().equals(Constants.IMPACT)) {
+                        if (!samp_sheet.isFile() && request.getRequestType() == RequestType.IMPACT) {
                             String message = String.format("Sample %s from run %s does not have a sample sheet in the sample directory. This will not pass the validator.", sample, RunIDFull);
                             if (shiny) {
                                 PM_LOGGER.error(message);
@@ -241,7 +242,6 @@ public class MappingFilePrinter implements FilePrinter {
                 String mappingFileName = shouldOutputErrorFile(request) ? ERROR_MAPPING_FILE_NAME : NORMAL_MAPPING_FILE_NAME;
                 mappingFile = new File(String.format("%s/%s_%s", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(requestID), mappingFileName));
                 PrintWriter pW = new PrintWriter(new FileWriter(mappingFile, false), false);
-                filesCreated.add(mappingFile);
                 pW.write(mappingFileContents);
                 pW.close();
             }
@@ -251,13 +251,13 @@ public class MappingFilePrinter implements FilePrinter {
         }
     }
 
-    private boolean shouldOutputErrorFile(Request request) {
+    private boolean shouldOutputErrorFile(KickoffRequest request) {
         return Utils.isExitLater()
                 && request.isMappingIssue()
                 && !krista
-                && !request.isInnovationProject()
-                && !Objects.equals(request.getRequestType(), Constants.RNASEQ)
-                && !Objects.equals(request.getRequestType(), Constants.OTHER);
+                && !request.isInnovation()
+                && request.getRequestType() != RequestType.RNASEQ
+                && request.getRequestType() != RequestType.OTHER;
     }
 
     private boolean isPooledNormalSample(Sample sample) {
@@ -274,8 +274,8 @@ public class MappingFilePrinter implements FilePrinter {
 
 
     @Override
-    public boolean shouldPrint(Request request) {
-        return ((request.getRequestType().equals(Constants.RNASEQ) || request.getRequestType().equals(Constants.OTHER))
+    public boolean shouldPrint(KickoffRequest request) {
+        return ((request.getRequestType() == RequestType.RNASEQ || request.getRequestType() == RequestType.OTHER)
                 && !request.isForced()
                 && !request.isManualDemux()
         )

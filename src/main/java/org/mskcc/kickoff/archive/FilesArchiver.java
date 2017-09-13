@@ -1,6 +1,6 @@
 package org.mskcc.kickoff.archive;
 
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.text.DateFormat;
@@ -17,7 +17,7 @@ public class FilesArchiver {
     @Autowired
     private RunPipelineLogger runPipelineLogger;
 
-    public void archive(Request request) {
+    public void archive(KickoffRequest request) {
         // if this is not a shiny run, and the project stuff is valid, copy to archive and add/append log files.
         if (!shiny && !krista) {
             DateFormat archiveDateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -27,15 +27,15 @@ public class FilesArchiver {
         }
     }
 
-    private void printToPipelineRunLog(Request request) {
+    private void printToPipelineRunLog(KickoffRequest request) {
         runPipelineLogger.invoke(request);
     }
 
-    private void copyToArchive(Request request, String dateDir) {
+    private void copyToArchive(KickoffRequest request, String dateDir) {
         copyToArchive(request, dateDir, "");
     }
 
-    private void copyToArchive(Request request, String dateDir, String suffix) {
-        projectFilesArchiver.invoke(request, dateDir, suffix);
+    private void copyToArchive(KickoffRequest request, String dateDir, String suffix) {
+        projectFilesArchiver.archive(request, dateDir, suffix);
     }
 }
