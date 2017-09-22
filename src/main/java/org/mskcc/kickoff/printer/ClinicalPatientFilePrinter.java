@@ -3,7 +3,7 @@ package org.mskcc.kickoff.printer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.*;
+import org.mskcc.kickoff.domain.Request;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
@@ -11,7 +11,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.text.Normalizer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.function.Predicate;
 
 import static org.mskcc.kickoff.config.Arguments.krista;
@@ -39,7 +42,7 @@ public abstract class ClinicalPatientFilePrinter implements FilePrinter {
             for (String key : fieldMapping.values()) {
                 String val = sample.get(key);
 
-                if (key.equals(Constants.CMO_SAMPLE_ID) || key.equals(Constants.INVESTIGATOR_SAMPLE_ID)) {
+                if (key.equals(Constants.CMO_SAMPLE_ID) || key.equals(Constants.INVESTIGATOR_SAMPLE_ID) || key.equals(Constants.CORRECTED_CMO_ID)) {
                     val = sampleNormalization(val);
                 }
                 if (key.equals(Constants.CMO_PATIENT_ID) || key.equals(Constants.INVESTIGATOR_PATIENT_ID)) {

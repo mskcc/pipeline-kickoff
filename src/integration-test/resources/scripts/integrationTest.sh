@@ -25,8 +25,8 @@ init() {
 	actualPath="${testDir}/actualOutput"
 	mkdir -p ${actualPath}
 
-	prodKickoff=~/prod-master/pipeline-kickoff
-	prodTestKickoff="${testDir}/pipeline-kickoff"
+	prodKickoff=~/krista/pipeline_kickoff_prod
+	prodTestKickoff="${testDir}/pipeline_kickoff_prod/exemplar"
 
 	currentKickoff="pipeline-kickoff"
 	currentTestKickoff="${testDir}/pipeline-kickoff"
@@ -68,7 +68,7 @@ runTrunk() {
 	mkdir -p ${outputPath}
 	argToPass=$(getArgToPass $2)
 	echo "Argument passed: ${argToPass}"
-	./gradlew run -Dspring.profiles.active=test,igo -PprogramArgs=-p,${1},-o,${outputPath},-rerunReason,TEST,${argToPass}
+	${java8} -cp lib/*:classes org.mskcc.kickoff.lims.CreateManifestSheet -p ${1} -o ${outputPath} -rerunReason TEST ${argToPass}
 	cd ~
 }
 
@@ -181,7 +181,7 @@ projects=(
 "06208_D" # Agilient Capture KAPA Libary
 "06259_B"
 "06362" #no sample level qc
-#"06477_E" # !KAPAAgilentCaptureProtocol2, very slow project
+"06477_E" # !KAPAAgilentCaptureProtocol2, very slow project
 "06507" # Request with 2 samples with same name
 "06507_D" # rename FASTQ
 "06507_E"
