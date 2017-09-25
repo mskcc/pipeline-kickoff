@@ -85,3 +85,14 @@ task integrationTest(type: Test) {
     outputs.upToDateWhen { false }
 }
 
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'Create Manifest Sheet',
+                'Implementation-Version': version,
+                'Main-Class': 'org.mskcc.kickoff.lims.CreateManifestSheet'
+    }
+    baseName = project.name
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
