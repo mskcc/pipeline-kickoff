@@ -3,8 +3,8 @@ package org.mskcc.kickoff.util;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.*;
-import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.config.Arguments;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 public class Utils {
     public static final String SHINY = "shiny";
     public static final DateFormat LOG_DATE_FORMAT = new SimpleDateFormat("dd-MM-yy");
+    public static final String DEFAULT_DELIMITER = ",";
 
     private static boolean exitLater;
 
@@ -93,6 +94,10 @@ public class Utils {
     public static String filterToAscii(String highUnicode) {
         String lettersAdded = highUnicode.replaceAll("ß", "ss").replaceAll("æ", "ae").replaceAll("Æ", "Ae");
         return Normalizer.normalize(lettersAdded, Normalizer.Form.NFD).replaceAll("[^\\p{ASCII}]", "");
+    }
+
+    public static <T> String getJoinedCollection(Collection<T> collection) {
+        return collection.stream().map(Object::toString).collect(Collectors.joining(DEFAULT_DELIMITER));
     }
 
     public static <T> String getJoinedCollection(Collection<T> collection, String delimiter) {

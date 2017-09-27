@@ -6,7 +6,10 @@ import org.junit.Rule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.mskcc.kickoff.characterisationTest.comparator.*;
-import org.mskcc.kickoff.characterisationTest.listener.*;
+import org.mskcc.kickoff.characterisationTest.listener.ActualOutputFailingTestListener;
+import org.mskcc.kickoff.characterisationTest.listener.ArchiveOutputFailingTestListener;
+import org.mskcc.kickoff.characterisationTest.listener.ExpectedOutputFailingTestListener;
+import org.mskcc.kickoff.characterisationTest.listener.FailingNumberOfFilesListener;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
@@ -39,12 +42,12 @@ public class RegressionTest {
     public WriteToTestReportOnFailure ruleExample = new WriteToTestReportOnFailure();
     private boolean isShiny = false;
     private String project = "06907_J";
-    private Path expectedOutputPath = Paths.get("src/integration-test/resources/expectedOutput/06907_J/noArg");
-    private Path actualOutputPath = Paths.get("src/integration-test/resources/actualOutput/06907_J/noArg");
-    private String succeededProjectsListPath = "testResults/succeededProjects.txt";
+    private Path expectedOutputPath = Paths.get("/Users/rezae/Documents/06179_X_AA_AB");
+    private Path actualOutputPath = Paths.get("/Users/rezae/seqHome/work/pipeline-kickoff/output/Proj_set_06179_XAAAB");
+    private String succeededProjectsListPath = "succeededProjects.txt";
     private Path failingOutputPathForCurrentRun;
     private String fullProjectName;
-    private String failingOutputPath = "testResults/failing";
+    private String failingOutputPath = "failing";
     private String arg;
     private BiPredicate<String, String> areLinesEqualExceptPathsAndDatesPredicate;
 
@@ -72,7 +75,7 @@ public class RegressionTest {
     public void whenRunningCreateManifestSheet_outputFilesShouldBeAsBefore() throws Exception {
         LOGGER.info(String.format("Running test for project: %s, expected path: %s, actual path: %s", project, expectedOutputPath, actualOutputPath));
 
-//        assertOutputFiles();
+        assertOutputFiles();
     }
 
     private void assertOutputFiles() throws Exception {
@@ -90,10 +93,8 @@ public class RegressionTest {
 
         folderComparator.registerFailingComparisonListener(new ActualOutputFailingTestListener(failingOutputPathForCurrentRun, project));
         folderComparator.registerFailingComparisonListener(new ExpectedOutputFailingTestListener(failingOutputPathForCurrentRun, project));
-        folderComparator.registerFailingComparisonListener(new RunInfoFailingTestListener(actualOutputPath, failingOutputPathForCurrentRun));
 
         folderComparator.registerFailingNumberOfFilesListener(new FailingNumberOfFilesListener(failingOutputPathForCurrentRun));
-        folderComparator.registerFailingNumberOfFilesListener(new RunInfoFailingTestListener(actualOutputPath, failingOutputPathForCurrentRun));
 
         LOGGER.info(String.format("Comparing actual dir: %s and expected dir: %s", actualOutputPath, expectedOutputPath));
 
@@ -132,10 +133,8 @@ public class RegressionTest {
 
             folderComparator.registerFailingComparisonListener(new ArchiveOutputFailingTestListener(failingOutputPathForCurrentRun, project));
             folderComparator.registerFailingComparisonListener(new ActualOutputFailingTestListener(failingOutputPathForCurrentRun, project));
-            folderComparator.registerFailingComparisonListener(new RunInfoFailingTestListener(actualOutputPath, failingOutputPathForCurrentRun));
 
             folderComparator.registerFailingNumberOfFilesListener(new FailingNumberOfFilesListener(failingOutputPathForCurrentRun));
-            folderComparator.registerFailingNumberOfFilesListener(new RunInfoFailingTestListener(actualOutputPath, failingOutputPathForCurrentRun));
 
             LOGGER.info(String.format("Comparing actual dir: %s and archive dir: %s", actualOutputPathForProject, archiveProjectTodayPath));
 
@@ -177,7 +176,7 @@ public class RegressionTest {
                 List<String> succeededProject = Collections.singletonList(String.format("%s%s", project, arg));
                 Files.write(succeeded, succeededProject, StandardOpenOption.APPEND);
             } catch (Exception e) {
-                throw new RuntimeException(String.format("Unable to create file: %s", succeededProjectsListPath, e));
+                LOGGER.warn(String.format("Unable to create file: %s", succeededProjectsListPath), e);
             }
         }
 

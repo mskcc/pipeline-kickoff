@@ -7,9 +7,11 @@ import com.velox.sapioutils.client.standalone.VeloxStandalone;
 import com.velox.sapioutils.client.standalone.VeloxStandaloneException;
 import com.velox.sapioutils.client.standalone.VeloxTask;
 import org.apache.log4j.Logger;
+import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
-import org.mskcc.kickoff.converter.ProjectInfoConverter;
+import org.mskcc.kickoff.converter.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.domain.PairingInfo;
 import org.mskcc.kickoff.process.NormalProcessingType;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.retriever.RequestNotFoundException;
@@ -96,12 +98,14 @@ public class VeloxProjectProxy implements RequestProxy {
         try {
             requestsRetriever = requestsRetrieverFactory.getRequestsRetriever(user, dataRecordManager, projectId);
             KickoffRequest kickoffRequest = requestsRetriever.retrieve(projectId, new NormalProcessingType(projectFilesArchiver));
+            resolvePairings(kickoffRequest);
+
             return kickoffRequest;
         } catch (RequestNotFoundException e) {
             String message = String.format("No matching requests for request id: %s", projectId);
             PM_LOGGER.info(message);
             throw e;
-        } catch (ProjectInfoConverter.PrimaryRequestNotSetException | ProjectInfoConverter.PrimaryRequestNotPartOfSampleSetException | ProjectInfoConverter.PropertyInPrimaryRequestNotSetException e) {
+        } catch (SampleSetProjectInfoConverter.PrimaryRequestNotSetException | SampleSetProjectInfoConverter.PrimaryRequestNotPartOfSampleSetException | SampleSetProjectInfoConverter.PropertyInPrimaryRequestNotSetException e) {
             PM_LOGGER.error(e.getMessage());
             throw e;
         } catch (Exception e) {
@@ -109,6 +113,27 @@ public class VeloxProjectProxy implements RequestProxy {
         } finally {
             closeConnection(connection);
         }
+    }
+
+    private void resolvePairings(KickoffRequest kickoffRequest) {
+        for (PairingInfo pairingInfo : kickoffRequest.getPairingInfos()) {
+            String normalIgoId = pairingInfo.getNormalIgoId();
+            String tumorIgoId = pairingInfo.getTumorIgoId();
+
+            validatePairingSamples(kickoffRequest, normalIgoId);
+            validatePairingSamples(kickoffRequest, tumorIgoId);
+
+            Sample tumorSample = kickoffRequest.getSamples().get(tumorIgoId);
+            Sample normalSample = kickoffRequest.getSamples().get(normalIgoId);
+
+            tumorSample.setPairing(normalSample);
+            normalSample.setPairing(tumorSample);
+        }
+    }
+
+    private void validatePairingSamples(KickoffRequest kickoffRequest, String sampleId) {
+        if (!kickoffRequest.getSamples().containsKey(sampleId))
+            throw new RuntimeException(String.format("Sample: %s from pairing info is not part of given request: %s", sampleId, kickoffRequest.getId()));
     }
 
     public class MySafeShutdown extends Thread {

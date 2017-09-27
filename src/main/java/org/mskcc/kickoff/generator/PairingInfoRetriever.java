@@ -18,7 +18,7 @@ public class PairingInfoRetriever {
         Map<String, String> pairings = new LinkedHashMap<>();
         for (Sample sample : getValidTumorSamples(request)) {
             if (sample.getCmoSampleId().startsWith("CTRL-")) {
-                String message = String.format("A CTRL- igo ID is listed as Tumor?? " + sample.getCmoSampleId());
+                String message = String.format("A sample with id: %s cannot be tumor sample", sample.getCmoSampleId());
                 Utils.setExitLater(true);
                 PM_LOGGER.error(message);
                 DEV_LOGGER.error(message);
@@ -32,13 +32,14 @@ public class PairingInfoRetriever {
             String tumorIgoId = sample.getIgoId();
             String normalCmoId = getInitialNormalId(pairingSample);
 
-            if (StringUtils.isEmpty(pairingSample.getIgoId()) && (StringUtils.isEmpty(pairingSample.getCmoSampleId()) || Objects.equals(pairingSample.getCmoSampleId(), Constants.UNDEFINED))) {
+            if (StringUtils.isEmpty(pairingSample.getIgoId()) && (StringUtils.isEmpty(pairingSample.getCmoSampleId()) || Objects.equals(pairingSample.getCmoSampleId(), org.mskcc.util.Constants.UNDEFINED))) {
                 if (Objects.equals(request.getRequestType(), Constants.EXOME))
                     normalCmoId = Constants.NA_LOWER_CASE;
                 else continue;
             } else {
                 if (!isSampleFromRequest(request, pairingSample)) {
-                    String message = String.format("Normal matching with this tumor is NOT a valid sample in this request: Tumor: %s Norm: %s. The normal will be changed to na.", tumorIgoToCmoId.get(tumorIgoId), normalCmoId);
+                    String message = String.format("Normal: %s (%s) matching with tumor: %s (%s) does NOT belong to request: %s. The normal will be changed to na.", pairingSample.getCmoSampleId(), pairingSample.getIgoId(),
+                            tumorIgoToCmoId.get(tumorIgoId), tumorIgoId, request.getId());
                     PM_LOGGER.log(PmLogPriority.WARNING, message);
                     DEV_LOGGER.warn(message);
                     normalCmoId = Constants.NA_LOWER_CASE;
@@ -88,7 +89,7 @@ public class PairingInfoRetriever {
     }
 
     private String getInitialNormalId(Sample pairingSample) {
-        if (!Objects.equals(pairingSample.getCmoSampleId(), Constants.UNDEFINED))
+        if (!Objects.equals(pairingSample.getCmoSampleId(), org.mskcc.util.Constants.UNDEFINED))
             return pairingSample.getCmoSampleId();
         if (!StringUtils.isEmpty(pairingSample.getIgoId()))
             return pairingSample.getIgoId();
@@ -96,9 +97,7 @@ public class PairingInfoRetriever {
     }
 
     private boolean isSampleFromRequest(KickoffRequest request, Sample pairingSample) {
-        if (isPairingInfo(request))
-            return request.getSamples().containsKey(pairingSample.getIgoId());
-        return request.getSampleByCorrectedCmoId(pairingSample.getCmoSampleId()).isPresent();
+        return request.getSamples().containsKey(pairingSample.getIgoId());
     }
 
     private String getNormalCmoId(KickoffRequest request, Sample pairingSample) {
@@ -113,6 +112,6 @@ public class PairingInfoRetriever {
 
     private boolean isPairingInfo(KickoffRequest request) {
         return request.getSamples().values().stream()
-                .allMatch(s -> s.getPairing() == null || (s.getPairing() != null && Objects.equals(s.getPairing().getCmoSampleId(), Constants.UNDEFINED)));
+                .allMatch(s -> s.getPairing() == null || (s.getPairing() != null && Objects.equals(s.getPairing().getCmoSampleId(), org.mskcc.util.Constants.UNDEFINED)));
     }
 }

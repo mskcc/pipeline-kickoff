@@ -34,4 +34,9 @@ public class ForcedProcessingType implements ProcessingType {
     public Map<String, Pool> getValidPools(Map<String, Pool> pools) {
         return pools;
     }
+
+    @Override
+    public boolean isForced() {
+        return true;
+    }
 }

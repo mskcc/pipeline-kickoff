@@ -84,4 +84,10 @@ public class NormalProcessingType implements ProcessingType {
     public Map<String, Pool> getValidPools(Map<String, Pool> pools) {
         return Collections.emptyMap();
     }
+
+    @Override
+    public boolean isForced() {
+        return false;
+    }
+
 }

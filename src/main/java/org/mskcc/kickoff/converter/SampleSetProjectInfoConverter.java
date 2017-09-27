@@ -1,19 +1,19 @@
 package org.mskcc.kickoff.converter;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.SampleSet;
 import org.mskcc.kickoff.util.Constants;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
-public class ProjectInfoConverter {
+public class SampleSetProjectInfoConverter {
+    private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+
     public Map<String, String> convert(SampleSet sampleSet) {
-        Map<String, String> projectInfo = new HashMap<>();
+        Map<String, String> projectInfo = new LinkedHashMap<>();
 
         projectInfo.put(Constants.ProjectInfo.LAB_HEAD, getLabHead(sampleSet));
         projectInfo.put(Constants.ProjectInfo.LAB_HEAD_E_MAIL, getLabHeadEmail(sampleSet));
@@ -34,21 +34,39 @@ public class ProjectInfoConverter {
         projectInfo.put(Constants.ProjectInfo.SPECIES, getSpecies(sampleSet));
         projectInfo.put(Constants.ProjectInfo.BIOINFORMATIC_REQUEST, getBioinformaticRequest(sampleSet));
 
+        projectInfo.put(Constants.ProjectInfo.ASSAY, sampleSet.getBaitSet());
+        setAssayPath(projectInfo, sampleSet);
+
         setOptionalProjectProperty(projectInfo, sampleSet, Constants.ProjectInfo.DESIGN_FILE);
         setOptionalProjectProperty(projectInfo, sampleSet, Constants.ProjectInfo.SPIKEIN_DESIGN_FILE);
-        setOptionalProjectProperty(projectInfo, sampleSet, Constants.ProjectInfo.ASSAY);
-        setOptionalProjectProperty(projectInfo, sampleSet, Constants.ProjectInfo.ASSAY_PATH);
-        setOptionalProjectProperty(projectInfo, sampleSet, Constants.ProjectInfo.TUMOR_TYPE);
+//        setTumorType(projectInfo, sampleSet);
 
         return projectInfo;
     }
 
+    private void setAssayPath(Map<String, String> projectInfo, SampleSet sampleSet) {
+        List<String> assayPathsForAssay = sampleSet.getRequests().stream()
+                .map(r -> r.getProjectInfo())
+                .filter(p -> Objects.equals(p.get(Constants.ProjectInfo.ASSAY), sampleSet.getBaitSet()))
+                .map(p -> p.get(Constants.ProjectInfo.ASSAY_PATH))
+                .collect(Collectors.toList());
+
+        if (assayPathsForAssay.size() > 0)
+            projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, assayPathsForAssay.get(0));
+        else
+            DEV_LOGGER.warn(String.format("No Assay path found for assay: %s specified in sample set: %s", sampleSet.getBaitSet(), sampleSet.getName()));
+    }
+
+    private void setPropertyFromPrimaryRequest(SampleSet sampleSet, Map<String, String> projectInfo, String propertyName) {
+        projectInfo.put(propertyName, getPropertyFromPrimaryRequest(sampleSet, propertyName));
+    }
+
     private String getLabHead(SampleSet sampleSet) {
-        return ConverterUtils.getRequiredProperty(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.LAB_HEAD), Constants.ProjectInfo.LAB_HEAD);
+        return ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.LAB_HEAD), Constants.ProjectInfo.LAB_HEAD);
     }
 
     private String getLabHeadEmail(SampleSet sampleSet) {
-        return ConverterUtils.getRequiredProperty(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.LAB_HEAD_E_MAIL), Constants.ProjectInfo.LAB_HEAD_E_MAIL);
+        return ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.LAB_HEAD_E_MAIL), Constants.ProjectInfo.LAB_HEAD_E_MAIL);
     }
 
     private String getRequestor(SampleSet sampleSet) {
@@ -60,7 +78,7 @@ public class ProjectInfoConverter {
     }
 
     private String getPlatform(SampleSet sampleSet) {
-        return ConverterUtils.getRequiredProperty(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.PLATFORM), Constants.ProjectInfo.PLATFORM);
+        return sampleSet.getBaitSet();
     }
 
     private String getAlternateEmails(SampleSet sampleSet) {
@@ -79,19 +97,35 @@ public class ProjectInfoConverter {
         return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.CMO_PROJECT_ID);
     }
 
+    private void setTumorType(Map<String, String> projectInfo, SampleSet sampleSet) {
+        Set<String> tumorTypes = sampleSet.getRequests().stream()
+                .map(r -> r.getProjectInfo().get(Constants.ProjectInfo.TUMOR_TYPE))
+                .collect(Collectors.toSet());
+
+        if (tumorTypes.size() > 1)
+            projectInfo.put(Constants.ProjectInfo.TUMOR_TYPE, Constants.MIXED);
+        else
+            setPropertyFromPrimaryRequest(sampleSet, projectInfo, Constants.ProjectInfo.TUMOR_TYPE);
+    }
+
     private String getPropertyFromPrimaryRequest(SampleSet sampleSet, String propertyName) {
         String primaryRequestId = sampleSet.getPrimaryRequestId();
-        if (StringUtils.isEmpty(primaryRequestId))
-            throw new PrimaryRequestNotSetException(String.format("Primary request not set for project: %s", sampleSet.getId()));
-
-        if (!sampleSet.getRequestIdToRequest().containsKey(primaryRequestId))
-            throw new PrimaryRequestNotPartOfSampleSetException(String.format("Primary request: %s for project: %s is not part of this project", primaryRequestId, sampleSet.getId()));
+        validatePrimaryRequest(sampleSet);
 
         KickoffRequest primeKickoffRequest = sampleSet.getRequestIdToRequest().get(primaryRequestId);
         if (!primeKickoffRequest.getProjectInfo().containsKey(propertyName))
-            throw new PropertyInPrimaryRequestNotSetException(String.format("Primary request: %s of project: %s has no property: %s set", primeKickoffRequest.getId(), sampleSet.getId(), propertyName));
+            throw new PropertyInPrimaryRequestNotSetException(String.format("Primary request: %s of project: %s has no property: %s set", primeKickoffRequest.getId(), sampleSet.getName(), propertyName));
 
         return primeKickoffRequest.getProjectInfo().get(propertyName);
+    }
+
+    private void validatePrimaryRequest(SampleSet sampleSet) {
+        String primaryRequestId = sampleSet.getPrimaryRequestId();
+        if (StringUtils.isEmpty(primaryRequestId))
+            throw new PrimaryRequestNotSetException(String.format("Primary request not set for project: %s", sampleSet.getName()));
+
+        if (!sampleSet.getRequestIdToRequest().containsKey(primaryRequestId))
+            throw new PrimaryRequestNotPartOfSampleSetException(String.format("Primary request: %s for project: %s is not part of this project", primaryRequestId, sampleSet.getName()));
     }
 
     private String getCmoProjectBrief(SampleSet sampleSet) {
@@ -133,7 +167,7 @@ public class ProjectInfoConverter {
     }
 
     private String getSpecies(SampleSet sampleSet) {
-        return ConverterUtils.getRequiredProperty(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.SPECIES), Constants.ProjectInfo.SPECIES);
+        return ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.SPECIES), Constants.ProjectInfo.SPECIES);
     }
 
     private String getBioinformaticRequest(SampleSet sampleSet) {
@@ -165,3 +199,6 @@ public class ProjectInfoConverter {
         }
     }
 }
+
+
+

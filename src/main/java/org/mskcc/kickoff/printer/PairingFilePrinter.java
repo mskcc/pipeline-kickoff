@@ -31,7 +31,6 @@ public class PairingFilePrinter implements FilePrinter {
     @Override
     public void print(KickoffRequest request) {
         String filename = String.format("%s/%s_sample_pairing.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId()));
-        ;
         pairingInfo = getPairingInfo(request);
 
         Set<String> normalCMOids = new HashSet<>();

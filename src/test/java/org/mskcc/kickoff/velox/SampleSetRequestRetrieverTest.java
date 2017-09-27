@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.velox;
 
+import com.velox.api.datarecord.DataRecord;
 import org.junit.Before;
 import org.junit.Test;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
@@ -25,7 +26,7 @@ public class SampleSetRequestRetrieverTest {
 
     @Before
     public void setUp() throws Exception {
-        sampleSetRequestRetriever = new SampleSetRequestRetriever(requetsDataPropagator, sampleSetToReqConv, sampleSetRetriever);
+        sampleSetRequestRetriever = new SampleSetRequestRetriever(requetsDataPropagator, sampleSetToReqConv, sampleSetRetriever, mock(DataRecord.class), mock(VeloxPairingsRetriever.class));
     }
 
     @Test

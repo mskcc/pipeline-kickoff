@@ -50,6 +50,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     @Override
     public KickoffRequest retrieve(String requestId, List<String> sampleIds, ProcessingType processingType) throws Exception {
+        DEV_LOGGER.info(String.format("Retrieving information about request: %s", requestId));
+
         List<DataRecord> requestsDataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestId + "'", user);
         if (requestsDataRecords != null && requestsDataRecords.size() > 0) {
             KickoffRequest kickoffRequest = new KickoffRequest(requestId, processingType);
@@ -73,10 +75,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             addPoolRunsToSamples(kickoffRequest);
 
             addSampleInfo(kickoffRequest);
-
             processPooledNormals(kickoffRequest, dataRecordRequest);
-
-            setPairings(kickoffRequest, dataRecordRequest);
             kickoffRequest.setProjectInfo(getProjectInfo(kickoffRequest));
 
             return kickoffRequest;
@@ -150,7 +149,6 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     }
 
     private void setRecipe(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
-        //this will get the recipes for all sampels under request
         List<Object> recipes = new ArrayList<>();
 
         try {
@@ -166,7 +164,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     .distinct()
                     .collect(Collectors.toList());
 
-            if(recipeList.size() == 1)
+            if (recipeList.size() == 1)
                 kickoffRequest.setRecipe(recipeList.get(0));
         } catch (Recipe.UnsupportedRecipeException | Recipe.EmptyRecipeException e) {
             DEV_LOGGER.warn(String.format("Request: %s issue: %s", kickoffRequest.getId(), e.getMessage()), e);
@@ -213,66 +211,13 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         return false;
     }
 
-    private void setPairings(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
-        try {
-            for (Sample sample : kickoffRequest.getAllValidSamples().values()) {
-                sample.setPairing(getPairingSample(sample, dataRecordRequest));
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private Sample getPairingSample(Sample sample, DataRecord requestDataRecord) throws IoError, RemoteException, NotFound {
-        Sample pairing = null;
-        List<DataRecord> records = Arrays.asList(requestDataRecord.getChildrenOfType(VeloxConstants.PAIRING_INFO, user));
-        for (DataRecord record : records) {
-            String tumorId = record.getStringVal(VeloxConstants.TUMOR_ID, user);
-            String normalId = record.getStringVal(VeloxConstants.NORMAL_ID, user);
-
-            if (Objects.equals(sample.getIgoId(), tumorId)) {
-                //@TODO change to sampleType
-//                sample.setIsTumor(true);
-                pairing = new Sample(normalId);
-            } else if (Objects.equals(sample.getIgoId(), normalId)) {
-                pairing = new Sample(tumorId);
-//                pairing.setIsTumor(true);
-            }
-        }
-        return pairing;
-    }
-
-    private String getIgoId(String cmoId) throws NotFound, IoError, RemoteException {
-        if (StringUtils.isEmpty(cmoId))
-            return "";
-        if (Objects.equals(cmoId, Constants.NA_LOWER_CASE))
-            return Constants.NA_LOWER_CASE;
-        List<DataRecord> dataRecords = dataRecordManager.queryDataRecords(VeloxConstants.SAMPLE, "OtherSampleId = '" + cmoId + "'", user);
-        if (dataRecords.isEmpty())
-            return "";
-        //@TODO check which one to choose if there are multiple samples with same cmoid
-        return dataRecords.get(dataRecords.size() - 1).getStringVal(VeloxConstants.SAMPLE_ID, user);
-    }
-
-    private Sample getSamplePairings(Sample sample) throws NotFound, IoError, RemoteException {
-        Sample pairing = null;
-        List<DataRecord> records = dataRecordManager.queryDataRecords(VeloxConstants.SAMPLE_PAIRING, "SampleId = '" + sample.get(Constants.IGO_ID) + "'", user);
-        if (records.size() > 0) {
-            String samplePairCmoId = records.get(0).getStringVal(VeloxConstants.SAMPLE_PAIR, user);
-            pairing = new Sample(getIgoId(samplePairCmoId));
-            pairing.setCmoSampleId(samplePairCmoId);
-        }
-
-        return pairing;
-    }
-
     private void processPooledNormals(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         try {
-            Map<DataRecord, Set<String>> pooledNormals = new LinkedHashMap<>(SampleInfoImpact.getPooledNormals());
+            Map<DataRecord, Collection<String>> pooledNormals = new LinkedHashMap<>(SampleInfoImpact.getPooledNormals());
             if (pooledNormals != null && pooledNormals.size() > 0) {
                 DEV_LOGGER.info(String.format("Number of Pooled Normal Samples: %d", pooledNormals.size()));
 
-                for (Map.Entry<DataRecord, Set<String>> pooledNormalToRuns : pooledNormals.entrySet()) {
+                for (Map.Entry<DataRecord, Collection<String>> pooledNormalToRuns : pooledNormals.entrySet()) {
                     DataRecord pooledNormalRecord = pooledNormalToRuns.getKey();
                     String cmoNormalId = pooledNormalRecord.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
                     String igoNormalId = pooledNormalRecord.getStringVal(VeloxConstants.SAMPLE_ID, user);
@@ -343,7 +288,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         return kickoffRequest.getSamples().values().stream().anyMatch(s -> Objects.equals(s.getCmoSampleId(), cmoNormalId) && s.getProperties() != null && s.getProperties().size() > 0);
     }
 
-    private Set<Run> getPooledNormalRuns(Set<String> pooledNormalPools, KickoffRequest kickoffRequest) {
+    private Set<Run> getPooledNormalRuns(Collection<String> pooledNormalPools, KickoffRequest kickoffRequest) {
         Set<Run> runs = new HashSet<>();
         try {
             for (String pooledNormalPool : pooledNormalPools) {
@@ -401,7 +346,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             List<DataRecord> childSamples = new LinkedList<>(Arrays.asList(dataRecordRequest.getChildrenOfType(VeloxConstants.SAMPLE, user)));
             for (DataRecord childSample : childSamples) {
                 String igoId = childSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
-                if(sampleIds.contains(igoId))
+                if (sampleIds.contains(igoId))
                     childSamplesToProcess.add(childSample);
             }
 

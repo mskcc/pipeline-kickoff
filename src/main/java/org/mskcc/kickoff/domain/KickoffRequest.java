@@ -13,12 +13,13 @@ import java.util.stream.Collectors;
 
 
 public class KickoffRequest extends org.mskcc.domain.Request {
-    private boolean forced;
+    private final List<KickoffRequest> requests = new ArrayList<>();
     private ProcessingType processingType;
     private boolean mappingIssue;
     private int newMappingScheme = 0;
     private String runNumbers = "";
     private String outputPath = "";
+    private List<PairingInfo> pairingInfos = new ArrayList<>();
 
     public KickoffRequest(String id, ProcessingType processingType) {
         super(id);
@@ -71,13 +72,12 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     }
 
     public boolean isForced() {
-        return forced;
-//        @TODO temporary before sampleInfo is dependant of velox
-//        return processingType instanceof ForcedProcessingType;
+        return processingType.isForced();
     }
 
-    public void setForced(boolean forced) {
-        this.forced = forced;
+    @Override
+    public String toString() {
+        return getId();
     }
 
     public boolean isMappingIssue() {
@@ -151,8 +151,27 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     }
 
     public void setProcessingType(ProcessingType processingType) {
-        //@TODO temporary, do not use forced flag later
-        forced = true;
         this.processingType = processingType;
+    }
+
+    public List<KickoffRequest> getRequests() {
+        return requests;
+    }
+
+    public void addRequests(List<KickoffRequest> requests) {
+        this.requests.addAll(requests);
+
+    }
+
+    public void setPairings(List<PairingInfo> pairingInfos) {
+        this.pairingInfos = pairingInfos;
+    }
+
+    public List<PairingInfo> getPairingInfos() {
+        return pairingInfos;
+    }
+
+    public void setPairingInfos(List<PairingInfo> pairingInfos) {
+        this.pairingInfos = pairingInfos;
     }
 }

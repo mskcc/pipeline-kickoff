@@ -47,7 +47,7 @@ public class SampleSetRetrieverTest {
         //then
         assertThat(sampleSet.getBaitSet(), is(baitVer));
         assertThat(sampleSet.getRequests().size(), is(0));
-        assertThat(sampleSet.getId(), is(projId));
+        assertThat(sampleSet.getName(), is(projId));
         assertThat(sampleSet.getPrimaryRequestId(), is(primaryReqId));
         assertThat(sampleSet.getRecipe(), is(recipe));
     }

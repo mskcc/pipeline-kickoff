@@ -13,32 +13,40 @@ import java.util.List;
 class SampleSetRetriever {
     private final SampleSetProxy sampleSetProxy;
     private final SamplesToRequestsConverter samplesToRequestsConverter;
-    private SampleSet sampleSet;
-    private List<KickoffRequest> kickoffRequests;
 
     public SampleSetRetriever(SampleSetProxy sampleSetProxy, SamplesToRequestsConverter samplesToRequestsConverter) {
         this.sampleSetProxy = sampleSetProxy;
         this.samplesToRequestsConverter = samplesToRequestsConverter;
     }
 
-    public SampleSet retrieve(String projectId, ProcessingType processingType) throws Exception {
-        sampleSet = new SampleSet(projectId);
-        kickoffRequests = new ArrayList<>();
+    public SampleSet retrieve(String projectId, ProcessingType processingType) {
+        try {
+            SampleSet sampleSet = new SampleSet(projectId);
 
+            sampleSet.setRequests(getRequests(processingType));
+            sampleSet.setPrimaryRequestId(sampleSetProxy.getPrimaryRequestId());
+            sampleSet.setBaitSet(sampleSetProxy.getBaitVersion());
+            sampleSet.setRecipe(getRecipe());
+
+            return sampleSet;
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("Unable to retrieve Sample Set: %s", projectId), e);
+        }
+    }
+
+    private Recipe getRecipe() throws Exception {
+        return Recipe.getRecipeByValue(sampleSetProxy.getRecipe());
+    }
+
+    private List<KickoffRequest> getRequests(ProcessingType processingType) throws Exception {
+        List<KickoffRequest> kickoffRequests = new ArrayList<>();
         kickoffRequests.addAll(sampleSetProxy.getRequests(processingType));
         kickoffRequests.addAll(convertToRequests(sampleSetProxy.getSamples(), processingType));
-        sampleSet.setRequests(kickoffRequests);
-        sampleSet.setPrimaryRequestId(sampleSetProxy.getPrimaryRequestId());
-        sampleSet.setBaitSet(sampleSetProxy.getBaitVersion());
-        String recipe = sampleSetProxy.getRecipe();
-        sampleSet.setRecipe(Recipe.getRecipeByValue(recipe));
 
-        return sampleSet;
+        return kickoffRequests;
     }
 
     private Collection<KickoffRequest> convertToRequests(Collection<Sample> samples, ProcessingType processingType) throws Exception {
         return samplesToRequestsConverter.convert(samples, processingType).values();
     }
-
-
 }

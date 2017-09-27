@@ -3,6 +3,7 @@ package org.mskcc.kickoff.converter;
 import org.apache.commons.lang3.StringUtils;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.SampleSet;
+import org.mskcc.kickoff.util.Utils;
 
 import java.util.List;
 import java.util.Objects;
@@ -23,19 +24,20 @@ public class ConverterUtils {
                 .collect(Collectors.toList());
 
         if (uniqueRequestsProperty.size() > 1)
-            throw new SampleSetToRequestConverter.AmbiguousPropertyException(String.format("Ambiguous %s for project: %s: %s", propertyName, sampleSet.getId(), StringUtils.join(uniqueRequestsProperty, ",")));
+            throw new SampleSetToRequestConverter.AmbiguousPropertyException(String.format("Ambiguous %s for project: %s: %s", propertyName, sampleSet.getName(), StringUtils.join(uniqueRequestsProperty, ",")));
 
         if (uniqueRequestsProperty.size() == 1 && notEmptyPredicate.test(uniqueRequestsProperty.get(0))) {
             return uniqueRequestsProperty.get(0);
         }
 
-        throw new SampleSetToRequestConverter.NoPropertySetException(String.format("Project: %s has no %s set", sampleSet.getId(), propertyName));
+        throw new SampleSetToRequestConverter.NoPropertySetException(String.format("Project: %s has no %s set", sampleSet.getName(), propertyName));
     }
 
     static String getMergedPropertyValue(SampleSet sampleSet, Function<KickoffRequest, String> requestProperty, String delimiter) {
         return sampleSet.getRequests().stream()
                 .map(requestProperty)
                 .filter(p -> !StringUtils.isEmpty(p))
+                .distinct()
                 .collect(Collectors.joining(delimiter));
     }
 
@@ -43,11 +45,16 @@ public class ConverterUtils {
         return sampleSet.getRequests().get(0).getProjectInfo().get(projectInfoProperty);
     }
 
+    static String getJoinedRequestProperty(SampleSet sampleSet, Function<KickoffRequest, String> requestProperty) {
+        return getJoinedRequestProperty(sampleSet, requestProperty, Utils.DEFAULT_DELIMITER);
+    }
+
     static String getJoinedRequestProperty(SampleSet sampleSet, Function<KickoffRequest, String> requestProperty, String delimiter) {
         return sampleSet.getRequests().stream()
                 .map(requestProperty)
                 .filter(p -> !StringUtils.isEmpty(p))
-                .distinct().collect(Collectors.joining(delimiter));
+                .distinct()
+                .collect(Collectors.joining(delimiter));
     }
 
     static <T> Optional<T> getOptionalProperty(SampleSet sampleSet, Function<KickoffRequest, T> requestProperty, String propertyName) {
@@ -61,7 +68,7 @@ public class ConverterUtils {
                 .filter(r -> r.getProjectInfo().containsKey(projectInfoProperty)).count() > 0;
     }
 
-    public static <T> T getRequiredProperty(SampleSet sampleSet, Function<KickoffRequest, T> requestProperty, String propertyName, Predicate<T> nonEmptyPredicate) {
+    public static <T> T getRequiredSameForAllProperty(SampleSet sampleSet, Function<KickoffRequest, T> requestProperty, String propertyName, Predicate<T> nonEmptyPredicate) {
         List<String> requestsWithNullProperty = sampleSet.getRequests().stream()
                 .filter(r -> requestProperty.apply(r) == null)
                 .map(r -> r.getId())
@@ -73,8 +80,8 @@ public class ConverterUtils {
         return getSameForAllRequestProperty(sampleSet, requestProperty, propertyName, nonEmptyPredicate);
     }
 
-    public static <T> T getRequiredProperty(SampleSet sampleSet, Function<KickoffRequest, T> requestProperty, String propertyName) {
-        return getRequiredProperty(sampleSet, requestProperty, propertyName, Objects::nonNull);
+    public static <T> T getRequiredSameForAllProperty(SampleSet sampleSet, Function<KickoffRequest, T> requestProperty, String propertyName) {
+        return getRequiredSameForAllProperty(sampleSet, requestProperty, propertyName, Objects::nonNull);
     }
 
     static class RequiredPropertyNotSetException extends RuntimeException {
@@ -83,3 +90,5 @@ public class ConverterUtils {
         }
     }
 }
+
+

@@ -9,7 +9,7 @@ import org.mskcc.domain.PassedRunPredicate;
 import org.mskcc.kickoff.archive.FilesArchiver;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.archive.RunPipelineLogger;
-import org.mskcc.kickoff.converter.ProjectInfoConverter;
+import org.mskcc.kickoff.converter.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
 import org.mskcc.kickoff.generator.*;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
@@ -167,8 +167,8 @@ public class AppConfiguration {
     }
 
     @Bean
-    public ProjectInfoConverter projectInfoConverter() {
-        return new ProjectInfoConverter();
+    public SampleSetProjectInfoConverter projectInfoConverter() {
+        return new SampleSetProjectInfoConverter();
     }
 
     @Bean

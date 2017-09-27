@@ -6,10 +6,6 @@ import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
 import com.velox.api.util.ServerException;
-import com.velox.sapioutils.client.standalone.VeloxConnection;
-import com.velox.sapioutils.client.standalone.VeloxStandalone;
-import com.velox.sapioutils.client.standalone.VeloxStandaloneException;
-import com.velox.sapioutils.client.standalone.VeloxTask;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.log4j.Logger;
@@ -17,7 +13,6 @@ import org.mskcc.domain.RequestType;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
-import org.mskcc.kickoff.velox.util.VeloxUtils;
 import org.mskcc.util.VeloxConstants;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -57,32 +52,6 @@ public class ProjectInfoRetriever {
         return projectInfo.getOrDefault(Constants.ProjectInfo.REQUESTOR_E_MAIL, Constants.NA);
     }
 
-    public Map<String, String> queryProjectInfo(KickoffRequest request) {
-        try {
-            VeloxConnection connection = VeloxUtils.getVeloxConnection(limsConnectionFilePath);
-            try {
-                connection.open();
-                VeloxStandalone.run(connection, new VeloxTask<Object>() {
-                    @Override
-                    public Object performTask() throws VeloxStandaloneException {
-                        projectInfo = queryProjectInfo(user, dataRecordManager, request);
-                        return new Object();
-                    }
-                });
-            } finally {
-                connection.close();
-            }
-        } catch (com.velox.sapioutils.client.standalone.VeloxConnectionException e) {
-            System.err.println("com.velox.sapioutils.client.standalone.VeloxConnectionException: Connection refused for all users.1 ");
-            System.out.println("[ERROR] There was an issue connecting with LIMs. Someone or something else may be using this connection. Please try again in a minute or two.");
-            System.exit(0);
-        } catch (Exception e) {
-            DEV_LOGGER.warn(e.getMessage(), e);
-        }
-
-        return projectInfo;
-    }
-
     public Map<String, String> queryProjectInfo(User apiUser, DataRecordManager drm, KickoffRequest kickoffRequest) {
         // Adding PM emails to the hashmap
         pmEmail.put("Bouvier, Nancy", "bouviern@mskcc.org");
@@ -99,7 +68,7 @@ public class ProjectInfoRetriever {
 
         try {
             List<DataRecord> requests = drm.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestID + "'", apiUser);
-            List<String> ProjectFields = Arrays.asList(
+            List<String> projectFields = Arrays.asList(
                     Constants.ProjectInfo.LAB_HEAD,
                     Constants.ProjectInfo.LAB_HEAD_E_MAIL,
                     Constants.ProjectInfo.REQUESTOR,
@@ -116,7 +85,7 @@ public class ProjectInfoRetriever {
                     Constants.ProjectInfo.DATA_ANALYST_EMAIL);
 
             //initalizing empty map
-            for (String field : ProjectFields) {
+            for (String field : projectFields) {
                 projectInfo.put(field, Constants.NA);
             }
 

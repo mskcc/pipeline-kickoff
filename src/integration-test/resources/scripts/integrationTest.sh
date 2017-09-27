@@ -25,8 +25,8 @@ init() {
 	actualPath="${testDir}/actualOutput"
 	mkdir -p ${actualPath}
 
-	prodKickoff=~/prod-master/pipeline-kickoff
-	prodTestKickoff="${testDir}/pipeline-kickoff"
+	prodKickoff=~/krista/pipeline_kickoff_prod
+	prodTestKickoff="${testDir}/pipeline_kickoff_prod/exemplar"
 
 	currentKickoff="pipeline-kickoff"
 	currentTestKickoff="${testDir}/pipeline-kickoff"
@@ -68,7 +68,7 @@ runTrunk() {
 	mkdir -p ${outputPath}
 	argToPass=$(getArgToPass $2)
 	echo "Argument passed: ${argToPass}"
-	./gradlew run -Dspring.profiles.active=test,igo -PprogramArgs=-p,${1},-o,${outputPath},-rerunReason,TEST,${argToPass}
+	${java8} -cp lib/*:classes org.mskcc.kickoff.lims.CreateManifestSheet -p ${1} -o ${outputPath} -rerunReason TEST ${argToPass}
 	cd ~
 }
 
@@ -94,7 +94,7 @@ runTest() {
 	expected=$(getOutputPath $expectedPath $1 $2)
 	echo "Actual output path: $actual"
 	echo "Expected output path: $expected"
-	./gradlew integrationTest -Dspring.profiles.active=test,igo -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList}
+	./gradlew regressionTest -Dspring.profiles.active=test,igo -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList}
 	#${java8} -cp .:libs/*:build/classes/main:build/classes/integrationTest:build/resources/integrationTest -Dspring.profiles.active=dev -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList} org.junit.runner.JUnitCore org.mskcc.kickoff.characterisationTest.RegressionTest
 	cd ~
 }
@@ -166,9 +166,9 @@ projects=(
 "05514_I" # IMPACT bait set
 "05583_F" #pairing changes
 "05600" # No Status Sequence Analysis QC
-"05667_AB"  #pairing changes
-"05667_AT"  #pairing changes
-"05667_AW"  #pairing changes
+#"05667_AB"  #pairing changes
+#"05667_AT"  #pairing changes
+#"05667_AW"  #pairing changes
 "05667_AY"
 "05684_D" # KK- NimlegenHybridizationProtocol1
 "05737_R" # HEMEPACT_v3 bait set, species in Xenograft
@@ -181,7 +181,7 @@ projects=(
 "06208_D" # Agilient Capture KAPA Libary
 "06259_B"
 "06362" #no sample level qc
-#"06477_E" # !KAPAAgilentCaptureProtocol2, very slow project
+"06477_E" # !KAPAAgilentCaptureProtocol2, very slow project
 "06507" # Request with 2 samples with same name
 "06507_D" # rename FASTQ
 "06507_E"

@@ -34,7 +34,29 @@ dependencies {
 
 tasks.withType(Test) {
     testLogging {
-        events "standardOut", "started", "passed", "skipped", "failed"
+        events "passed", "skipped", "failed", "standardOut", "standardError"
+
+        showExceptions true
+        exceptionFormat "full"
+        showCauses true
+        showStackTraces true
+
+        // set options for log level DEBUG and INFO
+        debug {
+            events "started", "passed", "skipped", "failed", "standardOut", "standardError"
+            exceptionFormat "full"
+        }
+        info.events = debug.events
+        info.exceptionFormat = debug.exceptionFormat
+
+        afterSuite { desc, result ->
+            if (!desc.parent) { // will match the outermost suite
+                def output = "Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)"
+                def startItem = '|  ', endItem = '  |'
+                def repeatLength = startItem.length() + output.length() + endItem.length()
+                println('\n' + ('-' * repeatLength) + '\n' + startItem + output + endItem + '\n' + ('-' * repeatLength))
+            }
+        }
     }
 }
 
@@ -44,7 +66,7 @@ run {
                 '-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5006'
     }
 
-    if(project.hasProperty('programArgs')){
+    if (project.hasProperty('programArgs')) {
         args(programArgs.split(','))
     }
     systemProperties = System.properties
@@ -70,15 +92,32 @@ configurations {
 
 task integrationTest(type: Test) {
     filter {
-        includeTestsMatching "org.mskcc.kickoff.sampleset.SampleSetIntegrationTest"
+        includeTestsMatching "org.mskcc.kickoff.sampleset.*"
     }
-   
+
     if (System.getProperty('DEBUG', 'false') == 'true')
         jvmArgs '-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5006'
 
+    systemProperties System.properties
     testClassesDir = sourceSets.integrationTest.output.classesDir
     classpath = sourceSets.integrationTest.runtimeClasspath
     description = "Integration Tests"
+    outputs.upToDateWhen { false }
+    environment SPRING_PROFILES_ACTIVE: environment.SPRING_PROFILES_ACTIVE ?: "test,tango"
+}
+
+task regressionTest(type: Test) {
+    filter {
+        includeTestsMatching "org.mskcc.kickoff.characterisationTest.RegressionTest"
+    }
+
+    if (System.getProperty('DEBUG', 'false') == 'true')
+        jvmArgs '-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5006'
+
+    systemProperties System.properties
+    testClassesDir = sourceSets.integrationTest.output.classesDir
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    description = "Regression Tests"
     outputs.upToDateWhen { false }
 }
 

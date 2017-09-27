@@ -1,7 +1,10 @@
 package org.mskcc.kickoff.lims;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.SetMultimap;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
+import com.velox.api.datarecord.NotFound;
 import com.velox.api.user.User;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
@@ -11,6 +14,7 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
+import java.rmi.RemoteException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,7 +32,7 @@ public class SampleInfoImpact extends SampleInfo {
 
     private static final HashSet<String> poolNameList = new HashSet<>();
     private static final DecimalFormat df = new DecimalFormat("#.##");
-    private static Map<DataRecord, Set<String>> pooledNormals = new HashMap<>();
+    private static SetMultimap<DataRecord, String> pooledNormals = HashMultimap.create();
     // Consensus BaitSet
     private static String ConsensusBaitSet;
     private static String ConsensusSpikeIn;
@@ -61,8 +65,8 @@ public class SampleInfoImpact extends SampleInfo {
         }
     }
 
-    public static Map<DataRecord, Set<String>> getPooledNormals() {
-        return pooledNormals;
+    public static Map<DataRecord, Collection<String>> getPooledNormals() {
+        return pooledNormals.asMap();
     }
 
     /**
@@ -190,7 +194,7 @@ public class SampleInfoImpact extends SampleInfo {
 
         // OnocTree Code
         this.ONCOTREE_CODE = optionallySetDefault(this.ONCOTREE_CODE, "#UNKNOWN");
-        String tumorLong = setFromMap(this.ONCOTREE_CODE, "TumorType", fieldMap);
+        String tumorLong = setFromMap(this.ONCOTREE_CODE, Constants.ProjectInfo.TUMOR_TYPE, fieldMap);
         if (!Objects.equals(tumorLong, Constants.NULL) && tumorLong.length() > 0) {
             String[] tumor_type = tumorLong.split("[()]");
             if (tumor_type.length == 2) {
@@ -920,27 +924,29 @@ public class SampleInfoImpact extends SampleInfo {
             for (DataRecord nymbSiblingSample : nymbSiblingSamples) {
                 // HERE check tos ee if it was added ot a flowcell?
                 List<DataRecord> flowCellLanes = nymbSiblingSample.getDescendantsOfType(VeloxConstants.FLOW_CELL_LANE, apiUser);
-                if (flowCellLanes == null || flowCellLanes.size() == 0) {
+
+                if (flowCellLanes == null || flowCellLanes.size() == 0)
                     continue;
-                }
+
                 List<DataRecord> parentSamples = nymbSiblingSample.getParentsOfType(VeloxConstants.SAMPLE, apiUser);
-
                 for (DataRecord parentSample : parentSamples) {
-                    if (parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL")) {
-                        HashSet<String> tempSet = new HashSet<>();
-
-                        if (pooledNormals.containsKey(parentSample)) {
-                            tempSet.addAll(pooledNormals.get(parentSample));
-                        }
-                        tempSet.add(nymbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser));
-                        pooledNormals.put(parentSample, tempSet);
-
-                    }
+                    if (isPooledNormal(apiUser, parentSample))
+                        addPooledNormal(apiUser, nymbSiblingSample, parentSample);
                 }
             }
         } catch (Exception e) {
             DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
         }
+    }
+
+    private void addPooledNormal(User apiUser, DataRecord nymbSiblingSample, DataRecord parentSample) throws NotFound, RemoteException {
+        String pooledNormalId = nymbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
+        DEV_LOGGER.info(String.format("Adding pooled normal: %s", pooledNormalId));
+        pooledNormals.put(parentSample, pooledNormalId);
+    }
+
+    private boolean isPooledNormal(User apiUser, DataRecord parentSample) throws NotFound, RemoteException {
+        return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL");
     }
 
     /*

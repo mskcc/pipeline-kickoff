@@ -13,8 +13,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.text.DecimalFormat;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
@@ -30,7 +32,7 @@ public class GroupingFilePrinter implements FilePrinter {
 
         StringBuilder outputText = new StringBuilder();
 
-        for (Patient patient : kickoffRequest.getPatients().values()) {
+        for (Patient patient : getPatientsListSortedByGroup(kickoffRequest)) {
             for (Sample sample : getUniqueSamples(patient)) {
                 outputText.append(String.format("%s\tGroup_%s\n", sampleNormalization(sample.get(Constants.CORRECTED_CMO_ID)), groupNumberFormat.format(patient.getGroupNumber())));
             }
@@ -47,6 +49,10 @@ public class GroupingFilePrinter implements FilePrinter {
                 DEV_LOGGER.warn(String.format("Exception thrown while creating grouping file: %s", filename), e);
             }
         }
+    }
+
+    private List<Patient> getPatientsListSortedByGroup(KickoffRequest kickoffRequest) {
+        return kickoffRequest.getPatients().values().stream().sorted(Comparator.comparingInt(Patient::getGroupNumber)).collect(Collectors.toList());
     }
 
     private List<Sample> getUniqueSamples(Patient patient) {

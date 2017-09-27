@@ -13,5 +13,5 @@ if [ "${2}" == "debug" ] || [ "${3}" == "debug" ]; then
 	echo "Running in debug mode"
 fi
 
-./gradlew run -DDEBUG=${debugMode} -Dspring.profiles.active=prod,igo -PprogramArgs=-p,$1,-o,output,-rerunReason,TEST,$2
+./gradlew run -DDEBUG=${debugMode} -Dspring.profiles.active=dev,igo -PprogramArgs=-p,$1,-rerunReason,TEST,-o,output,$2
 cd ~

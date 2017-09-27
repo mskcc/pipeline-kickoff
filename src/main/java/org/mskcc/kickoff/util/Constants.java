@@ -82,7 +82,6 @@ public class Constants {
     public static final String TEST_PROFILE = "test";
     public static final String TISSUE_SITE = "TISSUE_SITE";
     public static final String TUMOR = "Tumor";
-    public static final String UNDEFINED = "undefined";
     public static final String UNDER_REVIEW = "Under-Review";
     public static final String UNKNOWN = "Unknown";
 

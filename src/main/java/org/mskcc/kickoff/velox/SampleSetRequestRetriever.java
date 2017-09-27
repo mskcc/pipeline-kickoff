@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.velox;
 
+import com.velox.api.datarecord.DataRecord;
 import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.SampleSet;
@@ -11,14 +12,20 @@ public class SampleSetRequestRetriever implements RequestsRetriever {
     private final RequestDataPropagator requestDataPropagator;
     private final SampleSetToRequestConverter sampleSetToRequestConverter;
     private final SampleSetRetriever sampleSetRetriever;
+    private final DataRecord sampleSetRecord;
+    private final VeloxPairingsRetriever veloxPairingsRetriever;
 
     public SampleSetRequestRetriever(
             RequestDataPropagator requestDataPropagator,
             SampleSetToRequestConverter sampleSetToRequestConverter,
-            SampleSetRetriever sampleSetRetriever) {
+            SampleSetRetriever sampleSetRetriever,
+            DataRecord sampleSetRecord,
+            VeloxPairingsRetriever veloxPairingsRetriever) {
         this.requestDataPropagator = requestDataPropagator;
         this.sampleSetToRequestConverter = sampleSetToRequestConverter;
         this.sampleSetRetriever = sampleSetRetriever;
+        this.sampleSetRecord = sampleSetRecord;
+        this.veloxPairingsRetriever = veloxPairingsRetriever;
     }
 
     @Override
@@ -27,6 +34,7 @@ public class SampleSetRequestRetriever implements RequestsRetriever {
 
         requestDataPropagator.propagateRequestData(sampleSet.getRequests());
         KickoffRequest kickoffRequest = sampleSetToRequestConverter.convert(sampleSet);
+        kickoffRequest.setPairings(veloxPairingsRetriever.retrieve(sampleSetRecord));
 
         return kickoffRequest;
     }

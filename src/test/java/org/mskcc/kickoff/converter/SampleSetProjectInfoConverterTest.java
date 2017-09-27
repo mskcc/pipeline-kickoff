@@ -17,10 +17,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.mock;
 
-public class ProjectInfoConverterTest {
+public class SampleSetProjectInfoConverterTest {
     private final ProcessingType processingType = mock(ProcessingType.class);
     private final String primaryReqId = "primaryReqId";
-    private ProjectInfoConverter projectInfoConverter = new ProjectInfoConverter();
+    private SampleSetProjectInfoConverter sampleSetProjectInfoConverter = new SampleSetProjectInfoConverter();
     private KickoffRequest primaryKickoffRequest;
     private KickoffRequest kickoffRequest;
     private Random random = new Random();
@@ -61,16 +61,6 @@ public class ProjectInfoConverterTest {
     @Test
     public void whenRequestsInSampleSetHaveMultipleRequestorEmail_shouldAssignValueFromFirstOne() {
         assertArbitraryPropertySet(Constants.ProjectInfo.REQUESTOR_E_MAIL);
-    }
-
-    @Test
-    public void whenNotAllRequestsHavePlatformSet_shouldThrowAnException() {
-        assertExceptionThrownOnMissingRequiredRequestProperty(Constants.ProjectInfo.PLATFORM);
-    }
-
-    @Test
-    public void whenRequestsInSampleSetHaveDifferentPlatform_shouldThrowAnException() {
-        assertAmbiguousPropertyThrowsAnException(Constants.ProjectInfo.PLATFORM);
     }
 
     @Test
@@ -127,7 +117,7 @@ public class ProjectInfoConverterTest {
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest2, kickoffRequest3));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
-        Map<String, String> projectInfo = projectInfoConverter.convert(sampleSet);
+        Map<String, String> projectInfo = sampleSetProjectInfoConverter.convert(sampleSet);
 
         assertThat(projectInfo.get(Constants.ProjectInfo.NUMBER_OF_SAMPLES), is(""));
     }
@@ -141,7 +131,7 @@ public class ProjectInfoConverterTest {
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest2, kickoffRequest3));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
-        Map<String, String> projectInfo = projectInfoConverter.convert(sampleSet);
+        Map<String, String> projectInfo = sampleSetProjectInfoConverter.convert(sampleSet);
 
         assertThat(projectInfo.get(Constants.ProjectInfo.NUMBER_OF_SAMPLES), is("55"));
     }
@@ -165,7 +155,7 @@ public class ProjectInfoConverterTest {
     public void whenProjectHasOneRequestWhichIsPrimary_shouldPropertiesShouldBeTakenFromThisRequest() {
         sampleSet.setRequests(Arrays.asList(primaryKickoffRequest));
         sampleSet.setPrimaryRequestId(primaryReqId);
-        Map<String, String> projectInfo = projectInfoConverter.convert(sampleSet);
+        Map<String, String> projectInfo = sampleSetProjectInfoConverter.convert(sampleSet);
 
         assertProjectInfo(projectInfo);
     }
@@ -175,7 +165,7 @@ public class ProjectInfoConverterTest {
         sampleSet.setRequests(Arrays.asList(primaryKickoffRequest, kickoffRequest));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
-        Map<String, String> projectInfo = projectInfoConverter.convert(sampleSet);
+        Map<String, String> projectInfo = sampleSetProjectInfoConverter.convert(sampleSet);
 
         assertProjectInfo(projectInfo);
     }
@@ -183,10 +173,10 @@ public class ProjectInfoConverterTest {
     @Test
     public void whenPrimaryRequestNotSet_shouldThrowAnException() {
         sampleSet.setRequests(Arrays.asList(getRequestWithRequiredProperties(primaryReqId)));
-        Optional<Exception> exception = TestUtils.assertThrown(() -> projectInfoConverter.convert(sampleSet));
+        Optional<Exception> exception = TestUtils.assertThrown(() -> sampleSetProjectInfoConverter.convert(sampleSet));
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(ProjectInfoConverter.PrimaryRequestNotSetException.class));
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter.PrimaryRequestNotSetException.class));
     }
 
     @Test
@@ -194,10 +184,10 @@ public class ProjectInfoConverterTest {
         sampleSet.setRequests(Arrays.asList(getRequestWithRequiredProperties("otherId")));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
-        Optional<Exception> exception = TestUtils.assertThrown(() -> projectInfoConverter.convert(sampleSet));
+        Optional<Exception> exception = TestUtils.assertThrown(() -> sampleSetProjectInfoConverter.convert(sampleSet));
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(ProjectInfoConverter.PrimaryRequestNotPartOfSampleSetException.class));
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter.PrimaryRequestNotPartOfSampleSetException.class));
     }
 
     @Test
@@ -213,7 +203,7 @@ public class ProjectInfoConverterTest {
         sampleSet.setRequests(Arrays.asList(request1, request2));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
-        Map<String, String> projectInfo = projectInfoConverter.convert(sampleSet);
+        Map<String, String> projectInfo = sampleSetProjectInfoConverter.convert(sampleSet);
 
         assertThat(projectInfo.get(arbitraryProperty), is(arbitraryValue));
     }
@@ -228,7 +218,7 @@ public class ProjectInfoConverterTest {
         sampleSet.setRequests(Arrays.asList(request1, request2));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
-        Optional<Exception> exception = TestUtils.assertThrown(() -> projectInfoConverter.convert(sampleSet));
+        Optional<Exception> exception = TestUtils.assertThrown(() -> sampleSetProjectInfoConverter.convert(sampleSet));
 
         assertThat(exception.isPresent(), is(true));
         assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetToRequestConverter.AmbiguousPropertyException.class));
@@ -247,7 +237,7 @@ public class ProjectInfoConverterTest {
         sampleSet.setRequests(Arrays.asList(request1, request2, request3));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
-        Map<String, String> projetInfo = projectInfoConverter.convert(sampleSet);
+        Map<String, String> projetInfo = sampleSetProjectInfoConverter.convert(sampleSet);
 
         assertThat(projetInfo.get(propertyToMerge), is(String.format("%s,%s,%s", value1, value2, value3)));
     }
@@ -255,9 +245,9 @@ public class ProjectInfoConverterTest {
     private void assertExceptionThrownOnMissingPrimaryRequestProperty(String missingProperty) {
         assertExceptionThrownOnMissingProperty(
                 missingProperty,
-                ProjectInfoConverter.PropertyInPrimaryRequestNotSetException.class,
+                SampleSetProjectInfoConverter.PropertyInPrimaryRequestNotSetException.class,
                 Arrays.asList(primaryReqId, "missing1"),
-                String.format("Primary request: %s of project: %s has no property: %s set", primaryReqId, sampleSet.getId(), missingProperty));
+                String.format("Primary request: %s of project: %s has no property: %s set", primaryReqId, sampleSet.getName(), missingProperty));
     }
 
     private void assertExceptionThrownOnMissingRequiredRequestProperty(String missingProperty) {
@@ -279,7 +269,7 @@ public class ProjectInfoConverterTest {
         sampleSet.setRequests(requests);
         sampleSet.setPrimaryRequestId(primaryReqId);
 
-        Optional<Exception> exception = TestUtils.assertThrown(() -> projectInfoConverter.convert(sampleSet));
+        Optional<Exception> exception = TestUtils.assertThrown(() -> sampleSetProjectInfoConverter.convert(sampleSet));
 
         assertThat(exception.isPresent(), is(true));
         assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(exceptionClass));
@@ -312,7 +302,6 @@ public class ProjectInfoConverterTest {
         KickoffRequest kickoffRequest = new KickoffRequest(requestId, processingType);
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.LAB_HEAD, "labHead");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.LAB_HEAD_E_MAIL, "email");
-        kickoffRequest.addProjectProperty(Constants.ProjectInfo.PLATFORM, "platform");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.SPECIES, RequestSpecies.XENOGRAFT.getValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.CMO_PROJECT_ID, getRandomValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.CMO_PROJECT_BRIEF, getRandomValue());
@@ -321,6 +310,7 @@ public class ProjectInfoConverterTest {
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.IGO_PROJECT_ID, getRandomValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.FINAL_PROJECT_TITLE, getRandomValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.BIOINFORMATIC_REQUEST, getRandomValue());
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.TUMOR_TYPE, "tumorType");
 
         return kickoffRequest;
     }

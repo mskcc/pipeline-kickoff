@@ -39,8 +39,8 @@ public class RequestFilePrinter implements FilePrinter {
             requestFileContents += "Pipelines: variants\n";
             requestFileContents += "Run_Pipeline: variants\n";
         } else if (request.getRequestType() == RequestType.IMPACT) {
-            requestFileContents += "Pipelines: \n";
-            requestFileContents += "Run_Pipeline: \n";
+            requestFileContents += "Pipelines: dmp\n";
+            requestFileContents += "Run_Pipeline: dmp\n";
         } else if (request.getRequestType() == RequestType.RNASEQ) {
             requestFileContents += "Run_Pipeline: rnaseq\n";
         } else if (request.getRecipe() == Recipe.CH_IP_SEQ) {

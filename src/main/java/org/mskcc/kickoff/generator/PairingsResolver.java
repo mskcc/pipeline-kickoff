@@ -26,10 +26,10 @@ public class PairingsResolver {
         LinkedHashMap<String, String> normalIgoToCmoId = new LinkedHashMap<>();
 
         for (Sample sample : request.getAllValidSamples().values()) {
-            if (!sample.get("SAMPLE_CLASS").contains("Normal")) {
-                tumorIgoToCmoId.put(sample.get("IGO_ID"), sample.get("CORRECTED_CMO_ID"));
+            if (!sample.get(Constants.SAMPLE_CLASS).contains("Normal")) {
+                tumorIgoToCmoId.put(sample.get(Constants.IGO_ID), sample.get(Constants.CORRECTED_CMO_ID));
             } else {
-                normalIgoToCmoId.put(sample.get("IGO_ID"), sample.get("CORRECTED_CMO_ID"));
+                normalIgoToCmoId.put(sample.get(Constants.IGO_ID), sample.get(Constants.CORRECTED_CMO_ID));
             }
         }
 

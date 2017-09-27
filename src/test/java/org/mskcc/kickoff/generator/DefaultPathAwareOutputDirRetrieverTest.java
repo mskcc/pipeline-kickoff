@@ -1,11 +1,14 @@
 package org.mskcc.kickoff.generator;
 
 import org.apache.commons.io.FileUtils;
+import org.hamcrest.object.IsCompatibleType;
 import org.junit.After;
 import org.junit.Test;
 import org.mskcc.kickoff.util.Utils;
+import org.mskcc.util.TestUtils;
 
 import java.io.File;
+import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -44,4 +47,16 @@ public class DefaultPathAwareOutputDirRetrieverTest {
         assertThat(outputPath, is(String.format("%s/%s", outputDir, Utils.getFullProjectNameWithPrefix(projectId))));
     }
 
+    @Test
+    public void whenOutputDirProvidedDoesntExist_shouldThrowException() {
+        DefaultPathAwareOutputDirRetriever defaultPathAwareOutputDirRetriever = new DefaultPathAwareOutputDirRetriever(defaultPath, s -> false);
+
+        String projectId = "projecId";
+        String outputDir = "notExisting/dir";
+
+        Optional<Exception> exception = TestUtils.assertThrown(() -> defaultPathAwareOutputDirRetriever.retrieve(projectId, outputDir));
+
+        assertThat(exception.isPresent(), is(true));
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(DefaultPathAwareOutputDirRetriever.ProjectOutputDirNotExistsException.class));
+    }
 }

@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.mskcc.domain.*;
+import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.SampleSet;
@@ -12,6 +13,7 @@ import org.mskcc.kickoff.process.NormalProcessingType;
 
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.typeCompatibleWith;
@@ -21,12 +23,20 @@ import static org.mockito.Mockito.when;
 import static org.mskcc.util.TestUtils.assertThrown;
 
 public class SampleSetToKickoffRequestConverterTest {
+    private static final String PATIENT_ID_1 = "patient1";
+    private static final String PATIENT_ID_2 = "patient2";
+    private static final String PATIENT_ID_3 = "patient3";
+    private static final String PATIENT_ID_4 = "patient4";
+    private static final String SAMPLE_ENTITY_NAME = "sample";
+    private static final String PATIENT_ENTITY_NAME = "patient";
+    private static final String POOL_ENTITY_NAME = "pool";
     private static int id = 0;
-
     private final ProjectFilesArchiver projectFilesArchiver = mock(ProjectFilesArchiver.class);
     private final NormalProcessingType normalProcessingType = new NormalProcessingType(projectFilesArchiver);
-    private final ProjectInfoConverter projectInfoConverterMock = mock(ProjectInfoConverter.class);
-    private SampleSetToRequestConverter sampleSetToRequestConverter = new SampleSetToRequestConverter(projectInfoConverterMock);
+    private final SampleSetProjectInfoConverter sampleSetProjectInfoConverterMock = mock(SampleSetProjectInfoConverter.class);
+    private final Sample sample1 = new Sample("sample1");
+    private final Sample sample2 = new Sample("sample2");
+    private SampleSetToRequestConverter sampleSetToRequestConverter = new SampleSetToRequestConverter(sampleSetProjectInfoConverterMock);
     private SampleSet sampleSet;
 
     @Before
@@ -60,7 +70,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
     @Test
     public void whenRequestsHasNoSamples_shouldProjectContainNoSamples() {
-        sampleSet.setRequests(getRequestWithEntities(Arrays.asList(0), (r, id) -> r.putSampleIfAbsent(id)));
+        sampleSet.setRequests(getRequestWithEntities(Arrays.asList(0), (r, id) -> r.putSampleIfAbsent(id), "sample"));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
         assertThat(request.getSamples().size(), is(0));
@@ -69,21 +79,21 @@ public class SampleSetToKickoffRequestConverterTest {
     @Test
     public void whenOneRequestsWithSamples_shouldProjectContainSameNumberOfSamples() {
         List<Integer> samplesCounts = Arrays.asList(3);
-        sampleSet.setRequests(getRequestWithEntities(samplesCounts, (r, id) -> r.putSampleIfAbsent(id)));
+        sampleSet.setRequests(getRequestWithEntities(samplesCounts, (r, id) -> r.putSampleIfAbsent(id), SAMPLE_ENTITY_NAME));
 
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
-        assertProjectHasAllEntities(request.getSamples(), samplesCounts);
+        assertProjectHasAllEntities(request.getSamples(), samplesCounts, SAMPLE_ENTITY_NAME);
     }
 
     @Test
     public void whenTwoRequestsWithSamples_shouldProjectContainSamplesFromBoth() {
         List<Integer> samplesCounts = Arrays.asList(5, 7);
-        sampleSet.setRequests(getRequestWithEntities(samplesCounts, (r, id) -> r.putSampleIfAbsent(id)));
+        sampleSet.setRequests(getRequestWithEntities(samplesCounts, (r, id) -> r.putSampleIfAbsent(id), SAMPLE_ENTITY_NAME));
 
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
-        assertProjectHasAllEntities(request.getSamples(), samplesCounts);
+        assertProjectHasAllEntities(request.getSamples(), samplesCounts, SAMPLE_ENTITY_NAME);
     }
 
     @Test
@@ -130,12 +140,12 @@ public class SampleSetToKickoffRequestConverterTest {
     @Test
     public void whenTwoRequestsWithPools_shouldProjectContainPoolsFromBoth() {
         List<Integer> poolsCounts = Arrays.asList(4, 3);
-        List<KickoffRequest> kickoffRequests = getRequestWithEntities(poolsCounts, (r, id) -> r.putPoolIfAbsent(id));
+        List<KickoffRequest> kickoffRequests = getRequestWithEntities(poolsCounts, (r, id) -> r.putPoolIfAbsent(id), POOL_ENTITY_NAME);
 
         sampleSet.setRequests(kickoffRequests);
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
-        assertProjectHasAllEntities(request.getPools(), poolsCounts);
+        assertProjectHasAllEntities(request.getPools(), poolsCounts, POOL_ENTITY_NAME);
     }
 
     @Test
@@ -458,6 +468,11 @@ public class SampleSetToKickoffRequestConverterTest {
         assertProjectList(request.getRunIds(), Arrays.asList(run1, run2, run3, run4));
     }
 
+    private <T> void assertProjectList(Set<T> actual, List<T> expected) {
+        assertThat(actual.size(), is(expected.size()));
+        assertThat(actual.containsAll(expected), is(true));
+    }
+
     @Test
     public void whenTwoRequestsWithRepeatingRunIds_shouldProjectContainNonRepeatingRunIdsFromBoth() {
         KickoffRequest kickoffRequest1 = getNormalImpactHumanPiRequest();
@@ -476,11 +491,6 @@ public class SampleSetToKickoffRequestConverterTest {
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
         assertThat(request.getRunIds().containsAll(Arrays.asList(run1, run2, run3)), is(true));
-    }
-
-    private <T> void assertProjectList(Set<T> actual, List<T> expected) {
-        assertThat(actual.size(), is(expected.size()));
-        assertThat(actual.containsAll(expected), is(true));
     }
 
     @Test
@@ -602,6 +612,8 @@ public class SampleSetToKickoffRequestConverterTest {
         kickoffRequest2.addAmpType(amp1);
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest1, kickoffRequest2));
+
+        //when
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
         assertProjectList(request.getAmpTypes(), Arrays.asList(amp1, amp2, amp3));
@@ -609,38 +621,164 @@ public class SampleSetToKickoffRequestConverterTest {
 
     @Test
     public void whenRequestsHasNoPatients_shouldProjectContainNoPatients() {
-        List<KickoffRequest> kickoffRequests = getRequestWithEntities(Arrays.asList(0), (r, id) -> r.putPatientIfAbsent(id));
+        List<KickoffRequest> kickoffRequests = getRequestWithEntities(Arrays.asList(0), (r, id) -> r.putPatientIfAbsent(id), PATIENT_ENTITY_NAME);
         sampleSet.setRequests(kickoffRequests);
+
+        //when
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
         assertThat(request.getPatients().size(), is(0));
     }
 
     @Test
-    public void whenOneRequestsWithPatients_shouldProjectContainSameNumberOfPatients() {
-        List<Integer> patientsCounts = Arrays.asList(3);
-        List<KickoffRequest> kickoffRequests = getRequestWithEntities(patientsCounts, (r, id) -> r.putPatientIfAbsent(id));
-        sampleSet.setRequests(kickoffRequests);
+    public void whenSampleSetHasOneRequestWithOnePatientWithOneSample_shouldProjectContainOnePatientWithOneSample() {
+        //given
+        KickoffRequest req1 = getNormalImpactHumanPiRequest();
+        addSamplesToPatient(req1, 1, PATIENT_ID_1);
+
+        List<KickoffRequest> requests = Arrays.asList(req1);
+        sampleSet.setRequests(requests);
+
+        //when
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
-        assertProjectHasAllEntities(request.getPatients(), patientsCounts);
+        //then
+        assertContainsPatientsWithSamples(request, requests);
+    }
+
+
+    @Test
+    public void whenThereAreThreeRequestsWithMultiplePatients_shouldProjectContainPatientsFromAll() {
+        List<Integer> patientsCounts = Arrays.asList(2, 9, 4);
+        List<KickoffRequest> kickoffRequests = getRequestWithEntities(patientsCounts, (r, id) -> r.putPatientIfAbsent(id), PATIENT_ENTITY_NAME);
+
+        sampleSet.setRequests(kickoffRequests);
+
+        //when
+        KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
+
+        assertProjectHasAllEntities(request.getPatients(), patientsCounts, PATIENT_ENTITY_NAME);
     }
 
     @Test
-    public void whenTwoRequestsWithPatients_shouldProjectContainPatientsFromBoth() {
-        List<Integer> patientsCounts = Arrays.asList(2, 9, 4);
-        List<KickoffRequest> kickoffRequests = getRequestWithEntities(patientsCounts, (r, id) -> r.putPatientIfAbsent(id));
+    public void whenThereIsOneRequestWithTwoPatients_patientsShouldHaveDifferentGroupsAndHaveSamplesForEach() throws Exception {
+        //given
+        KickoffRequest req1 = getNormalImpactHumanPiRequest();
+        addSamplesToPatient(req1, 1, PATIENT_ID_1);
+        addSamplesToPatient(req1, 1, PATIENT_ID_2);
 
-        sampleSet.setRequests(kickoffRequests);
-        KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
+        List<KickoffRequest> requests = Arrays.asList(req1);
+        sampleSet.setRequests(requests);
 
-        assertProjectHasAllEntities(request.getPatients(), patientsCounts);
+        //when
+        KickoffRequest kickoffRequest = sampleSetToRequestConverter.convert(sampleSet);
+
+        //then
+        assertContainsPatientsWithSamples(kickoffRequest, requests);
+    }
+
+    @Test
+    public void whenThereAreTwoRequestsWithSamePatient_thisPatientShouldBeInOneGroupAndContainSamplesFromBoth() throws Exception {
+        //given
+        KickoffRequest req1 = getNormalImpactHumanPiRequest();
+        KickoffRequest req2 = getNormalImpactHumanPiRequest();
+        addSamplesToPatient(req1, 2, PATIENT_ID_1);
+        addSamplesToPatient(req2, 2, PATIENT_ID_1);
+
+        List<KickoffRequest> requests = Arrays.asList(req1, req2);
+        sampleSet.setRequests(requests);
+
+        //when
+        KickoffRequest kickoffRequest = sampleSetToRequestConverter.convert(sampleSet);
+
+        //then
+        assertContainsPatientsWithSamples(kickoffRequest, requests);
+    }
+
+    @Test
+    public void whenThereAreMultipleRequestsWithMultiplePatients_requestShouldContainAllPatientsWithTheirSamples() throws Exception {
+        //given
+        KickoffRequest req1 = getNormalImpactHumanPiRequest();
+        addSamplesToPatient(req1, 2, PATIENT_ID_1);
+        addSamplesToPatient(req1, 1, PATIENT_ID_2);
+
+        KickoffRequest req2 = getNormalImpactHumanPiRequest();
+        addSamplesToPatient(req1, 10, PATIENT_ID_1);
+        addSamplesToPatient(req1, 9, PATIENT_ID_3);
+        addSamplesToPatient(req1, 3, PATIENT_ID_3);
+
+        KickoffRequest req3 = getNormalImpactHumanPiRequest();
+        addSamplesToPatient(req1, 1, PATIENT_ID_1);
+        addSamplesToPatient(req1, 1, PATIENT_ID_3);
+        addSamplesToPatient(req1, 5, PATIENT_ID_4);
+
+        KickoffRequest req4 = getNormalImpactHumanPiRequest();
+        addSamplesToPatient(req1, 3, PATIENT_ID_2);
+        addSamplesToPatient(req1, 17, PATIENT_ID_3);
+
+        List<KickoffRequest> requests = Arrays.asList(req1, req2, req3, req4);
+        sampleSet.setRequests(requests);
+
+        //when
+        KickoffRequest kickoffRequest = sampleSetToRequestConverter.convert(sampleSet);
+
+        //then
+        assertContainsPatientsWithSamples(kickoffRequest, requests);
+    }
+
+    private void assertContainsPatientsWithSamples(KickoffRequest resultRequest, List<KickoffRequest> originalRequests) {
+        Map<String, List<Patient>> patientIdToPatients = originalRequests.stream()
+                .flatMap(r -> r.getPatients().values().stream())
+                .collect(Collectors.groupingBy(Patient::getPatientId));
+
+        assertThat(resultRequest.getPatients().size(), is(patientIdToPatients.size()));
+
+        Set<Integer> groups = new HashSet<>();
+        for (List<Patient> patientList : patientIdToPatients.values())
+            assertPatientContainsSamples(resultRequest, groups, patientList);
+
+        assertThat(groups.size(), is(patientIdToPatients.size()));
+    }
+
+    private void assertPatientContainsSamples(KickoffRequest resultRequest, Set<Integer> groups, List<Patient> patientList) {
+        String patientId = patientList.get(0).getPatientId();
+        assertThat(resultRequest.getPatients().containsKey(patientId), is(true));
+
+        Patient patient = resultRequest.getPatients().get(patientId);
+        assertThat(patient.getPatientId(), is(patientId));
+
+        groups.add(patient.getGroupNumber());
+
+        List<Sample> patientSamples = patientList.stream()
+                .flatMap(p -> p.getSamples().stream())
+                .collect(Collectors.toList());
+        Set<Sample> requestSamples = patient.getSamples();
+
+        assertContainsAllSamples(patientSamples, requestSamples);
+    }
+
+    private void assertContainsAllSamples(List<Sample> patientSamples, Set<Sample> requestSamples) {
+        assertThat(requestSamples.size(), is(patientSamples.size()));
+        for (Sample sample : patientSamples) {
+            assertThat(requestSamples.contains(sample), is(true));
+        }
+    }
+
+    private void addSamplesToPatient(KickoffRequest request, int numberOfSamples, String patientId) {
+        Patient patient = request.putPatientIfAbsent(patientId);
+
+        for (int i = 0; i < numberOfSamples; i++)
+            patient.addSample(getSample());
+    }
+
+    private Sample getSample() {
+        return new Sample(String.valueOf(++id));
     }
 
     @Test
     public void whenConverting_shouldRequestHaveProjectInfoSet() {
         Map<String, String> projectInfo = new LinkedHashMap<>();
-        when(projectInfoConverterMock.convert(sampleSet)).thenReturn(projectInfo);
+        when(sampleSetProjectInfoConverterMock.convert(sampleSet)).thenReturn(projectInfo);
 
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
@@ -782,22 +920,22 @@ public class SampleSetToKickoffRequestConverterTest {
         return kickoffRequest;
     }
 
-    private void assertProjectHasAllEntities(Map<String, ?> actual, List<Integer> entityCounts) {
+    private void assertProjectHasAllEntities(Map<String, ?> actual, List<Integer> entityCounts, String entityName) {
         assertThat(actual.size(), is(entityCounts.stream().mapToInt(Integer::intValue).sum()));
 
         for (int i = 0; i < entityCounts.size(); i++) {
             for (int j = 0; j < entityCounts.get(i); j++) {
-                assertThat(actual.containsKey(String.format(getEntityNameFormat(), i, j)), is(true));
+                assertThat(actual.containsKey(String.format(getEntityNameFormat(entityName), i, j)), is(true));
             }
         }
     }
 
-    private List<KickoffRequest> getRequestWithEntities(List<Integer> poolsCounts, BiConsumer<? super KickoffRequest, String> action) {
+    private List<KickoffRequest> getRequestWithEntities(List<Integer> counts, BiConsumer<? super KickoffRequest, String> action, String entityName) {
         List<KickoffRequest> kickoffRequests = new ArrayList<>();
-        for (int i = 0; i < poolsCounts.size(); i++) {
+        for (int i = 0; i < counts.size(); i++) {
             KickoffRequest kickoffRequest = getNormalImpactHumanPiRequest();
-            for (int j = 0; j < poolsCounts.get(i); j++) {
-                action.accept(kickoffRequest, String.format(getEntityNameFormat(), i, j));
+            for (int j = 0; j < counts.get(i); j++) {
+                action.accept(kickoffRequest, String.format(getEntityNameFormat(entityName), i, j));
             }
             kickoffRequests.add(kickoffRequest);
         }
@@ -805,8 +943,8 @@ public class SampleSetToKickoffRequestConverterTest {
         return kickoffRequests;
     }
 
-    private String getEntityNameFormat() {
-        return "%d_entity_%d";
+    private String getEntityNameFormat(String entityName) {
+        return "request_%d" + entityName + "%d";
     }
 
     private KickoffRequest getHumanPiRequest() {

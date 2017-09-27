@@ -43,7 +43,7 @@ public abstract class ClinicalPatientFilePrinter implements FilePrinter {
             for (String key : fieldMapping.values()) {
                 String val = sample.get(key);
 
-                if (key.equals(Constants.CMO_SAMPLE_ID) || key.equals(Constants.INVESTIGATOR_SAMPLE_ID)) {
+                if (key.equals(Constants.CMO_SAMPLE_ID) || key.equals(Constants.INVESTIGATOR_SAMPLE_ID) || key.equals(Constants.CORRECTED_CMO_ID)) {
                     val = sampleNormalization(val);
                 }
                 if (key.equals(Constants.CMO_PATIENT_ID) || key.equals(Constants.INVESTIGATOR_PATIENT_ID)) {

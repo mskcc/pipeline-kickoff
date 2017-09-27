@@ -17,4 +17,6 @@ public interface ProcessingType {
     String getIncludeRunId(Collection<Run> runs);
 
     Map<String, Pool> getValidPools(Map<String, Pool> pools);
+
+    boolean isForced();
 }

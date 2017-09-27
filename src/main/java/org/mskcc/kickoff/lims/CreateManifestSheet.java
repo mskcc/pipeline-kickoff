@@ -1,6 +1,5 @@
 package org.mskcc.kickoff.lims;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.config.AppConfiguration;
 import org.mskcc.kickoff.config.Arguments;
@@ -10,7 +9,6 @@ import org.mskcc.kickoff.generator.ManifestGenerator;
 import org.mskcc.kickoff.generator.OutputDirRetriever;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.util.Constants;
-import org.mskcc.kickoff.util.Utils;
 import org.mskcc.kickoff.validator.ProjectNameValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,9 +16,6 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 
-import java.io.File;
-
-import static org.mskcc.kickoff.config.Arguments.outdir;
 import static org.mskcc.kickoff.config.Arguments.parseArguments;
 import static org.mskcc.kickoff.config.Arguments.toPrintable;
 
@@ -86,27 +81,12 @@ class CreateManifestSheet {
     }
 
     private String configure(String projectId) {
-        outdir = getProjectOutputDir(Arguments.project);
-
-        validateProjectName(projectId);
         logConfigurator.configureDevLog();
-
         DEV_LOGGER.info(String.format("Received program arguments: %s", toPrintable()));
 
-        String projectFilePath = outputDirRetriever.retrieve(projectId, outdir);
+        String projectFilePath = outputDirRetriever.retrieve(projectId, Arguments.outdir);
+        validateProjectName(projectId);
         logConfigurator.configureProjectLog(projectFilePath);
-        return projectFilePath;
-    }
-
-    private String getProjectOutputDir(String requestID) {
-        String projectFilePath = String.format("%s/%s", draftProjectFilePath, Utils.getFullProjectNameWithPrefix(requestID));
-        if (!StringUtils.isEmpty(outdir)) {
-            File f = new File(outdir);
-            if (f.exists() && f.isDirectory())
-                return String.format("%s/%s", outdir, Utils.getFullProjectNameWithPrefix(requestID));
-        }
-
-        new File(projectFilePath).mkdirs();
 
         return projectFilePath;
     }

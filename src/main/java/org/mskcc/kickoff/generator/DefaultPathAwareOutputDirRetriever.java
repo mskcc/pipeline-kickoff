@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.generator;
 
+import org.apache.commons.lang3.StringUtils;
 import org.mskcc.kickoff.util.Utils;
 
 import java.io.File;
@@ -16,12 +17,30 @@ public class DefaultPathAwareOutputDirRetriever implements OutputDirRetriever {
 
     @Override
     public String retrieve(String projectId, String outputDir) {
-        if (outputDirValidator.test(outputDir))
-            return String.format("%s/%s", outputDir, Utils.getFullProjectNameWithPrefix(projectId));
+        String projectFilePath;
 
-        String projectFilePath = String.format("%s/%s", draftProjectFilePath, Utils.getFullProjectNameWithPrefix(projectId));
+        if (!StringUtils.isEmpty(outputDir))
+            projectFilePath = overrideDefaultDir(projectId, outputDir);
+        else
+            projectFilePath = String.format("%s/%s", draftProjectFilePath, Utils.getFullProjectNameWithPrefix(projectId));
+
         new File(projectFilePath).mkdirs();
 
         return projectFilePath;
+    }
+
+    private String overrideDefaultDir(String projectId, String outputDir) {
+        String projectFilePath;
+        if (!outputDirValidator.test(outputDir))
+            throw new ProjectOutputDirNotExistsException(String.format("Project output directory doesn't exits: ", outputDir));
+        else
+            projectFilePath = String.format("%s/%s", outputDir, Utils.getFullProjectNameWithPrefix(projectId));
+        return projectFilePath;
+    }
+
+    class ProjectOutputDirNotExistsException extends RuntimeException {
+        public ProjectOutputDirNotExistsException(String message) {
+            super(message);
+        }
     }
 }

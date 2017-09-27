@@ -39,6 +39,10 @@ public class FileContentFolderComparator implements FolderComparator {
         return String.format("%s%s.txt", Constants.LOG_FILE_PREFIX, Utils.LOG_DATE_FORMAT.format(new Date()));
     }
 
+    public static boolean isLogFile(Path path) {
+        return path.getFileName().toString().startsWith(Constants.LOG_FILE_PREFIX);
+    }
+
     @Override
     public boolean compare(Path actualPath, Path expectedPath) throws Exception {
         if (!isNumberOfFilesInDirsEqual(actualPath, expectedPath)) {
@@ -90,7 +94,6 @@ public class FileContentFolderComparator implements FolderComparator {
         return true;
     }
 
-
     private boolean expectedFileExistsInActualDir(Path actualPath, Path expectedSubPath) {
         if (!Files.exists(getActualSubPath(actualPath, expectedSubPath))) {
             LOGGER.error(String.format("Expected file: %s " +
@@ -118,10 +121,6 @@ public class FileContentFolderComparator implements FolderComparator {
         return getLogFileName();
     }
 
-    public static boolean isLogFile(Path path) {
-        return path.getFileName().toString().startsWith(Constants.LOG_FILE_PREFIX);
-    }
-
     private boolean isNumberOfFilesInDirsEqual(Path actualPath, Path expectedPath) {
         LOGGER.info(String.format("Comparing number of files in directories: %s and %s", actualPath, expectedPath));
 
@@ -129,7 +128,7 @@ public class FileContentFolderComparator implements FolderComparator {
         File actualFile = actualPath.toFile();
 
         int actualFileNumberOfFiles = getNumberOfRelevantProjectFiles(actualFile);
-        int expectedFileNumberOfFiles = expectedFile.listFiles().length;
+        int expectedFileNumberOfFiles = getNumberOfRelevantProjectFiles(expectedFile);
 
         LOGGER.info(String.format("Comparing number of files in directories: %s = %d and %s = %d", actualPath, actualFileNumberOfFiles, expectedPath, expectedFileNumberOfFiles));
 

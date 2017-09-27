@@ -6,6 +6,7 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.retriever.SingleRequestRetriever;
+import org.mskcc.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
 import java.util.*;
@@ -13,6 +14,7 @@ import java.util.*;
 import static org.mskcc.util.VeloxConstants.*;
 
 public class VeloxSampleSetProxy implements SampleSetProxy {
+    private static final org.apache.log4j.Logger DEV_LOGGER = org.apache.log4j.Logger.getLogger(Constants.DEV_LOGGER);
     private DataRecord sampleSetRecord;
     private User user;
     private SingleRequestRetriever singleRequestRetriever;
@@ -69,4 +71,6 @@ public class VeloxSampleSetProxy implements SampleSetProxy {
 
         return samples;
     }
+
+
 }

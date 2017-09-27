@@ -17,7 +17,7 @@ import java.util.*;
 
 import static org.mskcc.kickoff.config.Arguments.runAsExome;
 
-public class RequestDataPropagator {
+public class RequestDataPropagator implements DataPropagator {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
@@ -29,6 +29,7 @@ public class RequestDataPropagator {
         this.resultsPathPrefix = resultsPathPrefix;
     }
 
+    @Override
     public void propagateRequestData(List<KickoffRequest> kickoffRequests) {
         for (KickoffRequest request : kickoffRequests) {
             if (request.getRequestType() == RequestType.IMPACT && runAsExome)
@@ -53,23 +54,27 @@ public class RequestDataPropagator {
         }
     }
 
-    private void setDesignFiles(KickoffRequest kickoffRequest, Map<String, String> projectInfo) {
+    @Override
+    public void setDesignFiles(KickoffRequest kickoffRequest, Map<String, String> projectInfo) {
         String[] designs = kickoffRequest.getBaitVersion().split("\\+");
         if (designs.length > 1) {
             //@TODO think about better way of indicating field not to include in request file
             projectInfo.put(Constants.ProjectInfo.DESIGN_FILE, "");
             projectInfo.put(Constants.ProjectInfo.SPIKEIN_DESIGN_FILE, "");
             projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, "");
+            DEV_LOGGER.info(String.format("There are more than 1 designs (bait versions) for request: %s [%s]. Design file, Spikein design file and Assay Path will be empty", kickoffRequest.getId(), kickoffRequest.getBaitVersion()));
         } else if (kickoffRequest.getRequestType() == RequestType.IMPACT) {
             projectInfo.put(Constants.ProjectInfo.DESIGN_FILE, "");
             projectInfo.put(Constants.ProjectInfo.SPIKEIN_DESIGN_FILE, "");
             projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, "");
+            DEV_LOGGER.info(String.format("Request: %s is of type IMPACT. Design file, Spikein design file and Assay Path will be empty", kickoffRequest.getId()));
         } else {
             projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, findDesignFile(kickoffRequest, kickoffRequest.getBaitVersion()));
         }
     }
 
-    private void setTumorType(KickoffRequest kickoffRequest, Map<String, String> projectInfo) {
+    @Override
+    public void setTumorType(KickoffRequest kickoffRequest, Map<String, String> projectInfo) {
         HashSet<String> oncotreeCodes = new HashSet<>();
         for (Sample sample : kickoffRequest.getAllValidSamples().values()) {
             String oncotreeCode = sample.get(Constants.ONCOTREE_CODE);
@@ -90,7 +95,8 @@ public class RequestDataPropagator {
         }
     }
 
-    private void setAssay(KickoffRequest kickoffRequest, Map<String, String> projectInfo) {
+    @Override
+    public void setAssay(KickoffRequest kickoffRequest, Map<String, String> projectInfo) {
         if (!Objects.equals(kickoffRequest.getBaitVersion(), Constants.EMPTY)) {
             if (kickoffRequest.getRequestType() == RequestType.EXOME) {
                 projectInfo.put(Constants.ASSAY, kickoffRequest.getBaitVersion());
@@ -102,7 +108,8 @@ public class RequestDataPropagator {
         }
     }
 
-    private void addSamplesToPatients(KickoffRequest kickoffRequest) {
+    @Override
+    public void addSamplesToPatients(KickoffRequest kickoffRequest) {
         for (Sample sample : kickoffRequest.getAllValidSamples().values()) {
             Map<String, String> sampleProperties = sample.getProperties();
             String patientId = sampleProperties.getOrDefault(Constants.CMO_PATIENT_ID, "");
@@ -119,7 +126,8 @@ public class RequestDataPropagator {
         }
     }
 
-    private boolean isOncoTreeValid(String oncotreeCode) {
+    @Override
+    public boolean isOncoTreeValid(String oncotreeCode) {
         return !oncotreeCode.equals(Constants.TUMOR)
                 && !oncotreeCode.equals(Constants.NORMAL)
                 && !oncotreeCode.equals(Constants.NA_LOWER_CASE)
@@ -127,7 +135,8 @@ public class RequestDataPropagator {
                 && !oncotreeCode.equals(Constants.EMPTY);
     }
 
-    private void addManualOverrides(KickoffRequest kickoffRequest) {
+    @Override
+    public void addManualOverrides(KickoffRequest kickoffRequest) {
         // Manual overrides are found in the readme file:
         // Current Manual overrides "OVERRIDE_BAIT_SET" - resents all bait sets (and assay) as whatever is there.
         // TODO: when list of overrides gets bigger, make it a list to search through.
@@ -142,7 +151,8 @@ public class RequestDataPropagator {
         }
     }
 
-    private void setNewBaitSet(KickoffRequest kickoffRequest) {
+    @Override
+    public void setNewBaitSet(KickoffRequest kickoffRequest) {
         String newBaitset;
         String newSpikein = Constants.NA_LOWER_CASE;
         if (kickoffRequest.getBaitVersion().contains("+")) {
@@ -160,21 +170,24 @@ public class RequestDataPropagator {
         }
     }
 
-    private void assignProjectSpecificInfo(KickoffRequest request) {
+    @Override
+    public void assignProjectSpecificInfo(KickoffRequest request) {
         // This will iterate the samples, grab the species, and if it is not the same and it
         // is not xenograft warning will be put.
         // If the species has been set to xenograft, it will give a warning if species is not human or xenograft
         Boolean bvChanged = false;
         for (Sample sample : request.getAllValidSamples().values()) {
-            //@TODO check if can use sample.isPooledNormal()
             if (sample.isPooledNormal())
                 continue;
 
+            DEV_LOGGER.info(String.format("Resolving bait version for sample: %s", sample.getIgoId()));
             validateSpecies(request, sample);
 
             //baitVerison - sometimes bait version needs to be changed. If so, the CAPTURE_BAIT_SET must also be changed
             if (request.getRequestType() == RequestType.RNASEQ || request.getRequestType() == RequestType.OTHER) {
-                request.setBaitVersion(Constants.EMPTY);
+                String emptyBatVersion = Constants.EMPTY;
+                DEV_LOGGER.info(String.format("Setting bait version to: %s for request: %s of type: %s", emptyBatVersion, request.getId(), request.getRequestType().getName()));
+                request.setBaitVersion(emptyBatVersion);
             } else {
                 String baitVersion = sample.get(Constants.BAIT_VERSION);
                 if (!StringUtils.isEmpty(baitVersion)) {
@@ -227,7 +240,10 @@ public class RequestDataPropagator {
         }
     }
 
-    private void validateSpecies(KickoffRequest kickoffRequest, Sample sample) {
+    @Override
+    public void validateSpecies(KickoffRequest kickoffRequest, Sample sample) {
+        DEV_LOGGER.trace(String.format("Validating species for sample: %s", sample.getIgoId()));
+
         try {
             RequestSpecies sampleSpecies = RequestSpecies.getSpeciesByValue(sample.get(Constants.SPECIES));
             if (kickoffRequest.getSpecies() == RequestSpecies.XENOGRAFT) {
@@ -252,39 +268,60 @@ public class RequestDataPropagator {
         }
     }
 
-    private String findDesignFile(KickoffRequest request, String assay) {
+    @Override
+    public String findDesignFile(KickoffRequest request, String assay) {
         if (request.getRequestType() == RequestType.EXOME || request.getRequestType() == RequestType.IMPACT) {
             File dir = new File(designFilePath + "/" + assay);
+            DEV_LOGGER.info(String.format("Looking for design file in dir: %s", dir));
             if (dir.isDirectory()) {
                 if (request.getRequestType() == RequestType.IMPACT) {
-                    File berger = new File(String.format("%s/%s__DESIGN__LATEST.berger", dir.getAbsolutePath(), assay));
-                    if (berger.isFile()) {
-                        try {
-                            return berger.getCanonicalPath();
-                        } catch (Throwable ignored) {
-                        }
-                    } else if (request.getRequestType() == RequestType.IMPACT && !runAsExome) {
-                        String message = String.format("Cannot find design file for assay %s", assay);
-                        Utils.setExitLater(true);
-                        PM_LOGGER.log(PmLogPriority.SAMPLE_ERROR, message);
-                        DEV_LOGGER.log(Level.ERROR, message);
-                    }
-                } else { // exome
-                    for (File iterDirContents : Utils.getFilesInDir(dir)) {
-                        if (iterDirContents.toString().endsWith("targets.ilist")) {
-                            return dir.toString();
-                        }
-                    }
-                    // None of the contents of this dir was a targets.ilist file. This Dir is not an exome dir
-                    return Constants.NA;
-                }
+                    String berger = findDesignFileForImpact(request, assay, dir);
+                    if (!StringUtils.isEmpty(berger))
+                        return berger;
+                } else
+                    return findDesignFileForExome(dir, request.getId());
                 return dir.toString();
             }
         }
+
+        DEV_LOGGER.info(String.format("Request: %s is neither EXOME nor IMPACT thus skipping searching design file", request.getId()));
         return Constants.NA;
     }
 
-    int getRunNumber(KickoffRequest kickoffRequest) {
+    @Override
+    public String findDesignFileForExome(File dir, String requestId) {
+        for (File iterDirContents : Utils.getFilesInDir(dir)) {
+            String exomeDesignFileExtention = "targets.ilist";
+            if (iterDirContents.toString().endsWith(exomeDesignFileExtention)) {
+                DEV_LOGGER.info(String.format("Found design path: %s (%s) for exome request: %s", dir, exomeDesignFileExtention, requestId));
+                return dir.toString();
+            }
+        }
+        // None of the contents of this dir was a targets.ilist file. This Dir is not an exome dir
+        return Constants.NA;
+    }
+
+    @Override
+    public String findDesignFileForImpact(KickoffRequest request, String assay, File dir) {
+        String expectedDesignFileName = String.format("%s/%s__DESIGN__LATEST.berger", dir.getAbsolutePath(), assay);
+        File berger = new File(expectedDesignFileName);
+        if (berger.isFile()) {
+            try {
+                return berger.getCanonicalPath();
+            } catch (Throwable ignored) {
+            }
+        } else if (request.getRequestType() == RequestType.IMPACT && !runAsExome) {
+            String message = String.format("Cannot find design file for assay %s. Expected file: %s doesn't exist", assay, expectedDesignFileName);
+            Utils.setExitLater(true);
+            PM_LOGGER.log(PmLogPriority.SAMPLE_ERROR, message);
+            DEV_LOGGER.log(Level.ERROR, message);
+        }
+
+        return "";
+    }
+
+    @Override
+    public int getRunNumber(KickoffRequest kickoffRequest) {
         File resultDir = new File(String.format("%s/%s/%s", resultsPathPrefix, kickoffRequest.getPi(), kickoffRequest.getInvest()));
 
         File[] files = resultDir.listFiles((dir, name) -> name.endsWith(kickoffRequest.getId().replaceFirst("^0+(?!$)", "")));

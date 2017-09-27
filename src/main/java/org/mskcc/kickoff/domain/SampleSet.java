@@ -8,16 +8,16 @@ import java.util.List;
 import java.util.Map;
 
 public class SampleSet {
-    private final String id;
+    private final String name;
     private Map<String, KickoffRequest> requestIdToRequest = new LinkedHashMap<>();
+    private List<PairingInfo> pairings = new ArrayList<>();
     private String primaryRequestId;
     private String baitSet;
     private String finalProjectTitle;
     private Recipe recipe;
-    private String name;
 
-    public SampleSet(String id) {
-        this.id = id;
+    public SampleSet(String name) {
+        this.name = name;
     }
 
     public List<KickoffRequest> getRequests() {
@@ -70,11 +70,19 @@ public class SampleSet {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public KickoffRequest getPrimaryRequest() {
+        return requestIdToRequest.get(primaryRequestId);
     }
 
-    public String getId() {
-        return id;
+    public List<PairingInfo> getPairings() {
+        return pairings;
+    }
+
+    public void setPairings(List<PairingInfo> pairings) {
+        this.pairings = pairings;
+    }
+
+    public void addPairing(PairingInfo pairing) {
+        this.pairings.add(pairing);
     }
 }
