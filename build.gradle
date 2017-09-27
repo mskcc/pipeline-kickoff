@@ -1,5 +1,5 @@
 group 'org.mskcc.kickoff.lims'
-version '1.1-SNAPSHOT'
+version '1.2.0-SNAPSHOT'
 
 apply plugin: 'application'
 apply plugin: "maven"
@@ -119,5 +119,17 @@ task regressionTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
     description = "Regression Tests"
     outputs.upToDateWhen { false }
+}
+
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'Create Manifest Sheet',
+                'Implementation-Version': version,
+                'Main-Class': 'org.mskcc.kickoff.lims.CreateManifestSheet'
+    }
+    baseName = project.name
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    destinationDir = file("$rootDir/build/fatJar")
+    with jar
 }
 
