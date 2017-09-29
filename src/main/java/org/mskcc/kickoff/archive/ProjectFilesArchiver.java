@@ -4,11 +4,10 @@ import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.config.FilePermissionConfigurator;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -19,10 +18,13 @@ public class ProjectFilesArchiver {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
-    @Value("${archivePath}")
-    private String archivePath;
+    private final String archivePath;
 
-    public void invoke(Request request, String dateDir, String suffix) {
+    public ProjectFilesArchiver(String archivePath) {
+        this.archivePath = archivePath;
+    }
+
+    public void archive(KickoffRequest request, String dateDir, String suffix) {
         File curDir = new File(request.getOutputPath());
         File projDir = new File(String.format("%s/%s/%s", archivePath, Utils.getFullProjectNameWithPrefix(request.getId()), dateDir));
 

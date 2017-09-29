@@ -1,32 +1,45 @@
 package org.mskcc.kickoff.lims;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.config.AppConfiguration;
 import org.mskcc.kickoff.config.Arguments;
+import org.mskcc.kickoff.config.LogConfigurator;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.ManifestGenerator;
+import org.mskcc.kickoff.generator.OutputDirRetriever;
+import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.util.Constants;
-import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.validator.ProjectNameValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 
-import java.io.File;
-
-import static org.mskcc.kickoff.config.Arguments.outdir;
 import static org.mskcc.kickoff.config.Arguments.parseArguments;
+import static org.mskcc.kickoff.config.Arguments.toPrintable;
 
 /**
  * @author Krista Kaz (most of the framing of this script was copied from Aaron and Dmitri's examples/scripts)
  */
 @ComponentScan(basePackages = "org.mskcc.kickoff")
 class CreateManifestSheet {
-    private static final Logger devLogger = Logger.getLogger(Constants.DEV_LOGGER);
+    private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     @Autowired
     private ManifestGenerator manifestGenerator;
+
+    @Autowired
+    private LogConfigurator logConfigurator;
+
+    @Autowired
+    private OutputDirRetriever outputDirRetriever;
+
+    @Autowired
+    private RequestProxy requestProxy;
+
+    @Autowired
+    private ProjectNameValidator projectNameValidator;
 
     @Value("${draftProjectFilePath}")
     private String draftProjectFilePath;
@@ -34,19 +47,12 @@ class CreateManifestSheet {
     public static void main(String[] args) {
         try {
             parseArguments(args);
-            addShutdownHook();
             ConfigurableApplicationContext context = configureSpringContext();
             CreateManifestSheet createManifestSheet = context.getBean(CreateManifestSheet.class);
-
-            createManifestSheet.generate();
+            createManifestSheet.generate(Arguments.project);
         } catch (Exception e) {
-            devLogger.error(String.format("Error while generating manifest files for project: %s", Arguments.project), e);
+            DEV_LOGGER.error(String.format("Error while generating manifest files for project: %s", Arguments.project), e);
         }
-    }
-
-    private static void addShutdownHook() {
-        MySafeShutdown sh = new MySafeShutdown();
-        Runtime.getRuntime().addShutdownHook(sh);
     }
 
     private static ConfigurableApplicationContext configureSpringContext() {
@@ -66,28 +72,27 @@ class CreateManifestSheet {
         return context.getEnvironment().getActiveProfiles().length > 0;
     }
 
-    private void generate() {
-        outdir = getProjectOutputDir(Arguments.project);
-        manifestGenerator.generate();
+    private void generate(String projectId) throws Exception {
+        String projectFilePath = configure(projectId);
+
+        KickoffRequest kickoffRequest = requestProxy.getRequest(projectId);
+        kickoffRequest.setOutputPath(projectFilePath);
+        manifestGenerator.generate(kickoffRequest);
     }
 
-    private String getProjectOutputDir(String requestID) {
-        String projectFilePath = String.format("%s/%s", draftProjectFilePath, Utils.getFullProjectNameWithPrefix(requestID));
-        if (!StringUtils.isEmpty(outdir)) {
-            File f = new File(outdir);
-            if (f.exists() && f.isDirectory())
-                return String.format("%s/%s", outdir, Utils.getFullProjectNameWithPrefix(requestID));
-        }
+    private String configure(String projectId) {
+        logConfigurator.configureDevLog();
+        DEV_LOGGER.info(String.format("Received program arguments: %s", toPrintable()));
 
-        new File(projectFilePath).mkdirs();
+        String projectFilePath = outputDirRetriever.retrieve(projectId, Arguments.outdir);
+        validateProjectName(projectId);
+        logConfigurator.configureProjectLog(projectFilePath);
 
         return projectFilePath;
     }
 
-    public static class MySafeShutdown extends Thread {
-        @Override
-        public void run() {
-        }
+    private void validateProjectName(String projectId) {
+        projectNameValidator.validate(projectId);
     }
 }
 

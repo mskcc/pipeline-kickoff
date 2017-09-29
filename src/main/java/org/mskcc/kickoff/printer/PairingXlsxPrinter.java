@@ -3,7 +3,7 @@ package org.mskcc.kickoff.printer;
 import org.apache.log4j.Logger;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 
 import java.io.File;
@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
-import static org.mskcc.kickoff.printer.OutputFilesPrinter.filesCreated;
 import static org.mskcc.kickoff.util.Utils.addRowToSheet;
 
 class PairingXlsxPrinter implements FilePrinter  {
@@ -30,7 +29,7 @@ class PairingXlsxPrinter implements FilePrinter  {
     }
 
     @Override
-    public void print(Request request) {
+    public void print(KickoffRequest request) {
         File pairingExcel = new File(pairing_filename.substring(0, pairing_filename.lastIndexOf('.')) + ".xlsx");
 
         XSSFWorkbook wb = new XSSFWorkbook();
@@ -57,7 +56,6 @@ class PairingXlsxPrinter implements FilePrinter  {
         try {
             //Now that the excel is done, print it to file
             FileOutputStream fileOUT = new FileOutputStream(pairingExcel);
-            filesCreated.add(pairingExcel);
             wb.write(fileOUT);
             fileOUT.close();
         } catch (Exception e) {
@@ -66,7 +64,7 @@ class PairingXlsxPrinter implements FilePrinter  {
     }
 
     @Override
-    public boolean shouldPrint(Request request) {
+    public boolean shouldPrint(KickoffRequest request) {
         return true;
     }
 }

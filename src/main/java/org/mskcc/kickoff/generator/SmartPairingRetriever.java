@@ -3,7 +3,7 @@ package org.mskcc.kickoff.generator;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.Patient;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.util.Constants;
 
@@ -13,7 +13,7 @@ public class SmartPairingRetriever {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
-    public Map<String, String> retrieve(Request request) {
+    public Map<String, String> retrieve(KickoffRequest request) {
         if (request.getPatients().isEmpty()) {
             PM_LOGGER.log(PmLogPriority.WARNING, "No Pairing File will be output.");
             DEV_LOGGER.warn("No Pairing File will be output.");

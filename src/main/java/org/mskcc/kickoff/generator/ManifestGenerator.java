@@ -1,5 +1,7 @@
 package org.mskcc.kickoff.generator;
 
+import org.mskcc.kickoff.domain.KickoffRequest;
+
 public interface ManifestGenerator {
-    void generate();
+    void generate(KickoffRequest kickoffRequest) throws Exception;
 }

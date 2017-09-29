@@ -3,11 +3,12 @@ package org.mskcc.kickoff.process;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.Pool;
+import org.mskcc.domain.RequestType;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.config.Arguments;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.mskcc.util.CommonUtils;
@@ -18,6 +19,7 @@ import java.io.FileReader;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 public class NormalProcessingType implements ProcessingType {
@@ -29,15 +31,23 @@ public class NormalProcessingType implements ProcessingType {
     }
 
     @Override
-    public void archiveFilesToOld(Request request) {
-        if (request.getRunNumber() > 1 && request.getRequestType().equals(Constants.RNASEQ)) {
-            String finalDir = String.valueOf(request.getOutputPath()).replaceAll("drafts", request.getRequestType());
+    public void archiveFilesToOld(KickoffRequest request) {
+        if (shouldArchive(request)) {
+            String finalDir = String.valueOf(request.getOutputPath()).replaceAll("drafts", request.getRequestType().getName());
             File oldReqFile = new File(String.format("%s/%s_request.txt", finalDir, Utils.getFullProjectNameWithPrefix(request.getId())));
             if (oldReqFile.exists()) {
                 String lastUpdated = getPreviousDateOfLastUpdate(oldReqFile);
-                projectFilesArchiver.invoke(request, lastUpdated, "_old");
+                projectFilesArchiver.archive(request, lastUpdated, "_old");
             }
         }
+    }
+
+    private boolean shouldArchive(KickoffRequest request) {
+        return hasPiAndInvest(request) && request.getRunNumber() > 1 && request.getRequestType() == RequestType.RNASEQ;
+    }
+
+    private boolean hasPiAndInvest(KickoffRequest request) {
+        return !Objects.equals(request.getPi(), Constants.NULL) && !Objects.equals(request.getInvest(), Constants.NULL);
     }
 
     private String getPreviousDateOfLastUpdate(File request) {
@@ -74,4 +84,10 @@ public class NormalProcessingType implements ProcessingType {
     public Map<String, Pool> getValidPools(Map<String, Pool> pools) {
         return Collections.emptyMap();
     }
+
+    @Override
+    public boolean isForced() {
+        return false;
+    }
+
 }
