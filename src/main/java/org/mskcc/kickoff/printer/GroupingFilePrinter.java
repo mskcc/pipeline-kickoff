@@ -52,7 +52,9 @@ public class GroupingFilePrinter implements FilePrinter {
     }
 
     private List<Patient> getPatientsListSortedByGroup(KickoffRequest kickoffRequest) {
-        return kickoffRequest.getPatients().values().stream().sorted(Comparator.comparingInt(Patient::getGroupNumber)).collect(Collectors.toList());
+        return kickoffRequest.getPatients().values().stream()
+                .sorted(Comparator.comparingInt(Patient::getGroupNumber))
+                .collect(Collectors.toList());
     }
 
     private List<Sample> getUniqueSamples(Patient patient) {

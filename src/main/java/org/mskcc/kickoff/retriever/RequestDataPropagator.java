@@ -76,7 +76,7 @@ public class RequestDataPropagator implements DataPropagator {
     @Override
     public void setTumorType(KickoffRequest kickoffRequest, Map<String, String> projectInfo) {
         HashSet<String> oncotreeCodes = new HashSet<>();
-        for (Sample sample : kickoffRequest.getAllValidSamples().values()) {
+        for (Sample sample : kickoffRequest.getAllValidSamples(s -> !s.isPooledNormal()).values()) {
             String oncotreeCode = sample.get(Constants.ONCOTREE_CODE);
             if (isOncoTreeValid(oncotreeCode))
                 oncotreeCodes.add(oncotreeCode);

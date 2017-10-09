@@ -19,6 +19,7 @@ import org.mskcc.kickoff.lims.SampleInfoImpact;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
+import org.mskcc.kickoff.retriever.SequencerRunFolderRetriever;
 import org.mskcc.kickoff.retriever.SingleRequestRetriever;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
@@ -40,6 +41,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private final DataRecordManager dataRecordManager;
 
     private final Map<Sample, DataRecord> sampleToDataRecord = new HashMap<>();
+    private final SequencerRunFolderRetriever sequencerRunFolderRetriever = new SequencerRunFolderRetriever();
     private ProjectInfoRetriever projectInfoRetriever;
 
     public VeloxSingleRequestRetriever(User user, DataRecordManager dataRecordManager, ProjectInfoRetriever projectInfoRetriever) {
@@ -87,7 +89,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     public KickoffRequest retrieve(String requestId, ProcessingType processingType) throws Exception {
         List<DataRecord> requestsDataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestId + "'", user);
         if (requestsDataRecords != null && requestsDataRecords.size() > 0) {
-            List<DataRecord> samples = Arrays.asList(requestsDataRecords.get(0).getChildrenOfType(VeloxConstants.SAMPLE, user));
+            List<DataRecord> samples = Arrays.asList(getAliquots(requestsDataRecords.get(0)));
             List<String> allSampleIds = new ArrayList<>();
             for (DataRecord sample : samples) {
                 String igoId = sample.getStringVal(VeloxConstants.SAMPLE_ID, user);
@@ -152,7 +154,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         List<Object> recipes = new ArrayList<>();
 
         try {
-            List<DataRecord> samples = Arrays.asList(dataRecordRequest.getChildrenOfType(VeloxConstants.SAMPLE, user));
+            List<DataRecord> samples = Arrays.asList(getAliquots(dataRecordRequest));
             recipes = dataRecordManager.getValueList(samples, VeloxConstants.RECIPE, user);
         } catch (Exception e) {
             DEV_LOGGER.warn(e.getMessage(), e);
@@ -343,7 +345,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private void processSamples(KickoffRequest kickoffRequest, DataRecord dataRecordRequest, List<String> sampleIds) {
         try {
             List<DataRecord> childSamplesToProcess = new ArrayList<>();
-            List<DataRecord> childSamples = new LinkedList<>(Arrays.asList(dataRecordRequest.getChildrenOfType(VeloxConstants.SAMPLE, user)));
+            List<DataRecord> childSamples = new LinkedList<>(Arrays.asList(getAliquots(dataRecordRequest)));
             for (DataRecord childSample : childSamples) {
                 String igoId = childSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
                 if (sampleIds.contains(igoId))
@@ -358,7 +360,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         }
     }
 
-    private void processSample(KickoffRequest kickoffRequest, DataRecord dataRecordSample) throws NotFound, RemoteException, IoError {
+    private void processSample(KickoffRequest kickoffRequest, DataRecord dataRecordSample) throws Exception {
         // Is this sample sequenced?
         String cmoSampleId = dataRecordSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
         String igoSampleId = dataRecordSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
@@ -382,9 +384,56 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
             setIsTransfer(dataRecordSample, sample);
             sampleToDataRecord.put(sample, dataRecordSample);
+            setSeqName(dataRecordSample, sample);
         } else {
             DEV_LOGGER.warn(String.format("Skipping %s because the sample is failed: %s", cmoSampleId, status));
         }
+    }
+
+    private void setSeqName(DataRecord dataRecordSample, Sample sample) throws Exception {
+        DataRecord[] sampleLevelQcs = getSampleLevelQcs(dataRecordSample);
+        for (DataRecord sampleLevelQc : sampleLevelQcs) {
+            if (isPassed(sampleLevelQc))
+                sample.setSeqName(getSeqName(sampleLevelQc));
+        }
+
+        if (sampleLevelQcFound(sampleLevelQcs))
+            return;
+
+        DataRecord[] aliquots = getAliquots(dataRecordSample);
+        for (DataRecord aliquot : aliquots) {
+            if (isFromSameRequest(aliquot))
+                setSeqName(aliquot, sample);
+        }
+    }
+
+    private DataRecord[] getAliquots(DataRecord dataRecordSample) throws IoError, RemoteException {
+        return dataRecordSample.getChildrenOfType(VeloxConstants.SAMPLE, user);
+    }
+
+    private DataRecord[] getSampleLevelQcs(DataRecord dataRecordSample) throws IoError, RemoteException {
+        return dataRecordSample.getChildrenOfType(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC, user);
+    }
+
+    private boolean sampleLevelQcFound(DataRecord[] sampleLevelQcs) {
+        return sampleLevelQcs.length > 0;
+    }
+
+    private String getSeqName(DataRecord sampleLevelQc) throws NotFound, RemoteException {
+        String runFolder = sampleLevelQc.getStringVal(VeloxConstants.SEQUENCER_RUN_FOLDER, user);
+
+        return sequencerRunFolderRetriever.retrieve(runFolder);
+    }
+
+    private boolean isPassed(DataRecord sampleLevelQc) throws Exception {
+        String qcStatusString = sampleLevelQc.getStringVal(VeloxConstants.SEQ_QC_STATUS, user);
+        QcStatus qcStatus = QcStatus.getByValue(qcStatusString);
+        return qcStatus != QcStatus.FAILED && qcStatus != QcStatus.UNDER_REVIEW;
+    }
+
+    private boolean isFromSameRequest(DataRecord dataRecordSample) throws Exception {
+        List<DataRecord> parentRequests = dataRecordSample.getParentsOfType(VeloxConstants.REQUEST, user);
+        return parentRequests.size() == 0;
     }
 
     private void setIsTransfer(DataRecord dataRecordSample, Sample sample) throws IoError, RemoteException {
@@ -402,7 +451,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private void processPlates(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         try {
             for (DataRecord plate : dataRecordRequest.getChildrenOfType(VeloxConstants.PLATE, user)) {
-                for (DataRecord dataRecordSample : plate.getChildrenOfType(VeloxConstants.SAMPLE, user)) {
+                for (DataRecord dataRecordSample : getAliquots(plate)) {
                     processSample(kickoffRequest, dataRecordSample);
                 }
             }

@@ -46,7 +46,7 @@ public class UniRequestsRetriever implements RequestsRetriever {
         requestDataPropagator.propagateRequestData(Arrays.asList(kickoffRequest));
         kickoffRequest.setRunNumbers(String.valueOf(kickoffRequest.getRunNumber()));
         kickoffRequest.addRequests(Arrays.asList(kickoffRequest));
-        kickoffRequest.setPairings(veloxPairingsRetriever.retrieve(requestsDataRecords.get(0)));
+        kickoffRequest.setPairingInfos(veloxPairingsRetriever.retrieve(requestsDataRecords.get(0), kickoffRequest));
 
         return kickoffRequest;
     }

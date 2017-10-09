@@ -3,7 +3,11 @@ package org.mskcc.kickoff.velox;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.user.User;
 import org.apache.commons.lang3.StringUtils;
-import org.mskcc.kickoff.domain.PairingInfo;
+import org.apache.log4j.Logger;
+import org.mskcc.domain.PairingInfo;
+import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
 import java.util.ArrayList;
@@ -11,13 +15,14 @@ import java.util.Arrays;
 import java.util.List;
 
 class VeloxPairingsRetriever {
+    private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private final User user;
 
     public VeloxPairingsRetriever(User user) {
         this.user = user;
     }
 
-    public List<PairingInfo> retrieve(DataRecord dataRecord) {
+    public List<PairingInfo> retrieve(DataRecord dataRecord, KickoffRequest kickoffRequest) {
         try {
             List<DataRecord> pairingRecords = Arrays.asList(dataRecord.getChildrenOfType(VeloxConstants.PAIRING_INFO, user));
             List<PairingInfo> pairings = new ArrayList<>();
@@ -29,7 +34,10 @@ class VeloxPairingsRetriever {
                     if (StringUtils.isEmpty(tumorId) || StringUtils.isEmpty(normalId))
                         continue;
 
-                    pairings.add(new PairingInfo(tumorId, normalId));
+                    Sample tumor = getSample(kickoffRequest, tumorId);
+                    Sample normal = getSample(kickoffRequest, normalId);
+
+                    pairings.add(new PairingInfo(tumor, normal));
                 } catch (Exception e) {
                     throw new RuntimeException(String.format("Unable to retrieve pairing with Record id: %s ", pairingRecord.getRecordId()));
                 }
@@ -39,6 +47,15 @@ class VeloxPairingsRetriever {
         } catch (Exception e) {
             throw new VeloxPairingsRetriever.PairingInfoRetrievalException(e);
         }
+    }
+
+    private Sample getSample(KickoffRequest kickoffRequest, String sampleId) {
+        if (!kickoffRequest.getSamples().containsKey(sampleId)) {
+            DEV_LOGGER.warn(String.format("Sample: %s from pairing info is not part of given request: %s", sampleId, kickoffRequest.getId()));
+            return Sample.getNotAvailableSample();
+        }
+
+        return kickoffRequest.getSample(sampleId);
     }
 
     private class PairingInfoRetrievalException extends RuntimeException {

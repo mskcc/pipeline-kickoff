@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.domain;
 
+import org.mskcc.domain.PairingInfo;
 import org.mskcc.domain.Recipe;
 
 import java.util.ArrayList;

@@ -2,8 +2,8 @@
 
 source "${BASH_SOURCE%/*}/utils.sh"
 
-#arguments=("noArg")
-arguments=("noArg" "-noPortal" "-f" "-exome" "-s")
+arguments=("noArg" "-exome")
+#arguments=("noArg" "-noPortal" "-f" "-exome" "-s")
 
 init() {
 	jdk8=~/jdk
@@ -152,56 +152,56 @@ fi
 init $1
 
 projects=(
-"01234_EWA" # not exising project
-"02756_B" # !BicAutorunnable, Recipe WholeExome, Xenograft
-"03498_D" # Canno be run through Create manifest sheet
-"04298_C" # Recipe WholeGenomeSeq
-"04298_D" # !manual Demux
-"04495" # manual Demux
-"04657_D" # ChIPSeq recipe
-"04919_G" # Exemplar Sample status Failed-Complete
+#"01234_EWA" # not exising project
+#"02756_B" # !BicAutorunnable, Recipe WholeExome, Xenograft
+#"03498_D" # Canno be run through Create manifest sheet
+#"04298_C" # Recipe WholeGenomeSeq
+#"04298_D" # !manual Demux
+#"04495" # manual Demux
+#"04657_D" # ChIPSeq recipe
+#"04919_G" # Exemplar Sample status Failed-Complete
 "05257_AX" # investigator patient IDs are problematic
-"05372_B" # Request name *PACT*
-"05500_AZ"  # !BicAutorunnable && "NOT_AUTORUNNABLE" in Readme
+#"05372_B" # Request name *PACT*
+#"05500_AZ"  # !BicAutorunnable && "NOT_AUTORUNNABLE" in Readme
 "05514_I" # IMPACT bait set
 "05583_F" #pairing changes
-"05600" # No Status Sequence Analysis QC
-#"05667_AB"  #pairing changes
-#"05667_AT"  #pairing changes
-#"05667_AW"  #pairing changes
+#"05600" # No Status Sequence Analysis QC
+"05667_AB"  #pairing changes
+"05667_AT"  #pairing changes
+"05667_AW"  #pairing changes
 "05667_AY"
-"05684_D" # KK- NimlegenHybridizationProtocol1
-"05737_R" # HEMEPACT_v3 bait set, species in Xenograft
-"05816_AA"
-"05873_H" # Failed Sequence Analysis QC
-"05971_G" # IMPACT bait set, species in Xenograft
-"06049_I"  #pairing changes
-"06049_R"  #pairing changes
-"06049_U"  #pairing changes
-"06208_D" # Agilient Capture KAPA Libary
-"06259_B"
-"06362" #no sample level qc
-"06477_E" # !KAPAAgilentCaptureProtocol2, very slow project
-"06507" # Request with 2 samples with same name
-"06507_D" # rename FASTQ
-"06507_E"
-"06836_E" # IMPACT bait set, two samples are failed in post process QC
-"06907_J"
-"06912_B" # Failed Reprocess Sequence Analysis QC
-"06938_M" # Exemplar Sample status Failed-Complete
-"06990_E"
-"07037_O"
-"07165_D"
-"07275" # germline-no pipeline run
-"07306_D" # Request with 2 samples with same name
-"07323_F"  #pairing changes
-"07372_B"
-"07437_B" # BR7 and BR11 match each other, neither one matches corresponding DMP normal
-"07473" # Under review Sequence Analysis QC
-"07507_B" # no recipe in the sample sheet
-"07520"
-"07527_B"
-"08192_E" # no tumor
+#"05684_D" # KK- NimlegenHybridizationProtocol1
+#"05737_R" # HEMEPACT_v3 bait set, species in Xenograft
+#"05816_AA"
+#"05873_H" # Failed Sequence Analysis QC
+#"05971_G" # IMPACT bait set, species in Xenograft
+#"06049_I"  #pairing changes
+#"06049_R"  #pairing changes
+#"06049_U"  #pairing changes
+#"06208_D" # Agilient Capture KAPA Libary
+#"06259_B"
+#"06362" #no sample level qc
+#"06477_E" # !KAPAAgilentCaptureProtocol2, very slow project
+#"06507" # Request with 2 samples with same name
+#"06507_D" # rename FASTQ
+#"06507_E"
+#"06836_E" # IMPACT bait set, two samples are failed in post process QC
+#"06907_J"
+#"06912_B" # Failed Reprocess Sequence Analysis QC
+#"06938_M" # Exemplar Sample status Failed-Complete
+#"06990_E"
+#"07037_O"
+#"07165_D"
+#"07275" # germline-no pipeline run
+#"07306_D" # Request with 2 samples with same name
+#"07323_F"  #pairing changes
+#"07372_B"
+#"07437_B" # BR7 and BR11 match each other, neither one matches corresponding DMP normal
+#"07473" # Under review Sequence Analysis QC
+#"07507_B" # no recipe in the sample sheet
+#"07520"
+#"07527_B"
+#"08192_E" # no tumor
 )
 
 projectsList=$(printf ",%s" "${projects[@]}")

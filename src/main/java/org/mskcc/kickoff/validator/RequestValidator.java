@@ -18,6 +18,7 @@ import org.mskcc.kickoff.util.Utils;
 
 import java.io.File;
 import java.util.*;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
 import static org.mskcc.kickoff.config.Arguments.*;
@@ -25,6 +26,8 @@ import static org.mskcc.kickoff.config.Arguments.*;
 public class RequestValidator {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+    private BiPredicate<Sample, Sample> pairingInfoPredicate = new PairingInfoValidPredicate();
+    private final PairingsValidator pairingsValidator = new PairingsValidator(pairingInfoPredicate);
 
     private List<PriorityAwareLogMessage> poolQCWarnings = new ArrayList<>();
 
@@ -42,6 +45,12 @@ public class RequestValidator {
         validateOutputDir(kickoffRequest);
         validateHasSamples(kickoffRequest);
         validateSamplesExist(kickoffRequest);
+        validatePairings(kickoffRequest);
+    }
+
+    private void validatePairings(KickoffRequest kickoffRequest) {
+        if (!kickoffRequest.isPairingError())
+            pairingsValidator.isValid(kickoffRequest.getPairingInfos());
     }
 
     private void validateShiny(KickoffRequest request) {
@@ -51,7 +60,7 @@ public class RequestValidator {
 
     private void validateOutputDir(KickoffRequest kickoffRequest) {
         //@TODO after finishing comparing with current prod version refactor it to check outdir only once, as for now it stays fo tests to pass
-        if(!StringUtils.isEmpty(outdir)) {
+        if (!StringUtils.isEmpty(outdir)) {
             File outputDir = new File(outdir);
 
             if (!StringUtils.isEmpty(outdir)) {
@@ -84,12 +93,12 @@ public class RequestValidator {
     }
 
     private void validateSequencingRuns(KickoffRequest kickoffRequest) {
-        long numberOfSampleLevelQcs = kickoffRequest.getSamples().values().stream()
+        long numberOfQcs = kickoffRequest.getSamples().values().stream()
                 .flatMap(s -> s.getRuns().values().stream()
-                        .filter(r -> r.getSampleLevelQcStatus() != null))
+                        .filter(r -> r.getSampleLevelQcStatus() != null || r.getPoolQcStatus() != null))
                 .count();
 
-        if (numberOfSampleLevelQcs == 0) {
+        if (numberOfQcs == 0) {
             if (!forced && !kickoffRequest.isManualDemux()) {
                 DEV_LOGGER.error("No sequencing runs found for this Request ID.");
                 throw new RuntimeException("There are no sample level qc set.");
@@ -197,12 +206,12 @@ public class RequestValidator {
                         poolQCWarnings.add(new PriorityAwareLogMessage(PmLogPriority.POOL_ERROR, message));
                         Utils.setExitLater(true);
                         kickoffRequest.setMappingIssue(true);
-                    } else if(run.getPoolQcStatus() == QcStatus.REQUIRED_ADDITIONAL_READS) {
+                    } else if (run.getPoolQcStatus() == QcStatus.REQUIRED_ADDITIONAL_READS) {
                         String message = "RunID " + run.getId() + " needed additional reads. I cannot tell yet if they were finished. Please check.";
                         poolQCWarnings.add(new PriorityAwareLogMessage(PmLogPriority.POOL_ERROR, message));
                         Utils.setExitLater(true);
                         kickoffRequest.setMappingIssue(true);
-                    } else if(run.getPoolQcStatus() == null) {
+                    } else if (run.getPoolQcStatus() == null) {
                         String message = "RunID " + run.getId() + " has no Sequencing QC Result field set in Sequencing Analysis QC Results record. Fill it in in LIMS.";
                         poolQCWarnings.add(new PriorityAwareLogMessage(PmLogPriority.POOL_ERROR, message));
                         Utils.setExitLater(true);
@@ -373,4 +382,5 @@ public class RequestValidator {
         if (kickoffRequest.getSamples().size() == 0)
             throw new RuntimeException(String.format("No samples found for request: %s", kickoffRequest.getId()));
     }
+
 }
