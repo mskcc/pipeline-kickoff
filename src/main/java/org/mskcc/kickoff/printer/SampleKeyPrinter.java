@@ -17,8 +17,6 @@ import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
-
 public class SampleKeyPrinter implements FilePrinter  {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
@@ -158,8 +156,7 @@ public class SampleKeyPrinter implements FilePrinter  {
 
     @Override
     public boolean shouldPrint(KickoffRequest request) {
-        return !(Utils.isExitLater() && !krista && !request.isInnovation() && request.getRequestType() != RequestType.OTHER && request.getRequestType() != RequestType.RNASEQ)
-                && (request.getRequestType() == RequestType.RNASEQ && !request.getLibTypes().contains(LibType.TRU_SEQ_FUSION_DISCOVERY) && request.getAllValidSamples().size() > 1);
+        return request.getRequestType() == RequestType.RNASEQ && !request.getLibTypes().contains(LibType.TRU_SEQ_FUSION_DISCOVERY) && request.getAllValidSamples().size() > 1;
     }
 
     private XSSFSheet addRowToSheet(XSSFWorkbook wb, XSSFSheet sheet, ArrayList<String> list, int rowNum, String type) {

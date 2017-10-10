@@ -174,7 +174,11 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     }
 
     private void addPoolRunsToSamples(KickoffRequest kickoffRequest) {
-        Set<Run> sampleRuns = kickoffRequest.getSamples().values().stream().flatMap(s -> s.getRuns().values().stream()).collect(Collectors.toSet());
+        Set<Run> sampleRuns = kickoffRequest.getSamples().values().stream()
+                .flatMap(s -> s.getRuns()
+                        .values().stream())
+                .collect(Collectors.toSet());
+
         Set<Run> poolRuns = kickoffRequest.getPools().values().stream()
                 .flatMap(s -> s.getRuns().values().stream()
                         .filter(r -> r.getPoolQcStatus() != QcStatus.UNDER_REVIEW))
@@ -562,7 +566,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     Run run = pool.putRunIfAbsent(runId);
                     run.setPoolQcStatus(QcStatus.getByValue(status));
                     run.setRecordId(seqrun.getRecordId());
-                    Run sampleRun = sample.putRunIfAbsent(run);
+                    Run sampleRun = sample.putRunIfAbsent(run.getId());
                     sampleRun.setPoolQcStatus(QcStatus.getByValue(status));
                     sampleRun.setRecordId(seqrun.getRecordId());
                 }

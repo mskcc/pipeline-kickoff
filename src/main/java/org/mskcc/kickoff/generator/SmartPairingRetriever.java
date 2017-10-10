@@ -33,6 +33,7 @@ public class SmartPairingRetriever {
             for (Sample tumor : tumorSamples) {
                 String tumorCorrectedId = tumor.getProperties().get(Constants.CORRECTED_CMO_ID);
                 String normalId = getNormal(normalSamples, tumor);
+                DEV_LOGGER.info(String.format("Smart pairing found: tumor: %s - normal: %s", tumorCorrectedId, normalId));
                 smartPairings.put(tumorCorrectedId, normalId);
             }
         }
@@ -61,7 +62,6 @@ public class SmartPairingRetriever {
         } else {
             pairedNormal = normals.get(0);
         }
-
 
         return pairedNormal.get(Constants.CORRECTED_CMO_ID);
     }

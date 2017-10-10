@@ -131,7 +131,9 @@ public class VeloxProjectProxy implements RequestProxy {
             try {
                 InstrumentType.mapNameToType(instrumentName, InstrumentType.fromString(instrumentType));
             } catch (Exception e) {
-                DEV_LOGGER.info(String.format("Skipping instrument type: %s as it's not supported (is invalid or outdated).", instrumentType));
+                String message = String.format("Skipping instrument type: %s as it's not supported (is invalid or outdated).", instrumentType);
+                DEV_LOGGER.info(message);
+                PM_LOGGER.info(message);
             }
         }
     }
