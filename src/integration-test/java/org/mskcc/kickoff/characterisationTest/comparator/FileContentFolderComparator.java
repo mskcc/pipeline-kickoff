@@ -21,13 +21,11 @@ public class FileContentFolderComparator implements FolderComparator {
     private final List<FailingTestListener> failingComparisonListeners = new ArrayList<>();
     private final List<FailingTestListener> failingNumberOfFilesListeners = new ArrayList<>();
 
-    private final BooleanSupplier shouldCompareLogFilePredicate;
     private final BiPredicate<File, File> areFilesEqualPredicate;
     private final XslxComparator xslxComparator;
 
-    private FileContentFolderComparator(BiPredicate<String, String> areLinesEqualPredicate, BooleanSupplier shouldCompareLogFilePredicate) {
+    private FileContentFolderComparator(BiPredicate<String, String> areLinesEqualPredicate) {
         areFilesEqualPredicate = new FilesEqualWithoutLinesOrdering(areLinesEqualPredicate);
-        this.shouldCompareLogFilePredicate = shouldCompareLogFilePredicate;
         xslxComparator = new XslxComparator(areLinesEqualPredicate);
     }
 
@@ -58,7 +56,7 @@ public class FileContentFolderComparator implements FolderComparator {
                     return false;
 
                 Path actualSubPath = getActualSubPath(actualPath, expectedSubPath);
-                if (isLogFolder(expectedSubPath)) {// && !shouldCompareLogFilePredicate.getAsBoolean()) {
+                if (isLogFolder(expectedSubPath)) {
                     LOGGER.info(String.format("Omitting comparing actual log files in path: %s with expected path: %s", actualSubPath, expectedSubPath));
                     continue;
                 }
@@ -155,6 +153,15 @@ public class FileContentFolderComparator implements FolderComparator {
     private boolean areFilesEqual(File actualFile, File expectedFile) throws Exception {
         if (isXlsxFile(actualFile))
             return areXslxFilesEqualWithoutLineOrder(actualFile, expectedFile);
+        return compareTxtFiles(actualFile, expectedFile);
+    }
+
+    private boolean compareTxtFiles(File actualFile, File expectedFile) {
+        if (actualFile.getPath().contains("grouping")) {
+            LOGGER.info(String.format("Ommiting comparing grouping file: %s", actualFile));
+            return true;
+        }
+
         return areFilesEqualPredicate.test(actualFile, expectedFile);
     }
 
@@ -170,7 +177,6 @@ public class FileContentFolderComparator implements FolderComparator {
 
     public static class Builder {
         private BiPredicate<String, String> areLinesEqualPredicate = String::equals;
-        private BooleanSupplier shouldCompareLogFile = () -> true;
 
         public Builder setAreLinesEqualPredicate(BiPredicate<String, String> areLinesEqualPredicate) {
             this.areLinesEqualPredicate = areLinesEqualPredicate;
@@ -178,12 +184,11 @@ public class FileContentFolderComparator implements FolderComparator {
         }
 
         public Builder setShouldCompareLogFile(BooleanSupplier shouldCompareLogFile) {
-            this.shouldCompareLogFile = shouldCompareLogFile;
             return this;
         }
 
         public FileContentFolderComparator build() {
-            return new FileContentFolderComparator(areLinesEqualPredicate, shouldCompareLogFile);
+            return new FileContentFolderComparator(areLinesEqualPredicate);
         }
     }
 }

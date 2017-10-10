@@ -2,8 +2,8 @@
 
 source "${BASH_SOURCE%/*}/utils.sh"
 
-#arguments=("noArg")
-arguments=("noArg" "-noPortal" "-f" "-exome" "-s")
+arguments=("noArg" "-exome")
+#arguments=("noArg" "-noPortal" "-f" "-exome" "-s")
 
 init() {
 	jdk8=~/jdk
@@ -166,9 +166,9 @@ projects=(
 "05514_I" # IMPACT bait set
 "05583_F" #pairing changes
 "05600" # No Status Sequence Analysis QC
-#"05667_AB"  #pairing changes
-#"05667_AT"  #pairing changes
-#"05667_AW"  #pairing changes
+"05667_AB"  #pairing changes
+"05667_AT"  #pairing changes
+"05667_AW"  #pairing changes
 "05667_AY"
 "05684_D" # KK- NimlegenHybridizationProtocol1
 "05737_R" # HEMEPACT_v3 bait set, species in Xenograft
@@ -181,7 +181,7 @@ projects=(
 "06208_D" # Agilient Capture KAPA Libary
 "06259_B"
 "06362" #no sample level qc
-"06477_E" # !KAPAAgilentCaptureProtocol2, very slow project
+#"06477_E" # !KAPAAgilentCaptureProtocol2, very slow project
 "06507" # Request with 2 samples with same name
 "06507_D" # rename FASTQ
 "06507_E"

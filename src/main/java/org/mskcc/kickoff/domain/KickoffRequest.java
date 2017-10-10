@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.domain;
 
+import org.mskcc.domain.PairingInfo;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.process.ProcessingType;
@@ -20,6 +21,7 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     private String runNumbers = "";
     private String outputPath = "";
     private List<PairingInfo> pairingInfos = new ArrayList<>();
+    private boolean pairingError;
 
     public KickoffRequest(String id, ProcessingType processingType) {
         super(id);
@@ -163,15 +165,19 @@ public class KickoffRequest extends org.mskcc.domain.Request {
 
     }
 
-    public void setPairings(List<PairingInfo> pairingInfos) {
-        this.pairingInfos = pairingInfos;
-    }
-
     public List<PairingInfo> getPairingInfos() {
         return pairingInfos;
     }
 
     public void setPairingInfos(List<PairingInfo> pairingInfos) {
         this.pairingInfos = pairingInfos;
+    }
+
+    public boolean isPairingError() {
+        return pairingError;
+    }
+
+    public void setPairingError(boolean pairingError) {
+        this.pairingError = pairingError;
     }
 }

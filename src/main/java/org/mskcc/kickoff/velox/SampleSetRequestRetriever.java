@@ -34,7 +34,7 @@ public class SampleSetRequestRetriever implements RequestsRetriever {
 
         requestDataPropagator.propagateRequestData(sampleSet.getRequests());
         KickoffRequest kickoffRequest = sampleSetToRequestConverter.convert(sampleSet);
-        kickoffRequest.setPairings(veloxPairingsRetriever.retrieve(sampleSetRecord));
+        kickoffRequest.setPairingInfos(veloxPairingsRetriever.retrieve(sampleSetRecord, kickoffRequest));
 
         return kickoffRequest;
     }

@@ -75,8 +75,7 @@ public class PairingFilePrinter implements FilePrinter {
 
     @Override
     public boolean shouldPrint(KickoffRequest request) {
-        return !(Utils.isExitLater() && !krista && !request.isInnovation() && !request.getRequestType().equals(RequestType.OTHER) && !request.getRequestType().equals(RequestType.RNASEQ))
-                && (!request.getRequestType().equals(RequestType.OTHER) && !request.getRequestType().equals(RequestType.OTHER));
+        return !request.getRequestType().equals(RequestType.OTHER) && !request.getRequestType().equals(RequestType.RNASEQ);
     }
 
     private Map<String, String> getPairingInfo(KickoffRequest request) {

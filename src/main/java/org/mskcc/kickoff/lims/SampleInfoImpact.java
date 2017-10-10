@@ -941,7 +941,9 @@ public class SampleInfoImpact extends SampleInfo {
 
     private void addPooledNormal(User apiUser, DataRecord nymbSiblingSample, DataRecord parentSample) throws NotFound, RemoteException {
         String pooledNormalId = nymbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
-        DEV_LOGGER.info(String.format("Adding pooled normal: %s", pooledNormalId));
+
+        if (!pooledNormals.containsKey(parentSample))
+            DEV_LOGGER.info(String.format("Adding pooled normal: %s", pooledNormalId));
         pooledNormals.put(parentSample, pooledNormalId);
     }
 

@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.velox;
 
+import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
 import com.velox.sapioutils.client.standalone.VeloxConnection;
@@ -7,17 +8,21 @@ import com.velox.sapioutils.client.standalone.VeloxStandalone;
 import com.velox.sapioutils.client.standalone.VeloxStandaloneException;
 import com.velox.sapioutils.client.standalone.VeloxTask;
 import org.apache.log4j.Logger;
+import org.mskcc.domain.PairingInfo;
+import org.mskcc.domain.instrument.InstrumentType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.converter.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.domain.PairingInfo;
 import org.mskcc.kickoff.process.NormalProcessingType;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.retriever.RequestNotFoundException;
 import org.mskcc.kickoff.retriever.RequestsRetriever;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.velox.util.VeloxUtils;
+import org.mskcc.util.VeloxConstants;
+
+import java.util.List;
 
 public class VeloxProjectProxy implements RequestProxy {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
@@ -96,6 +101,7 @@ public class VeloxProjectProxy implements RequestProxy {
 
     private KickoffRequest retrieveRequest(String projectId, VeloxConnection connection) {
         try {
+            retrieveInstruments();
             requestsRetriever = requestsRetrieverFactory.getRequestsRetriever(user, dataRecordManager, projectId);
             KickoffRequest kickoffRequest = requestsRetriever.retrieve(projectId, new NormalProcessingType(projectFilesArchiver));
             resolvePairings(kickoffRequest);
@@ -115,25 +121,33 @@ public class VeloxProjectProxy implements RequestProxy {
         }
     }
 
-    private void resolvePairings(KickoffRequest kickoffRequest) {
-        for (PairingInfo pairingInfo : kickoffRequest.getPairingInfos()) {
-            String normalIgoId = pairingInfo.getNormalIgoId();
-            String tumorIgoId = pairingInfo.getTumorIgoId();
+    private void retrieveInstruments() throws Exception {
+        List<DataRecord> instruments = dataRecordManager.queryDataRecords(VeloxConstants.INSTRUMENT, null, user);
 
-            validatePairingSamples(kickoffRequest, normalIgoId);
-            validatePairingSamples(kickoffRequest, tumorIgoId);
+        for (DataRecord instrument : instruments) {
+            String instrumentName = instrument.getStringVal(VeloxConstants.INSTRUMENT_NAME, user);
+            String instrumentType = instrument.getPickListVal(VeloxConstants.INSTRUMENT_TYPE, user);
 
-            Sample tumorSample = kickoffRequest.getSamples().get(tumorIgoId);
-            Sample normalSample = kickoffRequest.getSamples().get(normalIgoId);
-
-            tumorSample.setPairing(normalSample);
-            normalSample.setPairing(tumorSample);
+            try {
+                InstrumentType.mapNameToType(instrumentName, InstrumentType.fromString(instrumentType));
+            } catch (Exception e) {
+                String message = String.format("Skipping instrument type: %s as it's not supported (is invalid or outdated).", instrumentType);
+                DEV_LOGGER.info(message);
+                PM_LOGGER.info(message);
+            }
         }
     }
 
-    private void validatePairingSamples(KickoffRequest kickoffRequest, String sampleId) {
-        if (!kickoffRequest.getSamples().containsKey(sampleId))
-            throw new RuntimeException(String.format("Sample: %s from pairing info is not part of given request: %s", sampleId, kickoffRequest.getId()));
+    private void resolvePairings(KickoffRequest kickoffRequest) {
+        if (!kickoffRequest.isPairingError()) {
+            for (PairingInfo pairingInfo : kickoffRequest.getPairingInfos()) {
+                Sample normalSample = pairingInfo.getNormal();
+                Sample tumorSample = pairingInfo.getTumor();
+
+                tumorSample.setPairing(normalSample);
+                normalSample.setPairing(tumorSample);
+            }
+        }
     }
 
     public class MySafeShutdown extends Thread {

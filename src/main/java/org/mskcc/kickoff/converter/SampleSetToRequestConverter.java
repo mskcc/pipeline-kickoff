@@ -5,7 +5,6 @@ import org.apache.log4j.Logger;
 import org.mskcc.domain.*;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.domain.PairingInfo;
 import org.mskcc.kickoff.domain.SampleSet;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
@@ -153,8 +152,8 @@ public class SampleSetToRequestConverter {
         DEV_LOGGER.info(String.format("Found %s pairings for sample set: %s", sampleSet.getPairings().size(), sampleSet.getName()));
 
         for (PairingInfo pairingInfo : sampleSet.getPairings()) {
-            Sample normalSample = sampleSetSamples.get(pairingInfo.getNormalIgoId());
-            Sample tumorSample = sampleSetSamples.get(pairingInfo.getTumorIgoId());
+            Sample normalSample = sampleSetSamples.get(pairingInfo.getNormal());
+            Sample tumorSample = sampleSetSamples.get(pairingInfo.getTumor());
 
             DEV_LOGGER.info(String.format("Found pairing for sample set: %s. Tumor: %s - normal: %s", sampleSet.getName(), tumorSample, normalSample));
 
