@@ -21,8 +21,7 @@ import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
 public class PairingFilePrinter implements FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
-    private Map<String, String> pairingInfo;
-    private PairingsResolver pairingsResolver;
+    private final PairingsResolver pairingsResolver;
 
     public PairingFilePrinter(PairingsResolver pairingsResolver) {
         this.pairingsResolver = pairingsResolver;
@@ -31,10 +30,9 @@ public class PairingFilePrinter implements FilePrinter {
     @Override
     public void print(KickoffRequest request) {
         String filename = String.format("%s/%s_sample_pairing.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId()));
-        pairingInfo = getPairingInfo(request);
+        Map<String, String> pairingInfo = getPairingInfo(request);
 
         Set<String> normalCMOids = new HashSet<>();
-        // Generate normal CMO IDs
         for (Sample sample : request.getAllValidSamples().values()) {
             if (sample.get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL)) {
                 normalCMOids.add(sample.get(Constants.CORRECTED_CMO_ID));
@@ -43,13 +41,11 @@ public class PairingFilePrinter implements FilePrinter {
 
         Set<String> missingNormalsToBeAdded = new HashSet<>();
         if (request.getRequestType() == RequestType.EXOME) {
-            // Make a list of all the unmatched normals, so they can be added to the end of the pairing
             HashSet<String> normalsPairedWithThings = new HashSet<>(pairingInfo.values());
             missingNormalsToBeAdded = new HashSet<>(normalCMOids);
             missingNormalsToBeAdded.removeAll(normalsPairedWithThings);
         }
         try {
-            //Done going through all igo ids, now print
             if (pairingInfo != null && pairingInfo.size() > 0) {
                 File pairing_file = new File(filename);
                 PrintWriter pW = new PrintWriter(new FileWriter(pairing_file, false), false);

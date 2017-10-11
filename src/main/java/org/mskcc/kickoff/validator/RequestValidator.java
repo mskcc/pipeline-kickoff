@@ -15,6 +15,7 @@ import org.mskcc.kickoff.logger.PriorityAwareLogMessage;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.util.*;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 
 import static org.mskcc.kickoff.config.Arguments.*;
 
+@Component
 public class RequestValidator {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
@@ -131,12 +133,10 @@ public class RequestValidator {
     private Set<String> getDuplicateSamples(KickoffRequest kickoffRequest) {
         Set<String> uniqueCmoSampleIds = new HashSet<>();
 
-        Set<String> duplicates = kickoffRequest.getValidNonPooledNormalSamples().values().stream()
-                .map(s -> s.getCmoSampleId())
+        return kickoffRequest.getValidNonPooledNormalSamples().values().stream()
+                .map(Sample::getCmoSampleId)
                 .filter(cmoSampleId -> !uniqueCmoSampleIds.add(cmoSampleId))
                 .collect(Collectors.toSet());
-
-        return duplicates;
     }
 
     private void validateBarcodeInfo(KickoffRequest kickoffRequest) {
@@ -182,7 +182,6 @@ public class RequestValidator {
                         DEV_LOGGER.log(Level.ERROR, message);
                         kickoffRequest.setMappingIssue(true);
                     }
-                    continue;
                 }
             }
             if (sample.getAlias() != null && !sample.getAlias().isEmpty()) {
@@ -324,7 +323,7 @@ public class RequestValidator {
                 .values()
                 .stream()
                 .map(s -> s.getRuns().values())
-                .flatMap(r -> r.stream())
+                .flatMap(Collection::stream)
                 .filter(r -> r.getSampleLevelQcStatus() != null)
                 .collect(Collectors.toSet());
 
@@ -333,7 +332,7 @@ public class RequestValidator {
                 .values()
                 .stream()
                 .map(s -> s.getRuns().values())
-                .flatMap(r -> r.stream())
+                .flatMap(Collection::stream)
                 .filter(r -> r.getPoolQcStatus() != null)
                 .collect(Collectors.toSet());
 
