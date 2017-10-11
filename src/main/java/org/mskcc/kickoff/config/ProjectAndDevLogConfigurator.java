@@ -1,9 +1,13 @@
 package org.mskcc.kickoff.config;
 
-import org.apache.log4j.*;
+import org.apache.log4j.DailyRollingFileAppender;
+import org.apache.log4j.FileAppender;
+import org.apache.log4j.Logger;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.springframework.stereotype.Component;
 
+@Component
 public class ProjectAndDevLogConfigurator implements LogConfigurator {
     @Override
     public void configureProjectLog(String projectFilePath) {

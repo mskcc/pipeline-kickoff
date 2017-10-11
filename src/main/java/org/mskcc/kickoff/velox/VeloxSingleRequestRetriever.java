@@ -169,7 +169,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             if (recipeList.size() == 1)
                 kickoffRequest.setRecipe(recipeList.get(0));
         } catch (Recipe.UnsupportedRecipeException | Recipe.EmptyRecipeException e) {
-            DEV_LOGGER.warn(String.format("Request: %s issue: %s", kickoffRequest.getId(), e.getMessage()), e);
+            DEV_LOGGER.warn(String.format("Invalid recipe for request %s: %s", kickoffRequest.getId(), e.getMessage()), e);
         }
     }
 
@@ -220,7 +220,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private void processPooledNormals(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         try {
             Map<DataRecord, Collection<String>> pooledNormals = new LinkedHashMap<>(SampleInfoImpact.getPooledNormals());
-            if (pooledNormals != null && pooledNormals.size() > 0) {
+            if (pooledNormals.size() > 0) {
                 DEV_LOGGER.info(String.format("Number of Pooled Normal Samples: %d", pooledNormals.size()));
 
                 for (Map.Entry<DataRecord, Collection<String>> pooledNormalToRuns : pooledNormals.entrySet()) {
@@ -266,7 +266,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
                     // Make sure samplesAndRuns has the corrected RUN IDs
                     List<String> runs = Arrays.asList(tempHashMap.get(Constants.INCLUDE_RUN_ID).split(";"));
-                    Set<Run> runSet = runs.stream().map((r -> new Run(r))).filter(r -> !StringUtils.isEmpty(r.getId())).collect(Collectors.toSet());
+                    Set<Run> runSet = runs.stream().map((Run::new)).filter(r -> !StringUtils.isEmpty(r.getId())).collect(Collectors.toSet());
                     //@TODO check
                     sample.addRuns(runSet);
 
@@ -371,7 +371,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
         // Added because we were getting samples that had the same name as a sequenced sample, but then it was failed so it shouldn't be used (as per Aaron).
         String status = dataRecordSample.getSelectionVal(VeloxConstants.EXEMPLAR_SAMPLE_STATUS, user);
-        if (status != Constants.FAILED_COMPLETED) {
+        if (!Objects.equals(status, Constants.FAILED_COMPLETED)) {
             Sample sample;
             if (isPool(cmoSampleId)) {
                 Pool pool = kickoffRequest.putPoolIfAbsent(igoSampleId);
@@ -509,13 +509,14 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         try {
             totalReads = (int) (long) sampleQc.getLongVal(VeloxConstants.TOTAL_READS, user);
         } catch (NullPointerException skipped) {
+            DEV_LOGGER.warn(String.format("NPE thrown while retrieving Total Reads for record sample qc: %d", sampleQc.getRecordId()));
         }
         return totalReads;
     }
 
     private String getRunIdFromQcRecord(DataRecord sampleQc) throws NotFound, RemoteException {
         String[] runParts = sampleQc.getStringVal(VeloxConstants.SEQUENCER_RUN_FOLDER, user).split("_");
-        return runParts[0] + "_" + runParts[1];
+        return String.format("%s_%s", runParts[0], runParts[1]);
     }
 
     private void addPostAnalysisQc(DataRecord dataRecordSample, Sample sample) {
@@ -636,7 +637,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             // Try finalSampleList FIRST. If this doesn't have any library types, just try samples from seq run.
             checkSamplesForLibTypes(kickoffRequest, finalSampleList);
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about Library Types for request id: %s", Arguments.project, e));
+            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about Library Types for request id: %s", Arguments.project), e);
         }
     }
 

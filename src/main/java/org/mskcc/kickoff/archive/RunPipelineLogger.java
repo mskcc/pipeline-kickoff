@@ -5,6 +5,7 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -15,13 +16,14 @@ import java.util.Date;
 
 import static org.mskcc.kickoff.config.Arguments.rerunReason;
 
-public class RunPipelineLogger {
+@Component
+class RunPipelineLogger {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     @Value("${archivePath}")
     private String archivePath;
 
-    public void invoke(KickoffRequest request) {
+    void invoke(KickoffRequest request) {
         boolean newFile = false;
         // If this project already has a pipeline run log add rerun information to it.
         // IF the rerun number has already been marked in there, just add to it....

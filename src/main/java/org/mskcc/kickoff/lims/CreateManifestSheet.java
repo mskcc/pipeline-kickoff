@@ -1,17 +1,12 @@
 package org.mskcc.kickoff.lims;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.config.AppConfiguration;
 import org.mskcc.kickoff.config.Arguments;
-import org.mskcc.kickoff.config.LogConfigurator;
-import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.ManifestGenerator;
-import org.mskcc.kickoff.generator.OutputDirRetriever;
-import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.util.Constants;
-import org.mskcc.kickoff.validator.ProjectNameValidator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
@@ -29,24 +24,11 @@ class CreateManifestSheet {
     @Autowired
     private ManifestGenerator manifestGenerator;
 
-    @Autowired
-    private LogConfigurator logConfigurator;
-
-    @Autowired
-    private OutputDirRetriever outputDirRetriever;
-
-    @Autowired
-    private RequestProxy requestProxy;
-
-    @Autowired
-    private ProjectNameValidator projectNameValidator;
-
-    @Value("${draftProjectFilePath}")
-    private String draftProjectFilePath;
-
     public static void main(String[] args) {
         try {
             parseArguments(args);
+            DEV_LOGGER.info(String.format("Received program arguments: %s", toPrintable()));
+
             ConfigurableApplicationContext context = configureSpringContext();
             CreateManifestSheet createManifestSheet = context.getBean(CreateManifestSheet.class);
             createManifestSheet.generate(Arguments.project);
@@ -57,9 +39,8 @@ class CreateManifestSheet {
 
     private static ConfigurableApplicationContext configureSpringContext() {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-        if (!hasActiveProfiles(context))
-            context.getEnvironment().setActiveProfiles(Constants.PROD_PROFILE, Constants.IGO_PROFILE);
 
+        configureSpringProfiles(context);
         context.register(AppConfiguration.class);
         context.register(CreateManifestSheet.class);
         context.registerShutdownHook();
@@ -68,31 +49,21 @@ class CreateManifestSheet {
         return context;
     }
 
-    private static boolean hasActiveProfiles(AnnotationConfigApplicationContext context) {
-        return context.getEnvironment().getActiveProfiles().length > 0;
+    private static void configureSpringProfiles(AnnotationConfigApplicationContext context) {
+        if (getActiveProfiles(context).length == 0) {
+            DEV_LOGGER.info(String.format("No spring profiles set. Setting default spring profiles: %s, %s", Constants.PROD_PROFILE, Constants.IGO_PROFILE));
+            context.getEnvironment().setActiveProfiles(Constants.PROD_PROFILE, Constants.IGO_PROFILE);
+        } else {
+            DEV_LOGGER.info(String.format("Spring profiles set: %s", StringUtils.join(getActiveProfiles(context), ",")));
+        }
+    }
+
+    private static String[] getActiveProfiles(AnnotationConfigApplicationContext context) {
+        return context.getEnvironment().getActiveProfiles();
     }
 
     private void generate(String projectId) throws Exception {
-        String projectFilePath = configure(projectId);
-
-        KickoffRequest kickoffRequest = requestProxy.getRequest(projectId);
-        kickoffRequest.setOutputPath(projectFilePath);
-        manifestGenerator.generate(kickoffRequest);
-    }
-
-    private String configure(String projectId) {
-        logConfigurator.configureDevLog();
-        DEV_LOGGER.info(String.format("Received program arguments: %s", toPrintable()));
-
-        String projectFilePath = outputDirRetriever.retrieve(projectId, Arguments.outdir);
-        validateProjectName(projectId);
-        logConfigurator.configureProjectLog(projectFilePath);
-
-        return projectFilePath;
-    }
-
-    private void validateProjectName(String projectId) {
-        projectNameValidator.validate(projectId);
+        manifestGenerator.generate(projectId);
     }
 }
 
