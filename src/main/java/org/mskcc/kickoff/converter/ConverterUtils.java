@@ -51,9 +51,8 @@ public class ConverterUtils {
 
     static String getJoinedRequestProperty(SampleSet sampleSet, Function<KickoffRequest, String> requestProperty, String delimiter) {
         return sampleSet.getRequests().stream()
-                .map(requestProperty)
-                .filter(p -> !StringUtils.isEmpty(p))
-                .distinct()
+                .filter(r -> !StringUtils.isEmpty(requestProperty.apply(r)))
+                .map(r -> String.format("%s: %s", r.getId(), requestProperty.apply(r)))
                 .collect(Collectors.joining(delimiter));
     }
 
