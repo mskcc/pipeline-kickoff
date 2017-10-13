@@ -6,6 +6,7 @@ import com.velox.api.user.User;
 import com.velox.api.util.ServerException;
 import com.velox.sapioutils.client.standalone.VeloxConnection;
 import com.velox.sapioutils.client.standalone.VeloxConnectionException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hamcrest.object.IsCompatibleType;
@@ -37,11 +38,11 @@ public class SampleSetIntegrationTest {
     private static final Log LOG = LogFactory.getLog(SampleSetIntegrationTest.class);
     private static String connectionFile = "src/integration-test/resources/Connection-dev.txt";
     private static String connectionFileTest = "src/integration-test/resources/Connection-test.txt";
-    private final String validSampleSetId = "set_1234";
     private final int recordId_02756_b = 278777;
     private final String reqId_02756_b = "02756_B";
     private final String reqId_04252_J = "04252_J";
     private final int sampleRecordId_02756_b_1 = 278822;
+    private String validSampleSetId;
     private String designFilePath = "/ifs/projects/CMO/targets/designs";
     private String resultsPathPrefix = "/ifs/solres/seq";
     private ProjectFilesArchiver archiverMock = mock(ProjectFilesArchiver.class);
@@ -57,6 +58,8 @@ public class SampleSetIntegrationTest {
     private User user;
     private String request_05667_AB = "05667_AB";
     private String request_05667_AT = "05667_AT";
+    private String request_05600 = "05600";
+    private String request_04298_D = "04298_D";
 
     @Before
     public void setUp() throws Exception {
@@ -84,7 +87,9 @@ public class SampleSetIntegrationTest {
 
     @Test
     public void whenSampleSetHasNoSamplesNorRequests_shouldReturnRequestWithNoSamples() throws Exception {
-        addSampleSetRecord();
+        List<String> requests = Arrays.asList("NA");
+
+        addSampleSetRecord(requests);
         store();
 
         KickoffRequest request = veloxProjectProxy.getRequest(validSampleSetId);
@@ -95,7 +100,9 @@ public class SampleSetIntegrationTest {
 
     @Test
     public void whenSampleSetHasOneRequestAndNoPrimaryRequestSet_shouldThrowAnException() throws Exception {
-        addSampleSetRecord();
+        List<String> requests = Arrays.asList(reqId_02756_b);
+
+        addSampleSetRecord(requests);
         addChildToSampleSet(recordId_02756_b);
         store();
 
@@ -106,7 +113,9 @@ public class SampleSetIntegrationTest {
 
     @Test
     public void whenSampleSetHasOneRequestWhichIsPrimaryRequest_shouldReturnRequestWithSamplesFromThisRequest() throws Exception {
-        addSampleSetRecord();
+        List<String> requests = Arrays.asList(reqId_02756_b);
+
+        addSampleSetRecord(requests);
         DataRecord reqRecord = addChildToSampleSet(recordId_02756_b);
         addPrimaryRequest(reqId_02756_b);
         store();
@@ -118,7 +127,9 @@ public class SampleSetIntegrationTest {
 
     @Test
     public void whenSampleSetHasOneSampleFromRequestWhichIsPrimaryRequest_shouldReturnRequestWithOneSample() throws Exception {
-        addSampleSetRecord();
+        List<String> requests = Arrays.asList(reqId_02756_b);
+
+        addSampleSetRecord(requests);
         addChildToSampleSet(sampleRecordId_02756_b_1);
         addPrimaryRequest(reqId_02756_b);
         store();
@@ -130,7 +141,9 @@ public class SampleSetIntegrationTest {
 
     @Test
     public void whenSampleSetHasOneSampleFromRequestWhichIsNotPrimaryRequest_shouldThrowException() throws Exception {
-        addSampleSetRecord();
+        List<String> requests = Arrays.asList(reqId_02756_b);
+
+        addSampleSetRecord(requests);
         addChildToSampleSet(sampleRecordId_02756_b_1);
         addPrimaryRequest(reqId_04252_J);
         store();
@@ -143,7 +156,9 @@ public class SampleSetIntegrationTest {
 
     @Test
     public void whenSampleSetPrimaryRequestIsNotPartOfSet_shouldThrowAnException() throws Exception {
-        addSampleSetRecord();
+        List<String> requests = Arrays.asList(reqId_02756_b);
+
+        addSampleSetRecord(requests);
         addChildToSampleSet(recordId_02756_b);
         addPrimaryRequest(reqId_04252_J);
         store();
@@ -156,9 +171,12 @@ public class SampleSetIntegrationTest {
 
     @Test
     public void whenSampleSetHasTwoRequests_shouldReturnRequestWithSamplesFromBothOfThem() throws Exception {
-        addSampleSetRecord();
-        addRequestToSampleSet(request_05667_AB);
-        addRequestToSampleSet(request_05667_AT);
+        List<String> requests = Arrays.asList(request_05667_AB, request_05667_AT);
+        addSampleSetRecord(requests);
+
+        for (String request : requests)
+            addRequestToSampleSet(request);
+
         addPrimaryRequest(request_05667_AB);
         store();
 
@@ -196,8 +214,9 @@ public class SampleSetIntegrationTest {
         return reqRecord;
     }
 
-    private void addSampleSetRecord() throws Exception {
+    private void addSampleSetRecord(List<String> requests) throws Exception {
         sampleSetRecord = dataRecordManager.addDataRecord(VeloxConstants.SAMPLE_SET, user);
+        validSampleSetId = "set_" + StringUtils.join(requests, "_");
         sampleSetRecord.setDataField("Name", validSampleSetId, user);
         sampleSetRecord.setDataField(VeloxConstants.RECIPE, Recipe.AMPLI_SEQ.getValue(), user);
     }

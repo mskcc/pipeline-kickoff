@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.generator;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.Patient;
 import org.mskcc.domain.sample.Sample;
@@ -86,13 +87,13 @@ public class SmartPairingRetriever {
 
     private List<Sample> getNormalSamples(Set<Sample> samples) {
         return samples.stream()
-                .filter(s -> s.getProperties().getOrDefault(Constants.SAMPLE_CLASS, "").contains(Constants.NORMAL))
+                .filter(s -> !StringUtils.isEmpty(s.get(Constants.SAMPLE_CLASS)) && s.get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL))
                 .collect(Collectors.toList());
     }
 
     private List<Sample> getTumorSamples(Set<Sample> samples) {
         return samples.stream()
-                .filter(s -> !s.getProperties().getOrDefault(Constants.SAMPLE_CLASS, "").contains(Constants.NORMAL))
+                .filter(s -> !StringUtils.isEmpty(s.get(Constants.SAMPLE_CLASS)) && !s.get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL))
                 .collect(Collectors.toList());
     }
 }

@@ -4,6 +4,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.mskcc.domain.Pairedness;
 import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
@@ -13,13 +14,16 @@ import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.notify.FileGenerated;
 import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.notify.Observer;
+import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.validator.PairednessValidPredicate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -36,6 +40,9 @@ public class MappingFilePrinter implements FilePrinter {
     private static final String NORMAL_MAPPING_FILE_NAME = "sample_mapping.txt";
     private static final String ERROR_MAPPING_FILE_NAME = "sample_mapping.error";
 
+    private final Predicate<Set<Pairedness>> pairednessValidPredicate = new PairednessValidPredicate();
+    private final PairednessResolver pairednessResolver = new PairednessResolver();
+
     private List<Observer> observers = new ArrayList<>();
 
     @Value("${fastq_path}")
@@ -47,7 +54,7 @@ public class MappingFilePrinter implements FilePrinter {
             String mappingFileContents = getMappings(request);
             writeMappingFile(request, mappingFileContents);
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Unable to create mapping file: %s", getMappingFilePath(request)), e);
+            DEV_LOGGER.error(String.format("Unable to create mapping file: %s", getMappingFilePath(request)), e);
         }
     }
 
@@ -56,6 +63,7 @@ public class MappingFilePrinter implements FilePrinter {
             Map<String, String> sampleRenamesAndSwaps = SampleInfo.getSampleRenames();
             HashSet<String> runsWithMultipleFolders = new HashSet<>();
 
+            Set<Pairedness> pairednesses = new HashSet<>();
             StringBuilder mappingFileContents = new StringBuilder();
             for (KickoffRequest singleRequest : request.getRequests()) {
                 for (SampleRun sampleRun : getSampleRuns(singleRequest)) {
@@ -77,15 +85,19 @@ public class MappingFilePrinter implements FilePrinter {
                             if (isPooledNormal(sampleId) && !fastqExist(path, request.getBaitVersion()))
                                 continue;
 
-                            String paired = getPairedness(path);
+                            Pairedness pairedness = getPairedness(path);
+                            DEV_LOGGER.trace(String.format("Pairedness for sample: %s - %s", sampleId, pairedness));
+                            pairednesses.add(pairedness);
 
                             validateSampleSheetExists(request, sample, runIdFull, path);
                             String sampleName = sampleNormalization(sampleRenamesAndSwaps.getOrDefault(sampleId, sampleId));
-                            mappingFileContents.append(String.format("_1\t%s\t%s\t%s\t%s\n", sampleName, runIdFull, path, paired));
+                            mappingFileContents.append(String.format("_1\t%s\t%s\t%s\t%s\n", sampleName, runIdFull, path, pairedness));
                         }
                     }
                 }
             }
+
+            validatePairedness(pairednesses, request.getId());
 
             return mappingFileContents.toString();
         } catch (Exception e) {
@@ -93,18 +105,21 @@ public class MappingFilePrinter implements FilePrinter {
         }
     }
 
-    private String getPairedness(String path) {
-        String paired = "SE";
-        File sampleFq = new File(path);
-        File[] listOfFiles = sampleFq.listFiles();
-        for (File f1 : listOfFiles) {
-            if (f1.getName().endsWith("_R2_001.fastq.gz")) {
-                paired = "PE";
-                break;
-            }
+    private void validatePairedness(Set<Pairedness> pairednesses, String reqId) {
+        if (!pairednessValidPredicate.test(pairednesses)) {
+            String message = String.format("Ambiguous pairedness for request: %s [%s]", reqId, StringUtils.join(pairednesses), ",");
+            PM_LOGGER.error(message);
+            DEV_LOGGER.error(message);
+            Utils.setExitLater(true);
         }
+    }
 
-        return paired;
+    private Pairedness getPairedness(String path) {
+        try {
+            return pairednessResolver.resolve(path);
+        } catch (IOException e) {
+            throw new RuntimeException(String.format("Unable to retrieve pairedness from path: %s", path));
+        }
     }
 
     private List<String> getPaths(KickoffRequest request, Sample sample, File dir, String runIDFull, String samplePattern) throws IOException, InterruptedException {
@@ -244,9 +259,9 @@ public class MappingFilePrinter implements FilePrinter {
     private String getPattern(Sample sample, String runIDFull, File dir, String samplePattern) {
         String pattern;
         if (!isPooledNormalSample(sample)) {
-            pattern = dir.toString() + "/" + runIDFull + "*/Proj*" + sample.getRequestId().replaceFirst("^0+(?!$)", "") + "/Sample_" + samplePattern;
+            pattern = String.format("%s/%s*/Proj*%s/Sample_%s", dir.toString(), runIDFull, sample.getRequestId().replaceFirst("^0+(?!$)", ""), samplePattern);
         } else {
-            pattern = dir.toString() + "/" + runIDFull + "*/Proj*" + "/Sample_" + samplePattern + "*";
+            pattern = String.format("%s/%s*/Proj*/Sample_%s*", dir.toString(), runIDFull, samplePattern);
         }
         return pattern;
     }
@@ -403,4 +418,5 @@ public class MappingFilePrinter implements FilePrinter {
             super(message);
         }
     }
+
 }

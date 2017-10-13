@@ -252,7 +252,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getReadMe(), is(readMe));
+        assertThat(request.getReadMe(), is(kickoffRequest.getId() + ": " + readMe));
     }
 
     @Test
@@ -268,7 +268,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getReadMe(), is(String.format("%s\n%s", readMe, readMe1)));
+        assertThat(request.getReadMe(), is(String.format("%s: %s\n%s: %s", kickoffRequest.getId(), readMe, kickoffRequest1.getId(), readMe1)));
     }
 
     @Test
@@ -333,7 +333,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getReadmeInfo(), is(readMe));
+        assertThat(request.getReadmeInfo(), is(kickoffRequest.getId() + ": " + readMe));
     }
 
     @Test
@@ -349,7 +349,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getReadmeInfo(), is(String.format("%s\n%s", readMe, readMe1)));
+        assertThat(request.getReadmeInfo(), is(String.format("%s: %s\n%s: %s", kickoffRequest.getId(), readMe, kickoffRequest1.getId(), readMe1)));
     }
 
     @Test
@@ -362,7 +362,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getRunNumbers(), is("1,2"));
+        assertThat(request.getRunNumbers(), is(String.format("%s: %s,%s: %s", kickoffRequest.getId(), 1, kickoffRequest1.getId(), 2)));
     }
 
     @Test
@@ -385,7 +385,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getExtraReadMeInfo(), is(readMe));
+        assertThat(request.getExtraReadMeInfo(), is(kickoffRequest.getId() + ": " + readMe));
     }
 
     @Test
@@ -401,7 +401,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getExtraReadMeInfo(), is(String.format("%s\n%s", readMe, readMe1)));
+        assertThat(request.getExtraReadMeInfo(), is(String.format("%s: %s\n%s: %s", kickoffRequest.getId(), readMe, kickoffRequest1.getId(), readMe1)));
     }
 
     @Test
@@ -549,7 +549,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getInvest(), is(invest));
+        assertThat(request.getInvest(), is(kickoffRequest.getId() + ": " + invest));
     }
 
     @Test
@@ -565,7 +565,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getInvest(), is(String.format("%s,%s", invest, invest1)));
+        assertThat(request.getInvest(), is(String.format("%s: %s,%s: %s", kickoffRequest.getId(), invest, kickoffRequest1.getId(), invest1)));
     }
 
     @Test
@@ -881,24 +881,24 @@ public class SampleSetToKickoffRequestConverterTest {
         assertThat(request.getStrands().contains(strand), is(true));
         assertThat(request.getRequestType(), is(reqType));
 
-        assertThat(request.getReadMe(), is(readMe));
+        assertThat(request.getReadMe(), is(kickoffRequest + ": " + readMe));
 
         assertThat(request.isManualDemux(), is(manualDemux));
         assertThat(request.isBicAutorunnable(), is(bicAutorunnable));
 
         assertThat(request.getRecipe(), is(recipe));
-        assertThat(request.getReadmeInfo(), is(readMeInfo));
+        assertThat(request.getReadmeInfo(), is(kickoffRequest.getId() + ": " + readMeInfo));
 
-        assertThat(request.getRunNumbers(), is(String.valueOf(runNumber)));
+        assertThat(request.getRunNumbers(), is(kickoffRequest.getId() + ": " + String.valueOf(runNumber)));
 
-        assertThat(request.getExtraReadMeInfo(), is(extraRead));
+        assertThat(request.getExtraReadMeInfo(), is(kickoffRequest.getId() + ": " + extraRead));
 
         assertThat(request.getSpecies(), is(species));
 
         assertThat(request.getRunIds().contains(runId), is(true));
 
         assertThat(request.getPi(), is(pi));
-        assertThat(request.getInvest(), is(invest));
+        assertThat(request.getInvest(), is(kickoffRequest.getId() + ": " + invest));
 
         assertThat(request.getAmpTypes().containsAll(Arrays.asList(ampType, ampType2)), is(true));
 
