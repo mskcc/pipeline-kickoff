@@ -15,7 +15,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.config.Arguments.shiny;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
@@ -60,7 +59,7 @@ public class PairingFilePrinter implements FilePrinter {
 
                 pW.close();
 
-                if (shiny || krista) {
+                if (shiny) {
                     printPairingExcel(request, filename, pairingInfo, missingNormalsToBeAdded);
                 }
             }

@@ -18,7 +18,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.function.Predicate;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
 public abstract class ClinicalPatientFilePrinter implements FilePrinter {
@@ -78,7 +77,7 @@ public abstract class ClinicalPatientFilePrinter implements FilePrinter {
     @Override
     public boolean shouldPrint(KickoffRequest request) {
         return (request.getRequestType() != RequestType.RNASEQ && request.getRequestType() != RequestType.OTHER)
-                && !(Utils.isExitLater() && !krista && !request.isInnovation() && request.getRequestType() != RequestType.OTHER && request.getRequestType() != RequestType.RNASEQ);
+                && !(Utils.isExitLater() && !request.isInnovation() && request.getRequestType() != RequestType.OTHER && request.getRequestType() != RequestType.RNASEQ);
     }
 
     protected abstract String getManualHeader();

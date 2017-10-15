@@ -8,7 +8,6 @@ import org.mskcc.domain.QcStatus;
 import org.mskcc.domain.RequestType;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.logger.PriorityAwareLogMessage;
@@ -247,8 +246,7 @@ public class RequestValidator {
             PM_LOGGER.log(Level.ERROR, message);
             DEV_LOGGER.log(Level.ERROR, message);
 
-            if (!Arguments.krista)
-                throw new RuntimeException(String.format("Request id: %s cannot be run through this script", requestID));
+            throw new RuntimeException(String.format("Request id: %s cannot be run through this script", requestID));
         }
     }
 

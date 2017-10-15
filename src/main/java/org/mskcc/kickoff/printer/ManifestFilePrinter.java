@@ -15,11 +15,9 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
-import java.io.File;
 import java.io.FileOutputStream;
 import java.util.*;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.util.Constants.MAX_HEADER_SIZE;
 
 public class ManifestFilePrinter implements FilePrinter  {
@@ -148,6 +146,6 @@ public class ManifestFilePrinter implements FilePrinter  {
     @Override
     public boolean shouldPrint(KickoffRequest request) {
         return (request.getRequestType() != RequestType.RNASEQ && request.getRequestType() != RequestType.OTHER)
-                && !(Utils.isExitLater() && !krista && !request.isInnovation() && request.getRequestType() != RequestType.OTHER && request.getRequestType() != RequestType.RNASEQ);
+                && !(Utils.isExitLater() && !request.isInnovation() && request.getRequestType() != RequestType.OTHER && request.getRequestType() != RequestType.RNASEQ);
     }
 }

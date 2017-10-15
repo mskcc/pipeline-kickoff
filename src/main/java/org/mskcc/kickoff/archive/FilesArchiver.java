@@ -8,7 +8,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.config.Arguments.shiny;
 
 @Component
@@ -20,7 +19,7 @@ public class FilesArchiver {
     private RunPipelineLogger runPipelineLogger;
 
     public void archive(KickoffRequest request) {
-        if (!shiny && !krista) {
+        if (!shiny) {
             DateFormat archiveDateFormat = new SimpleDateFormat("yyyyMMdd");
             String date = archiveDateFormat.format(new Date());
             copyToArchive(request, date);
