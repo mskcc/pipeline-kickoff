@@ -160,7 +160,7 @@ public class RequestFilePrinter implements FilePrinter {
 
         if ((!noPortal && request.getRequestType() != RequestType.RNASEQ) &&
                 !(Utils.isExitLater()
-                        && !krista && !request.isInnovation()
+                        && !request.isInnovation()
                         && request.getRequestType() != RequestType.OTHER
                         && request.getRequestType() != RequestType.RNASEQ)) {
             printPortalConfig(requestFileContents.toString(), request);

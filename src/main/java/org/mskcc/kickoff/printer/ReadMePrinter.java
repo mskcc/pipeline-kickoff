@@ -10,7 +10,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
 
 public class ReadMePrinter implements FilePrinter  {
@@ -35,7 +34,7 @@ public class ReadMePrinter implements FilePrinter  {
     @Override
     public boolean shouldPrint(KickoffRequest request) {
         return !(Utils.isExitLater()
-                && !krista && !request.isInnovation()
+                && !request.isInnovation()
                 && request.getRequestType() != RequestType.OTHER
                 && request.getRequestType() != RequestType.RNASEQ);
     }

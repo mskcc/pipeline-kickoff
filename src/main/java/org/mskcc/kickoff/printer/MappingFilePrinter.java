@@ -27,7 +27,6 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.config.Arguments.shiny;
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
@@ -337,7 +336,6 @@ public class MappingFilePrinter implements FilePrinter {
     private boolean shouldOutputErrorFile(KickoffRequest request) {
         return Utils.isExitLater()
                 && request.isMappingIssue()
-                && !krista
                 && !request.isInnovation()
                 && request.getRequestType() != RequestType.RNASEQ
                 && request.getRequestType() != RequestType.OTHER;

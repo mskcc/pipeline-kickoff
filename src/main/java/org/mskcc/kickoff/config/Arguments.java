@@ -7,8 +7,6 @@ import org.mskcc.kickoff.util.Constants;
 public class Arguments {
     private static final org.apache.log4j.Logger LOGGER = org.apache.log4j.Logger.getLogger(Constants.DEV_LOGGER);
 
-    @Argument(alias = "k", description = "Krista's argument. For her testing")
-    public static Boolean krista = false;
     @Argument(alias = "noPortal", description = "This is suppress creation of portal config file.")
     public static Boolean noPortal = false;
     @Argument(alias = "f", description = "Force pulling all samples even if they don't have QC passed.")
@@ -27,7 +25,6 @@ public class Arguments {
     public static String toPrintable() {
         return "Arguments {" +
                 "\nproject=" + project +
-                ",\nkrista=" + krista +
                 ",\nnoPortal=" + noPortal +
                 ",\nforced=" + forced +
                 ",\nrunAsExome=" + runAsExome +

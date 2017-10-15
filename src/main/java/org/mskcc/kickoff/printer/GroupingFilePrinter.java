@@ -18,7 +18,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
@@ -74,7 +73,7 @@ public class GroupingFilePrinter implements FilePrinter {
     public boolean shouldPrint(KickoffRequest request) {
         boolean patientsExist = doPatientsExist(request);
         return patientsExist
-                && !(Utils.isExitLater() && !krista && !request.isInnovation() && request.getRequestType() != RequestType.OTHER && request.getRequestType() != RequestType.RNASEQ)
+                && !(Utils.isExitLater() && !request.isInnovation() && request.getRequestType() != RequestType.OTHER && request.getRequestType() != RequestType.RNASEQ)
                 && (request.getRequestType() != RequestType.RNASEQ && request.getRequestType() != RequestType.OTHER);
     }
 }
