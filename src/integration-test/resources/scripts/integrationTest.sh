@@ -25,7 +25,7 @@ init() {
 	actualPath="${testDir}/actualOutput"
 	mkdir -p ${actualPath}
 
-	prodKickoff=~/krista/pipeline_kickoff_prod
+	prodKickoff=~/sources/pipeline-kickoff/krista/pipeline_kickoff_prod
 	prodTestKickoff="${testDir}/pipeline_kickoff_prod/exemplar"
 
 	currentKickoff="pipeline-kickoff"
