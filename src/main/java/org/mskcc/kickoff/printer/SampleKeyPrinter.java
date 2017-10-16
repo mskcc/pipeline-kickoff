@@ -12,11 +12,13 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Component
 public class SampleKeyPrinter implements FilePrinter  {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 

@@ -13,7 +13,7 @@ import java.util.List;
 public enum ManifestFile {
     MAPPING("Mapping file"),
     PAIRING("Pairing file"),
-    SAMPLE_KEY("Sample Key file", new SampleKeyPrinter()),
+    SAMPLE_KEY("Sample Key file"),
     PATIENT("Patient file", new PatientFilePrinter()),
     CLINICAL("Clinical file", new ClinicalFilePrinter()),
     GROUPING("Grouping file", new GroupingFilePrinter()),
@@ -82,10 +82,14 @@ public enum ManifestFile {
         @Autowired
         private MappingFilePrinter mappingFilePrinter;
 
+        @Autowired
+        private SampleKeyPrinter sampleKeyPrinter;
+
         @PostConstruct
         public void init() {
             ManifestFile.MAPPING.setFilePrinter(getMappingFilePrinter());
             ManifestFile.PAIRING.setFilePrinter(new PairingFilePrinter(pairingsResolver));
+            ManifestFile.SAMPLE_KEY.setFilePrinter(sampleKeyPrinter);
         }
 
         private FilePrinter getMappingFilePrinter() {

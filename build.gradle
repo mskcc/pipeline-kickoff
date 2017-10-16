@@ -83,8 +83,7 @@ tasks.withType(Test) {
 
 run {
     if (System.getProperty('DEBUG', 'false') == 'true') {
-        jvmArgs '-Xdebug',
-                '-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5006'
+        jvmArgs '-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5006'
     }
 
     if (project.hasProperty('programArgs')) {
