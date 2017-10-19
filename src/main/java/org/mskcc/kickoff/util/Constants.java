@@ -86,6 +86,9 @@ public class Constants {
     public static final int MINIMUM_NUMBER_OF_READS = 1000000;
     public static final String TEST_PROFILE = "test";
     public static final String UNDEFINED = "undefined";
+    public static final String BAIT_SET_TO_DESIGN_FILE_MAPPING = "BaitSetToDesignFileMapping";
+    public static final String BAIT_SET = "BaitSet";
+    public static final String DESIGN_FILE_NAME = "DesignFile";
 
     public static class Manifest {
         public static final String SAMPLE_INFO = "SampleInfo";

@@ -18,7 +18,6 @@ import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.mskcc.kickoff.config.Arguments.forced;
 import static org.mskcc.kickoff.config.Arguments.outdir;
 
 public class RequestValidator {
@@ -72,6 +71,9 @@ public class RequestValidator {
     private void validateHasSamples(Request request) {
         if (request.getAllValidSamples().size() == 0)
             throw new RuntimeException(String.format("There are no samples in request: %s", request.getId()));
+
+        Set<String> validSampleIds = new TreeSet<>(request.getAllValidSamples().keySet());
+        DEV_LOGGER.info(String.format("Found %d valid samples: [%s]", request.getAllValidSamples().size(), Utils.getJoinedCollection(validSampleIds, ",")));
     }
 
     public void validateSampleUniqueness(Request request) {
