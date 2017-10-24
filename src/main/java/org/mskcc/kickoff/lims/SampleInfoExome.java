@@ -9,15 +9,13 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static org.mskcc.util.VeloxConstants.*;
 
 public class SampleInfoExome extends SampleInfoImpact {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+    private Map<String, String> baitSetToDesignFileMapping;
 
     public SampleInfoExome(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample sample) {
         super(apiUser, drm, rec, kickoffRequest, sample);
@@ -183,12 +181,39 @@ public class SampleInfoExome extends SampleInfoImpact {
             }
         }
 
-        if (Objects.equals(this.CAPTURE_BAIT_SET, "51MB_Human")) {
-            this.CAPTURE_BAIT_SET = "AgilentExon_51MB_b37_v3";
-        } else if (Objects.equals(this.CAPTURE_BAIT_SET, "51MB_Mouse")) {
-            this.CAPTURE_BAIT_SET = "Agilent_MouseAllExonV1_mm10_v1";
-        }
+        this.CAPTURE_BAIT_SET = getCaptureBaitSet(drm, apiUser);
         this.BAIT_VERSION = this.CAPTURE_BAIT_SET;
+    }
+
+    private String getCaptureBaitSet(DataRecordManager dataRecordManager, User apiUser) {
+        try {
+            if (baitSetToDesignFileMapping == null)
+                baitSetToDesignFileMapping = getBaitSetToDesignFile(dataRecordManager, apiUser);
+
+            CaptureBaitSetRetriever captureBaitSetRetriever = new CaptureBaitSetRetriever();
+            return captureBaitSetRetriever.retrieve(this.CAPTURE_BAIT_SET, baitSetToDesignFileMapping, this.IGO_ID);
+        } catch (Exception e) {
+            DEV_LOGGER.warn(String.format("Unable to retrieve Bait set to design file name mapping. Original Capture Bait set: %s will be used", this.CAPTURE_BAIT_SET), e);
+        }
+        return this.CAPTURE_BAIT_SET;
+    }
+
+    private Map<String, String> getBaitSetToDesignFile(DataRecordManager dataRecordManager, User user) {
+        Map<String, String> baitSetToDesignFile = new HashMap<>();
+
+        try {
+            List<DataRecord> baitSetToDesignFileMappings = dataRecordManager.queryDataRecords(Constants.BAIT_SET_TO_DESIGN_FILE_MAPPING, null, user);
+
+            for (DataRecord baitSetToDesignFileMapping : baitSetToDesignFileMappings) {
+                String baitSet = baitSetToDesignFileMapping.getStringVal(Constants.BAIT_SET, user);
+                String designFileName = baitSetToDesignFileMapping.getStringVal(Constants.DESIGN_FILE_NAME, user);
+                baitSetToDesignFile.put(baitSet, designFileName);
+            }
+        } catch (Exception e) {
+            DEV_LOGGER.warn(String.format("Unable to retrieve Bait set to design file name mapping from record: %s", Constants.BAIT_SET_TO_DESIGN_FILE_MAPPING), e);
+        }
+
+        return baitSetToDesignFile;
     }
 
 }

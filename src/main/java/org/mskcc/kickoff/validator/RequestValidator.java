@@ -91,6 +91,9 @@ public class RequestValidator {
     private void validateHasSamples(KickoffRequest request) {
         if (request.getAllValidSamples().size() == 0)
             throw new RuntimeException(String.format("There are no samples in request: %s", request.getId()));
+
+        Set<String> validSampleIds = new TreeSet<>(request.getAllValidSamples().keySet());
+        DEV_LOGGER.info(String.format("Found %d valid samples: [%s]", request.getAllValidSamples().size(), Utils.getJoinedCollection(validSampleIds, ",")));
     }
 
     private void validateSequencingRuns(KickoffRequest kickoffRequest) {
