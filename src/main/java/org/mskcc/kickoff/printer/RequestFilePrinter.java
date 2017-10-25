@@ -108,17 +108,19 @@ public class RequestFilePrinter implements FilePrinter {
             }
         }
         if (request.getRunNumber() > 1) {
+            String message = String.format("This project has been run before, rerun reason provided: %s", rerunReason);
+
             if (StringUtils.isEmpty(rerunReason)) {
                 request.setRerunReason(Constants.DEFAULT_RERUN_REASON);
-                String message = String.format("This project has been run before, no rerun reason was provided this using default value: %s", Constants.DEFAULT_RERUN_REASON);
-                DEV_LOGGER.info(message);
-                PM_LOGGER.info(message);
+                message = String.format("This project has been run before, no rerun reason was provided thus using default value: %s", Constants.DEFAULT_RERUN_REASON);
             } else {
                 request.setRerunReason(rerunReason);
-                String message = String.format("This project has been run before, rerun reason provided: %s", rerunReason);
-                DEV_LOGGER.info(message);
-                PM_LOGGER.info(message);
             }
+
+            DEV_LOGGER.info(message);
+            if (!shiny)
+                PM_LOGGER.info(message);
+
             requestFileContents += "Reason_for_rerun: " + request.getRerunReason() + "\n";
 
         }
