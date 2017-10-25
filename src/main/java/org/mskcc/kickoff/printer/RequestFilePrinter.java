@@ -1,9 +1,10 @@
 package org.mskcc.kickoff.printer;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.Recipe;
-import org.mskcc.kickoff.domain.*;
+import org.mskcc.kickoff.domain.Request;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
@@ -107,12 +108,18 @@ public class RequestFilePrinter implements FilePrinter {
             }
         }
         if (request.getRunNumber() > 1) {
-            if (!shiny && (rerunReason == null || rerunReason.isEmpty())) {
-                logError("This generation of the project files is a rerun, but no rerun reason was given. Use option 'rerunReason' to give a reason for this rerun in quotes. ", PmLogPriority.SAMPLE_ERROR, Level.ERROR);
-                Utils.setExitLater(true);
-                return;
+            if (StringUtils.isEmpty(rerunReason)) {
+                request.setRerunReason(Constants.DEFAULT_RERUN_REASON);
+                String message = String.format("This project has been run before, no rerun reason was provided this using default value: %s", Constants.DEFAULT_RERUN_REASON);
+                DEV_LOGGER.info(message);
+                PM_LOGGER.info(message);
+            } else {
+                request.setRerunReason(rerunReason);
+                String message = String.format("This project has been run before, rerun reason provided: %s", rerunReason);
+                DEV_LOGGER.info(message);
+                PM_LOGGER.info(message);
             }
-            requestFileContents += "Reason_for_rerun: " + rerunReason + "\n";
+            requestFileContents += "Reason_for_rerun: " + request.getRerunReason() + "\n";
 
         }
         requestFileContents += "RunID: " + getJoinedCollection(request.getRunIdList(), ", ") + "\n";

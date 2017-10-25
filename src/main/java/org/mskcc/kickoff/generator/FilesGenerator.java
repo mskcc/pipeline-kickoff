@@ -217,7 +217,8 @@ public class FilesGenerator implements ManifestGenerator {
     }
 
     private boolean isOncoTreeValid(String oncotreeCode) {
-        return !Objects.equals(oncotreeCode, Constants.TUMOR)
+        return !StringUtils.isEmpty(oncotreeCode)
+                && !Objects.equals(oncotreeCode, Constants.TUMOR)
                 && !Objects.equals(oncotreeCode, Constants.NORMAL)
                 && !Objects.equals(oncotreeCode, Constants.NA_LOWER_CASE)
                 && !Objects.equals(oncotreeCode, Constants.UNKNOWN)

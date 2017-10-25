@@ -17,6 +17,7 @@ public class Request {
     private int newMappingScheme = 0;
     private String outputPath;
     private boolean forced;
+    private String rerunReason;
 
     public Request(String id, ProcessingType processingType) {
         this.request = new org.mskcc.domain.Request(id);
@@ -147,8 +148,16 @@ public class Request {
         return request.getBaitVersion();
     }
 
+    public void setBaitVersion(String baitVersion) {
+        request.setBaitVersion(baitVersion);
+    }
+
     public String getRequestType() {
         return request.getRequestType();
+    }
+
+    public void setRequestType(String requestType) {
+        request.setRequestType(requestType);
     }
 
     public boolean isInnovationProject() {
@@ -157,6 +166,10 @@ public class Request {
 
     public boolean isManualDemux() {
         return request.isManualDemux();
+    }
+
+    public void setManualDemux(boolean manualDemux) {
+        request.setManualDemux(manualDemux);
     }
 
     public Set<LibType> getLibTypes() {
@@ -175,8 +188,16 @@ public class Request {
         return request.isBicAutorunnable();
     }
 
+    public void setBicAutorunnable(boolean bicAutorunnable) {
+        request.setBicAutorunnable(bicAutorunnable);
+    }
+
     public String getReadMe() {
         return request.getReadMe();
+    }
+
+    public void setReadMe(String readMe) {
+        request.setReadMe(readMe);
     }
 
     public Map<String, Sample> getSamples(Predicate<Sample> samplePredicate) {
@@ -207,64 +228,60 @@ public class Request {
         return request.getReadmeInfo();
     }
 
-    public void setRequestType(String requestType) {
-        request.setRequestType(requestType);
-    }
-
-    public void setProjectInfo(Map<String, String> projectInfo) {
-        request.setProjectInfo(projectInfo);
+    public void setReadmeInfo(String readmeInfo) {
+        request.setReadmeInfo(readmeInfo);
     }
 
     public String getPi() {
         return request.getPi();
     }
 
-    public String getInvest() {
-        return request.getInvest();
-    }
-
-    public void setRunNumber(int runNum) {
-        request.setRunNumber(runNum);
-    }
-
-    public RequestSpecies getSpecies() {
-        return request.getSpecies();
-    }
-
-    public void setReadmeInfo(String readmeInfo) {
-        request.setReadmeInfo(readmeInfo);
-    }
-
-    public Patient putPatientIfAbsent(String patientId) {
-        return request.putPatientIfAbsent(patientId);
-    }
-
-    public void setBaitVersion(String baitVersion) {
-        request.setBaitVersion(baitVersion);
-    }
-
     public void setPi(String pi) {
         request.setPi(pi);
+    }
+
+    public String getInvest() {
+        return request.getInvest();
     }
 
     public void setInvest(String invest) {
         request.setInvest(invest);
     }
 
+    public RequestSpecies getSpecies() {
+        return request.getSpecies();
+    }
+
     public void setSpecies(RequestSpecies sampleSpecies) {
         request.setSpecies(sampleSpecies);
+    }
+
+    public Patient putPatientIfAbsent(String patientId) {
+        return request.putPatientIfAbsent(patientId);
     }
 
     public int getRunNumber() {
         return request.getRunNumber();
     }
 
+    public void setRunNumber(int runNum) {
+        request.setRunNumber(runNum);
+    }
+
     public List<Recipe> getRecipe() {
         return request.getRecipe();
     }
 
+    public void setRecipe(List<Recipe> recipes) {
+        request.setRecipe(recipes);
+    }
+
     public Map<String, String> getProjectInfo() {
         return request.getProjectInfo();
+    }
+
+    public void setProjectInfo(Map<String, String> projectInfo) {
+        request.setProjectInfo(projectInfo);
     }
 
     public Set<String> getRunIdList() {
@@ -279,32 +296,16 @@ public class Request {
         return request.getStrands();
     }
 
-    public void setBicAutorunnable(boolean bicAutorunnable) {
-        request.setBicAutorunnable(bicAutorunnable);
-    }
-
-    public void setManualDemux(boolean manualDemux) {
-        request.setManualDemux(manualDemux);
-    }
-
-    public void setRecipe(List<Recipe> recipes) {
-        request.setRecipe(recipes);
-    }
-
-    public void setReadMe(String readMe) {
-        request.setReadMe(readMe);
-    }
-
-    public void setName(String name) {
-        request.setName(name);
-    }
-
     public Sample putPooledNormalIfAbsent(String igoNormalId) {
         return request.putPooledNormalIfAbsent(igoNormalId);
     }
 
     public String getName() {
         return request.getName();
+    }
+
+    public void setName(String name) {
+        request.setName(name);
     }
 
     public Optional<Sample> getSampleByCmoId(String cmoSampleId) {
@@ -329,5 +330,13 @@ public class Request {
 
     public void addStrand(Strand strand) {
         request.addStrand(strand);
+    }
+
+    public String getRerunReason() {
+        return rerunReason;
+    }
+
+    public void setRerunReason(String rerunReason) {
+        this.rerunReason = rerunReason;
     }
 }
