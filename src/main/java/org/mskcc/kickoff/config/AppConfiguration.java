@@ -5,32 +5,61 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.helpers.Loader;
-import org.mskcc.kickoff.archive.FilesArchiver;
-import org.mskcc.kickoff.archive.ProjectFilesArchiver;
-import org.mskcc.kickoff.archive.RunPipelineLogger;
 import org.mskcc.domain.PassedRunPredicate;
+import org.mskcc.kickoff.archive.ProjectFilesArchiver;
+import org.mskcc.kickoff.converter.SampleSetProjectInfoConverter;
+import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
 import org.mskcc.kickoff.generator.*;
-import org.mskcc.kickoff.lims.QueryImpactProjectInfo;
-import org.mskcc.kickoff.printer.MappingFilePrinter;
-import org.mskcc.kickoff.printer.OutputFilesPrinter;
-import org.mskcc.kickoff.printer.SampleKeyPrinter;
+import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.proxy.RequestProxy;
-import org.mskcc.kickoff.validator.LimsProjectNameValidator;
-import org.mskcc.kickoff.validator.ProjectNamePredicate;
-import org.mskcc.kickoff.validator.ProjectNameValidator;
-import org.mskcc.kickoff.validator.RequestValidator;
-import org.mskcc.kickoff.velox.VeloxRequestProxy;
+import org.mskcc.kickoff.retriever.RequestDataPropagator;
+import org.mskcc.kickoff.validator.*;
+import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
+import org.mskcc.kickoff.velox.SampleSetProjectPredicate;
+import org.mskcc.kickoff.velox.VeloxProjectProxy;
+import org.mskcc.util.Constants;
+import org.mskcc.util.email.EmailConfiguration;
+import org.mskcc.util.email.EmailSender;
+import org.mskcc.util.email.EmailToMimeMessageConverter;
+import org.mskcc.util.email.JavaxEmailSender;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.function.Predicate;
 
 @Configuration
 @Import({ProdConfiguration.class, DevConfiguration.class, TestConfiguration.class})
 public class AppConfiguration {
+    @Value("${archivePath}")
+    private String archivePath;
+
+    @Value("${designFilePath}")
+    private String designFilePath;
+
+    @Value("${resultsPathPrefix}")
+    private String resultsPathPrefix;
+
+    @Value("${draftProjectFilePath}")
+    private String draftProjectFilePath;
+
+    @Value("${limsConnectionFilePath}")
+    private String limsConnectionFilePath;
+
+    @Value("${file.generation.failure.notification.from}")
+    private String from;
+
+    @Value("${file.generation.failure.notification.host}")
+    private String host;
+
+    @Value("#{'${file.generation.failure.notification.recipients}'.split(',')}")
+    private List<String> recipients;
+
     static void configureLogger(String loggerPropertiesPath) {
         LogManager.resetConfiguration();
         try {
@@ -49,43 +78,55 @@ public class AppConfiguration {
 
     @Bean
     public Predicate<String> projectNamePredicate() {
-        return new ProjectNamePredicate();
+        return new ProjectNamePredicate(sampleSetProjectPredicate(), sampleSetNamePredicate(), singleRequestNamePredicate());
     }
 
     @Bean
-    public LogConfigurator logConfigurer() {
-        LogConfigurator logConfigurator = new ProjectAndDevLogConfigurator();
-        return logConfigurator;
+    public SampleSetProjectPredicate sampleSetProjectPredicate() {
+        return new SampleSetProjectPredicate();
     }
 
     @Bean
-    public ManifestGenerator manifestGenerator() {
-        return new FilesGenerator();
+    public SampleSetNamePredicate sampleSetNamePredicate() {
+        return new SampleSetNamePredicate();
+    }
+
+    @Bean
+    public SingleRequestNamePredicate singleRequestNamePredicate() {
+        return new SingleRequestNamePredicate();
     }
 
     @Bean
     public RequestProxy requestProxy() {
-        return new VeloxRequestProxy(projectFilesArchiver());
+        return new VeloxProjectProxy(limsConnectionFilePath, projectFilesArchiver(), requestsRetrieverFactory());
     }
 
     @Bean
-    public MappingFilePrinter mappingFilePrinter() {
-        return new MappingFilePrinter();
+    public EmailConfiguration config() {
+        return new EmailConfiguration(recipients, from, host);
     }
 
     @Bean
-    public SampleKeyPrinter sampleKeyFileGenerator() {
-        return new SampleKeyPrinter();
+    @Profile({Constants.PROD_PROFILE, Constants.DEV_PROFILE})
+    public EmailSender sender() {
+        return new JavaxEmailSender(emailToMimeMessageConverter());
+    }
+
+    @Bean
+    @Profile(Constants.TEST_PROFILE)
+    public EmailSender dummySender() {
+        return email -> {
+        };
+    }
+
+    @Bean
+    public EmailToMimeMessageConverter emailToMimeMessageConverter() {
+        return new EmailToMimeMessageConverter();
     }
 
     @Bean
     public ProjectFilesArchiver projectFilesArchiver() {
-        return new ProjectFilesArchiver();
-    }
-
-    @Bean
-    public RunPipelineLogger runPipelineLogger() {
-        return new RunPipelineLogger();
+        return new ProjectFilesArchiver(archivePath);
     }
 
     @Bean
@@ -94,18 +135,8 @@ public class AppConfiguration {
     }
 
     @Bean
-    public QueryImpactProjectInfo queryImpactProjectInfo() {
-        return new QueryImpactProjectInfo();
-    }
-
-    @Bean
-    public OutputFilesPrinter manifestFilesPrinter() {
-        return new OutputFilesPrinter(pairingsResolver(), mappingFilePrinter(), sampleKeyFileGenerator());
-    }
-
-    @Bean
-    public FilesArchiver filesArchiver() {
-        return new FilesArchiver();
+    public ProjectInfoRetriever projectInfoRetriever() {
+        return new ProjectInfoRetriever();
     }
 
     @Bean
@@ -124,7 +155,32 @@ public class AppConfiguration {
     }
 
     @Bean
-    public RequestValidator requestValidator() {
-        return new RequestValidator();
+    public SampleSetToRequestConverter sampleSetToRequestConverter() {
+        return new SampleSetToRequestConverter(projectInfoConverter());
+    }
+
+    @Bean
+    public SampleSetProjectInfoConverter projectInfoConverter() {
+        return new SampleSetProjectInfoConverter();
+    }
+
+    @Bean
+    public RequestsRetrieverFactory requestsRetrieverFactory() {
+        return new RequestsRetrieverFactory(projectInfoRetriever(), requestDataPropagator(), sampleSetToRequestConverter());
+    }
+
+    @Bean
+    public RequestDataPropagator requestDataPropagator() {
+        return new RequestDataPropagator(designFilePath, resultsPathPrefix);
+    }
+
+    @Bean
+    public OutputDirRetriever outputDirRetriever() {
+        return new DefaultPathAwareOutputDirRetriever(draftProjectFilePath, outputDirPredicate());
+    }
+
+    @Bean
+    public Predicate<String> outputDirPredicate() {
+        return new FileExistenceOutputDirValidator();
     }
 }

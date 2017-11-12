@@ -3,7 +3,7 @@ package org.mskcc.kickoff.generator;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 
 import java.util.LinkedHashMap;
@@ -21,15 +21,15 @@ public class PairingsResolver {
         this.smartPairingRetriever = smartPairingRetriever;
     }
 
-    public Map<String, String> resolve(Request request) {
+    public Map<String, String> resolve(KickoffRequest request) {
         LinkedHashMap<String, String> tumorIgoToCmoId = new LinkedHashMap<>();
         LinkedHashMap<String, String> normalIgoToCmoId = new LinkedHashMap<>();
 
         for (Sample sample : request.getAllValidSamples().values()) {
-            if (!sample.get("SAMPLE_CLASS").contains("Normal")) {
-                tumorIgoToCmoId.put(sample.get("IGO_ID"), sample.get("CORRECTED_CMO_ID"));
+            if (!sample.get(Constants.SAMPLE_CLASS).contains("Normal")) {
+                tumorIgoToCmoId.put(sample.get(Constants.IGO_ID), sample.get(Constants.CORRECTED_CMO_ID));
             } else {
-                normalIgoToCmoId.put(sample.get("IGO_ID"), sample.get("CORRECTED_CMO_ID"));
+                normalIgoToCmoId.put(sample.get(Constants.IGO_ID), sample.get(Constants.CORRECTED_CMO_ID));
             }
         }
 

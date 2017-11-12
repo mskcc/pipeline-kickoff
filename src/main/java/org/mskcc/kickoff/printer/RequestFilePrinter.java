@@ -4,7 +4,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.Recipe;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.domain.RequestType;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
@@ -20,7 +21,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import static org.mskcc.kickoff.config.Arguments.*;
-import static org.mskcc.kickoff.printer.OutputFilesPrinter.filesCreated;
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
 import static org.mskcc.kickoff.util.Utils.getJoinedCollection;
 
@@ -31,23 +31,23 @@ public class RequestFilePrinter implements FilePrinter {
     private final String manualMappingPinfoToRequestFile = "Alternate_E-mails:DeliverTo,Lab_Head:PI_Name,Lab_Head_E-mail:PI,Requestor:Investigator_Name,Requestor_E-mail:Investigator,CMO_Project_ID:ProjectName,Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
     private final String manualMappingConfigMap = "name:ProjectTitle,desc:ProjectDesc,invest:PI,invest_name:PI_Name,tumor_type:TumorType,date_of_last_update:DateOfLastUpdate,assay_type:Assay";
 
-    public void print(Request request) {
+    public void print(KickoffRequest request) {
         // This will change the fields of the pInfo array, and print out the correct field
         // It will also pr/int all the ampType and libTypes, and species.
-        String requestFileContents = "";
+        StringBuilder requestFileContents = new StringBuilder();
 
-        if (request.getRequestType().equals(Constants.EXOME)) {
-            requestFileContents += "Pipelines: variants\n";
-            requestFileContents += "Run_Pipeline: variants\n";
-        } else if (request.getRequestType().equals(Constants.IMPACT)) {
-            requestFileContents += "Pipelines: \n";
-            requestFileContents += "Run_Pipeline: \n";
-        } else if (request.getRequestType().equals(Constants.RNASEQ)) {
-            requestFileContents += "Run_Pipeline: rnaseq\n";
-        } else if (request.getRecipe().size() == 1 && request.getRecipe().get(0) == Recipe.CH_IP_SEQ) {
-            requestFileContents += "Run_Pipeline: chipseq\n";
+        if (request.getRequestType() == RequestType.EXOME) {
+            requestFileContents.append("Pipelines: variants\n");
+            requestFileContents.append("Run_Pipeline: variants\n");
+        } else if (request.getRequestType() == RequestType.IMPACT) {
+            requestFileContents.append("Pipelines: dmp\n");
+            requestFileContents.append("Run_Pipeline: dmp\n");
+        } else if (request.getRequestType() == RequestType.RNASEQ) {
+            requestFileContents.append("Run_Pipeline: rnaseq\n");
+        } else if (request.getRecipe() == Recipe.CH_IP_SEQ) {
+            requestFileContents.append("Run_Pipeline: chipseq\n");
         } else {
-            requestFileContents += "Run_Pipeline: other\n";
+            requestFileContents.append("Run_Pipeline: other\n");
         }
 
         // This is quickly generating a map from old name to new name (validator takes old name)
@@ -69,28 +69,28 @@ public class RequestFilePrinter implements FilePrinter {
             if (convertFieldNames.containsKey(propertyName)) {
                 if (propertyName.endsWith("_E-mail")) {
                     if (propertyName.equals("Requestor_E-mail")) {
-                        requestFileContents += "Investigator_E-mail: " + value + "\n";
+                        requestFileContents.append("Investigator_E-mail: ").append(value).append("\n");
                     }
                     if (propertyName.equals("Lab_Head_E-mail")) {
-                        requestFileContents += "PI_E-mail: " + value + "\n";
+                        requestFileContents.append("PI_E-mail: ").append(value).append("\n");
                     }
                     String[] temp = value.split("@");
                     value = temp[0];
                 }
-                requestFileContents += convertFieldNames.get(propertyName) + ": " + value + "\n";
+                requestFileContents.append(convertFieldNames.get(propertyName)).append(": ").append(value).append("\n");
             } else if (propertyName.contains("IGO_Project_ID") || propertyName.equals(Constants.PROJECT_ID)) {
-                requestFileContents += "ProjectID: Proj_" + value + "\n";
+                requestFileContents.append("ProjectID: Proj_").append(value).append("\n");
             } else if (propertyName.contains("Platform") || propertyName.equals("Readme_Info") || propertyName.equals("Sample_Type") || propertyName.equals("Bioinformatic_Request")) {
                 continue;
             } else if (propertyName.equals("Project_Manager")) {
                 String[] tempName = value.split(", ");
                 if (tempName.length > 1) {
-                    requestFileContents += propertyName + ": " + tempName[1] + " " + tempName[0] + "\n";
+                    requestFileContents.append(propertyName).append(": ").append(tempName[1]).append(" ").append(tempName[0]).append("\n");
                 } else {
-                    requestFileContents += propertyName + ": " + value + "\n";
+                    requestFileContents.append(propertyName).append(": ").append(value).append("\n");
                 }
             } else {
-                requestFileContents += String.format("%s: %s\n", property.getKey(), property.getValue());
+                requestFileContents.append(String.format("%s: %s\n", property.getKey(), property.getValue()));
             }
             if (propertyName.equals("Requestor_E-mail")) {
                 request.setInvest(value);
@@ -103,8 +103,8 @@ public class RequestFilePrinter implements FilePrinter {
         if (request.getInvest().isEmpty() || request.getPi().isEmpty()) {
             logError(String.format("Cannot create run number because PI and/or Investigator is missing. %s %s", request.getPi(), request.getInvest()), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
         } else {
-            if (request.getRunNumber() != 0) {
-                requestFileContents += "RunNumber: " + request.getRunNumber() + "\n";
+            if (!Objects.equals(request.getRunNumbers(), "0")) {
+                requestFileContents.append("RunNumber: ").append(request.getRunNumbers()).append("\n");
             }
         }
         if (request.getRunNumber() > 1) {
@@ -116,6 +116,7 @@ public class RequestFilePrinter implements FilePrinter {
             } else {
                 request.setRerunReason(rerunReason);
             }
+            requestFileContents.append("Reason_for_rerun: ").append(rerunReason).append("\n");
 
             DEV_LOGGER.info(message);
             if (!shiny)
@@ -124,79 +125,82 @@ public class RequestFilePrinter implements FilePrinter {
             requestFileContents += "Reason_for_rerun: " + request.getRerunReason() + "\n";
 
         }
-        requestFileContents += "RunID: " + getJoinedCollection(request.getRunIdList(), ", ") + "\n";
+        requestFileContents.append("RunID: ").append(getJoinedCollection(request.getRunIds(), ", ")).append("\n");
 
-        requestFileContents += "Institution: cmo\n";
+        requestFileContents.append("Institution: cmo\n");
 
-        if (Objects.equals(request.getRequestType(), Constants.OTHER)) {
-            requestFileContents += "Recipe: " + Utils.getJoinedCollection(request.getRecipe(), ",") + "\n";
+        if (request.getRequestType() == RequestType.OTHER) {
+            requestFileContents.append("Recipe: ").append(request.getRecipe() == null ? "" : request.getRecipe().getValue()).append("\n");
         }
 
-        if (Objects.equals(request.getRequestType(), Constants.RNASEQ)) {
-            requestFileContents += "AmplificationTypes: " + getJoinedCollection(request.getAmpType(), ", ") + "\n";
-            requestFileContents += "LibraryTypes: " + getJoinedLibTypes(request) + "\n";
+        if (request.getRequestType() == RequestType.RNASEQ) {
+            requestFileContents.append("AmplificationTypes: ").append(getJoinedCollection(request.getAmpTypes(), ", ")).append("\n");
+            requestFileContents.append("LibraryTypes: ").append(getJoinedLibTypes(request)).append("\n");
 
             if (request.getStrands().size() > 1) {
                 String message = "Multiple strandedness options found!";
                 logWarning(message);
             }
 
-            requestFileContents += "Strand: " + getJoinedCollection(request.getStrands(), ", ") + "\n";
-            requestFileContents += "Pipelines: ";
+            requestFileContents.append("Strand: ").append(getJoinedCollection(request.getStrands(), ", ")).append("\n");
+            requestFileContents.append("Pipelines: ");
             // If pipeline_options (command line) is not empty, put here. remember to remove the underscores
             // For now I am under the assumption that this is being passed correctly.
             // Default is Alignment STAR, Gene Count, Differential Gene Expression
-            requestFileContents += "NULL, RNASEQ_STANDARD_GENE_V1, RNASEQ_DIFFERENTIAL_GENE_V1";
-            requestFileContents += "\n";
+            requestFileContents.append("NULL, RNASEQ_STANDARD_GENE_V1, RNASEQ_DIFFERENTIAL_GENE_V1");
+            requestFileContents.append("\n");
         } else {
-            requestFileContents += "AmplificationTypes: NA\n";
-            requestFileContents += "LibraryTypes: NA\n";
-            requestFileContents += "Strand: NA\n";
+            requestFileContents.append("AmplificationTypes: NA\n");
+            requestFileContents.append("LibraryTypes: NA\n");
+            requestFileContents.append("Strand: NA\n");
         }
 
         // adding projectFolder back
         String projDir = request.getOutputPath();
-        if (request.getRequestType().equals(Constants.IMPACT) || request.getRequestType().equals(Constants.EXOME)) {
-            requestFileContents += "ProjectFolder: " + String.valueOf(projDir).replaceAll("BIC/drafts", "CMO") + "\n";
+        if (request.getRequestType() == RequestType.IMPACT || request.getRequestType() == RequestType.EXOME) {
+            requestFileContents.append("ProjectFolder: ").append(String.valueOf(projDir).replaceAll("BIC/drafts", "CMO")).append("\n");
         } else {
-            requestFileContents += "ProjectFolder: " + String.valueOf(projDir).replaceAll("drafts", request.getRequestType()) + "\n";
+            requestFileContents.append("ProjectFolder: ").append(String.valueOf(projDir).replaceAll("drafts", request.getRequestType().getName())).append("\n");
         }
 
         // Date of last update
         DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         Date date = new Date();
-        requestFileContents += "DateOfLastUpdate: " + dateFormat.format(date) + "\n";
+        requestFileContents.append("DateOfLastUpdate: ").append(dateFormat.format(date)).append("\n");
 
-        if ((!noPortal && !request.getRequestType().equals(Constants.RNASEQ)) &&
+        if ((!noPortal && request.getRequestType() != RequestType.RNASEQ) &&
                 !(Utils.isExitLater()
-                        && !krista && !request.isInnovationProject()
-                        && !request.getRequestType().equals(Constants.OTHER)
-                        && !request.getRequestType().equals(Constants.RNASEQ))) {
-            printPortalConfig(requestFileContents, request);
+                        && !request.isInnovation()
+                        && request.getRequestType() != RequestType.OTHER
+                        && request.getRequestType() != RequestType.RNASEQ)) {
+            printPortalConfig(requestFileContents.toString(), request);
         }
 
         try {
-            requestFileContents = filterToAscii(requestFileContents);
-            File requestFile = new File(projDir + "/" + Utils.getFullProjectNameWithPrefix(request.getId()) + "_request.txt");
+            requestFileContents = new StringBuilder(filterToAscii(requestFileContents.toString()));
+            File requestFile = new File(getFileName(request));
             PrintWriter pW = new PrintWriter(new FileWriter(requestFile, false), false);
-            filesCreated.add(requestFile);
-            pW.write(requestFileContents);
+            pW.write(requestFileContents.toString());
             pW.close();
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while creating request file: %s", requestFileContents), e);
+            DEV_LOGGER.warn(String.format("Exception thrown while creating request file: %s", getFileName(request)), e);
         }
     }
 
+    private String getFileName(KickoffRequest request) {
+        return String.format("%s/%s_request.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId()));
+    }
+
     @Override
-    public boolean shouldPrint(Request request) {
+    public boolean shouldPrint(KickoffRequest request) {
         return true;
     }
 
-    private String getJoinedLibTypes(Request request) {
+    private String getJoinedLibTypes(KickoffRequest request) {
         return getJoinedCollection(request.getLibTypes(), ",");
     }
 
-    private void printPortalConfig(String requestFileContents, Request request) {
+    private void printPortalConfig(String requestFileContents, KickoffRequest request) {
         // First make map from request to portal config
         // THen create final map of portal config with values.
         Map<String, String> configRequestMap = new LinkedHashMap<>();
@@ -204,12 +208,12 @@ public class RequestFilePrinter implements FilePrinter {
             String[] parts = conv.split(":", 2);
             configRequestMap.put(parts[1], parts[0]);
         }
-        String groups = "COMPONC;";
+        StringBuilder groups = new StringBuilder("COMPONC;");
         String assay = "";
         String dataClinicalPath = "";
 
-        String replaceText = request.getRequestType();
-        if (replaceText.equals(Constants.EXOME)) {
+        String replaceText = request.getRequestType().getName();
+        if (replaceText.equalsIgnoreCase(Constants.EXOME)) {
             replaceText = "variant";
         }
         // For each line of requestFileContents, grab any fields that are in the map
@@ -219,10 +223,10 @@ public class RequestFilePrinter implements FilePrinter {
             String[] parts = line.split(": ", 2);
             if (configRequestMap.containsKey(parts[0])) {
                 if (parts[0].equals("PI")) {
-                    groups += parts[1].toUpperCase();
+                    groups.append(parts[1].toUpperCase());
                 }
                 if (parts[0].equals("Assay")) {
-                    if (Objects.equals(request.getRequestType(), Constants.IMPACT)) {
+                    if (request.getRequestType() == RequestType.IMPACT) {
                         assay = parts[1].toUpperCase();
                     } else {
                         assay = parts[1];
@@ -232,7 +236,7 @@ public class RequestFilePrinter implements FilePrinter {
             }
 
             // Change path depending on where it should be going
-            if (request.getRequestType().equals(Constants.IMPACT) || request.getRequestType().equals(Constants.EXOME)) {
+            if (request.getRequestType() == RequestType.IMPACT || request.getRequestType() == RequestType.EXOME) {
                 dataClinicalPath = String.valueOf(request.getOutputPath()).replaceAll("BIC/drafts", "CMO") + "\n";
             } else {
                 dataClinicalPath = String.valueOf(request.getOutputPath()).replaceAll("drafts", replaceText) + "\n";
@@ -259,7 +263,6 @@ public class RequestFilePrinter implements FilePrinter {
         try {
             configFileContents = filterToAscii(configFileContents);
             configFile = new File(String.format("%s/%s_portal_conf.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId())));
-            filesCreated.add(configFile);
             PrintWriter pW = new PrintWriter(new FileWriter(configFile, false), false);
             pW.write(configFileContents);
             pW.close();

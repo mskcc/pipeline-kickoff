@@ -1,7 +1,8 @@
 package org.mskcc.kickoff.printer;
 
 import org.apache.log4j.Logger;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.domain.RequestType;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
@@ -9,14 +10,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
-import static org.mskcc.kickoff.printer.OutputFilesPrinter.filesCreated;
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
 
 public class ReadMePrinter implements FilePrinter  {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
-    public void print(Request request) {
+    public void print(KickoffRequest request) {
         String readMeInfo = request.getReadmeInfo();
         if (readMeInfo.length() > 0) {
             File readmeFile = null;
@@ -24,7 +23,6 @@ public class ReadMePrinter implements FilePrinter  {
                 readMeInfo = filterToAscii(readMeInfo);
                 readmeFile = new File(request.getOutputPath() + "/" + Utils.getFullProjectNameWithPrefix(request.getId()) + "_README.txt");
                 PrintWriter pW = new PrintWriter(new FileWriter(readmeFile, false), false);
-                filesCreated.add(readmeFile);
                 pW.write(readMeInfo + "\n");
                 pW.close();
             } catch (Exception e) {
@@ -34,10 +32,10 @@ public class ReadMePrinter implements FilePrinter  {
     }
 
     @Override
-    public boolean shouldPrint(Request request) {
+    public boolean shouldPrint(KickoffRequest request) {
         return !(Utils.isExitLater()
-                && !krista && !request.isInnovationProject()
-                && !request.getRequestType().equals(Constants.OTHER)
-                && !request.getRequestType().equals(Constants.RNASEQ));
+                && !request.isInnovation()
+                && request.getRequestType() != RequestType.OTHER
+                && request.getRequestType() != RequestType.RNASEQ);
     }
 }

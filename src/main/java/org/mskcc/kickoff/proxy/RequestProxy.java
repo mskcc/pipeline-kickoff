@@ -1,9 +1,9 @@
 package org.mskcc.kickoff.proxy;
 
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 
-import java.util.List;
+import java.util.Optional;
 
 public interface RequestProxy {
-    List<Request> getRequests(String requestId);
+    KickoffRequest getRequest(String projectId) throws Exception;
 }

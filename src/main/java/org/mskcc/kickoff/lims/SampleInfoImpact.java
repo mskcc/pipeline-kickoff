@@ -1,16 +1,20 @@
 package org.mskcc.kickoff.lims;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.SetMultimap;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
+import com.velox.api.datarecord.NotFound;
 import com.velox.api.user.User;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
-import org.mskcc.kickoff.velox.util.VeloxConstants;
+import org.mskcc.util.VeloxConstants;
 
+import java.rmi.RemoteException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,7 +32,7 @@ public class SampleInfoImpact extends SampleInfo {
 
     private static final HashSet<String> poolNameList = new HashSet<>();
     private static final DecimalFormat df = new DecimalFormat("#.##");
-    private static Map<DataRecord, Set<String>> pooledNormals = new HashMap<>();
+    private static SetMultimap<DataRecord, String> pooledNormals = HashMultimap.create();
     // Consensus BaitSet
     private static String ConsensusBaitSet;
     private static String ConsensusSpikeIn;
@@ -53,22 +57,22 @@ public class SampleInfoImpact extends SampleInfo {
      * @see #getSpreadOutInfo
      * @see #addPooledNormalDefaults
      **/
-    public SampleInfoImpact(User apiUser, DataRecordManager drm, DataRecord rec, Request request, Sample sample) {
-        super(apiUser, drm, rec, request, sample);
-        getSpreadOutInfo(apiUser, drm, rec, request, sample);
+    public SampleInfoImpact(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample sample) {
+        super(apiUser, drm, rec, kickoffRequest, sample);
+        getSpreadOutInfo(apiUser, drm, rec, kickoffRequest, sample);
         if (sample.isPooledNormal()) {
-            addPooledNormalDefaults(rec, apiUser, drm, request);
+            addPooledNormalDefaults(rec, apiUser, drm, kickoffRequest);
         }
     }
 
-    public static Map<DataRecord, Set<String>> getPooledNormals() {
-        return pooledNormals;
+    public static Map<DataRecord, Collection<String>> getPooledNormals() {
+        return pooledNormals.asMap();
     }
 
     /**
      * BLAH
      **/
-    void addPooledNormalDefaults(DataRecord rec, User apiUser, DataRecordManager drm, Request request) {
+    void addPooledNormalDefaults(DataRecord rec, User apiUser, DataRecordManager drm, KickoffRequest kickoffRequest) {
         this.CAPTURE_BAIT_SET = ConsensusBaitSet;
         this.SPIKE_IN_GENES = ConsensusSpikeIn;
         if (!Objects.equals(this.SPIKE_IN_GENES, "na") && !this.CAPTURE_BAIT_SET.startsWith("#")) {
@@ -102,13 +106,13 @@ public class SampleInfoImpact extends SampleInfo {
         // POOLED NORMALS don't have sample specific QC when searching the first time
         // We need to look at all the runs that were already added to the (samplesAdnRuns, or just runs)
         // Then if the pooled normal has a sample specific qc of that run type, add to include run id!
-        this.INCLUDE_RUN_ID = getPooledNormalRuns(rec, apiUser, drm, request);
+        this.INCLUDE_RUN_ID = getPooledNormalRuns(rec, apiUser, drm, kickoffRequest);
         DEV_LOGGER.info(String.format("INCLUDE RUN ID: %s", this.INCLUDE_RUN_ID));
     }
 
-    private String getPooledNormalRuns(DataRecord rec, User apiUser, DataRecordManager drm, Request request) {
+    private String getPooledNormalRuns(DataRecord rec, User apiUser, DataRecordManager drm, KickoffRequest kickoffRequest) {
         Set<String> allRunIds = new HashSet<>();
-        Set<Run> runs = request.getAllValidSamples().values().stream().flatMap(s -> s.getValidRuns().stream()).collect(Collectors.toSet());
+        Set<Run> runs = kickoffRequest.getAllValidSamples().values().stream().flatMap(s -> s.getValidRuns().stream()).collect(Collectors.toSet());
         for (Run run : runs) {
             allRunIds.add(run.getId());
         }
@@ -190,7 +194,7 @@ public class SampleInfoImpact extends SampleInfo {
 
         // OnocTree Code
         this.ONCOTREE_CODE = optionallySetDefault(this.ONCOTREE_CODE, "#UNKNOWN");
-        String tumorLong = setFromMap(this.ONCOTREE_CODE, "TumorType", fieldMap);
+        String tumorLong = setFromMap(this.ONCOTREE_CODE, Constants.ProjectInfo.TUMOR_TYPE, fieldMap);
         if (!Objects.equals(tumorLong, Constants.NULL) && tumorLong.length() > 0) {
             String[] tumor_type = tumorLong.split("[()]");
             if (tumor_type.length == 2) {
@@ -231,7 +235,7 @@ public class SampleInfoImpact extends SampleInfo {
         fieldDefaults.put("TissueLocation", "na");
     }
 
-    void getSpreadOutInfo(User apiUser, DataRecordManager drm, DataRecord rec, Request request, Sample sample) {
+    void getSpreadOutInfo(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample sample) {
         // Spread out information available for IMPACT includes this.BARCODE_ID, this.BARCODE_INDEX
         // this.LIBRARY_YIELD this.LIBRARY_INPUT
         // this.CAPTURE_NAME this.CAPTURE_CONCENTRATION
@@ -251,7 +255,7 @@ public class SampleInfoImpact extends SampleInfo {
             }
         }
 
-        getBarcodeInfo(drm, apiUser, request, sample);
+        getBarcodeInfo(drm, apiUser, kickoffRequest, sample);
 
         // Capture concentration
         grabCaptureConc(rec, apiUser);
@@ -267,23 +271,23 @@ public class SampleInfoImpact extends SampleInfo {
         // If Nimblgen Hybridization was created BEFORE May 5th, ASSUME
         // That Library Yield, and Capture INPUT is correct on Nimblgen data record
         // After that date we MUST get the information from elsewhere
-        boolean afterDate = nimbAfterMay5(drm, rec, apiUser, "NimbleGenHybProtocol");
+        boolean afterDate = nimbAfterMay5(drm, rec, apiUser, VeloxConstants.NIMBLE_GEN_HYB_PROTOCOL);
         if (afterDate) {
             // First try and get elution volume from Protocol3
             // Otherwise try to get from Protocol 2
             // THEN try to get from 3 using prev samples
             // THEN THEN try to get from 2 using prev samples
-            double libVol = getLibraryVolume(rec, apiUser, false, "DNALibraryPrepProtocol3");
+            double libVol = getLibraryVolume(rec, apiUser, false, VeloxConstants.DNA_LIBRARY_PREP_PROTOCOL_3);
             if (libVol <= 0) {
-                libVol = getLibraryVolume(rec, apiUser, false, "DNALibraryPrepProtocol2");
+                libVol = getLibraryVolume(rec, apiUser, false, VeloxConstants.DNA_LIBRARY_PREP_PROTOCOL_2);
             }
             if (libVol <= 0 && sample.isTransfer()) {
-                libVol = getLibraryVolumeFromPrevSamps(rec, apiUser, "DNALibraryPrepProtocol3");
+                libVol = getLibraryVolumeFromPrevSamps(rec, apiUser, VeloxConstants.DNA_LIBRARY_PREP_PROTOCOL_3);
                 if (libVol <= 0) {
-                    libVol = getLibraryVolumeFromPrevSamps(rec, apiUser, "DNALibraryPrepProtocol2");
+                    libVol = getLibraryVolumeFromPrevSamps(rec, apiUser, VeloxConstants.DNA_LIBRARY_PREP_PROTOCOL_2);
                 }
             }
-            double libConc = getLibraryConcentration(rec, drm, apiUser, sample.isTransfer(), "NimbleGenHybProtocol");
+            double libConc = getLibraryConcentration(rec, drm, apiUser, sample.isTransfer(), VeloxConstants.NIMBLE_GEN_HYB_PROTOCOL);
             if (libVol > 0 && libConc > 0 && this.LIBRARY_YIELD.startsWith("#")) {
                 this.LIBRARY_YIELD = String.valueOf(df.format(libVol * libConc));
             } else if (this.LIBRARY_YIELD.startsWith("#")) {
@@ -352,7 +356,7 @@ public class SampleInfoImpact extends SampleInfo {
         return false;
     }
 
-    void getBarcodeInfo(DataRecordManager drm, User apiUser, Request request, Sample sample) {
+    void getBarcodeInfo(DataRecordManager drm, User apiUser, KickoffRequest kickoffRequest, Sample sample) {
         // This will give us this.BARCODE_ID and this.BARCODE_INDEX
         //Find the Sample Specific QC record for this sample, and go up until you find an index.
         List<DataRecord> qcRecs = new ArrayList<>();
@@ -364,7 +368,7 @@ public class SampleInfoImpact extends SampleInfo {
         }
         // Now I can iterate, the qcRecs, and I have to check to see if the runIDs are the same as above
         if (qcRecs == null || qcRecs.size() == 0) {
-            if (sample.isPooledNormal() || request.isForced()) {
+            if (sample.isPooledNormal() || kickoffRequest.isForced()) {
                 String extraInput = "";
                 if (!sample.isPooledNormal()) {
                     extraInput = "_";
@@ -394,12 +398,12 @@ public class SampleInfoImpact extends SampleInfo {
                 }
 
                 String RunID = runParts[0] + "_" + runParts[1];
-                if (!request.getSamples().containsKey(this.IGO_ID)) {
+                if (!kickoffRequest.getSamples().containsKey(this.IGO_ID)) {
                     logError("The sample ID I am using to search for runs is not the correct sample ID.");
                     return;
                 }
                 //@TODO keep sample as class's field to use throughout this class
-                if (request.getSample(this.IGO_ID).containsRun(RunID)) {
+                if (kickoffRequest.getSample(this.IGO_ID).containsRun(RunID)) {
                     // When I find a qc that matches the run ID, I can exit this for loop. I only need one because they should all have (the same) barcode upstream
                     qcToUse = qcRecord;
                     break;
@@ -606,7 +610,7 @@ public class SampleInfoImpact extends SampleInfo {
             }
             if (real) {
                 try {
-                    input = n1.getDoubleVal("ElutionVol", apiUser);
+                    input = n1.getDoubleVal(VeloxConstants.ELUTION_VOL, apiUser);
                 } catch (NullPointerException e) {
                     input = -1;
                     logError(String.format("Cannot find elution vol for %s AKA %s Using DataRecord %s", this.CMO_SAMPLE_ID, this.IGO_ID, dataRecordName));
@@ -847,7 +851,7 @@ public class SampleInfoImpact extends SampleInfo {
                 }
             }
             if (chosenRec == null) {
-                logError("No VALID NimblgenHybridizationProtocol DataRecord found for " + this.CMO_SAMPLE_ID + "(" + this.IGO_ID + "). " + poolNameList + " The baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ");
+                logError(String.format("No VALID NimblgenHybridizationProtocol DataRecord found for %s(%s). %s The baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ", this.CMO_SAMPLE_ID, this.IGO_ID, poolNameList));
                 return;
             }
         }
@@ -920,27 +924,31 @@ public class SampleInfoImpact extends SampleInfo {
             for (DataRecord nymbSiblingSample : nymbSiblingSamples) {
                 // HERE check tos ee if it was added ot a flowcell?
                 List<DataRecord> flowCellLanes = nymbSiblingSample.getDescendantsOfType(VeloxConstants.FLOW_CELL_LANE, apiUser);
-                if (flowCellLanes == null || flowCellLanes.size() == 0) {
+
+                if (flowCellLanes == null || flowCellLanes.size() == 0)
                     continue;
-                }
+
                 List<DataRecord> parentSamples = nymbSiblingSample.getParentsOfType(VeloxConstants.SAMPLE, apiUser);
-
                 for (DataRecord parentSample : parentSamples) {
-                    if (parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL")) {
-                        HashSet<String> tempSet = new HashSet<>();
-
-                        if (pooledNormals.containsKey(parentSample)) {
-                            tempSet.addAll(pooledNormals.get(parentSample));
-                        }
-                        tempSet.add(nymbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser));
-                        pooledNormals.put(parentSample, tempSet);
-
-                    }
+                    if (isPooledNormal(apiUser, parentSample))
+                        addPooledNormal(apiUser, nymbSiblingSample, parentSample);
                 }
             }
         } catch (Exception e) {
             DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
         }
+    }
+
+    private void addPooledNormal(User apiUser, DataRecord nymbSiblingSample, DataRecord parentSample) throws NotFound, RemoteException {
+        String pooledNormalId = nymbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
+
+        if (!pooledNormals.containsKey(parentSample))
+            DEV_LOGGER.info(String.format("Adding pooled normal: %s", pooledNormalId));
+        pooledNormals.put(parentSample, pooledNormalId);
+    }
+
+    private boolean isPooledNormal(User apiUser, DataRecord parentSample) throws NotFound, RemoteException {
+        return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL");
     }
 
     /*

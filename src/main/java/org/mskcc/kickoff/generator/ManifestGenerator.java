@@ -1,5 +1,5 @@
 package org.mskcc.kickoff.generator;
 
 public interface ManifestGenerator {
-    void generate();
+    void generate(String projectId) throws Exception;
 }

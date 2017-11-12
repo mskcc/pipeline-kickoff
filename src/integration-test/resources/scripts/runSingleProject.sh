@@ -7,5 +7,5 @@ cd "${BASH_SOURCE%/*}"
 cd "../../../.."
 pwd
 
-./gradlew run -Dspring.profiles.active=prod,igo -PprogramArgs=-p,$1,-o,output,-rerunReason,TEST,$2
+./gradlew run -Dspring.profiles.active=dev,igo -PprogramArgs=-p,$1,-o,output,-rerunReason,TEST,$2
 cd ~

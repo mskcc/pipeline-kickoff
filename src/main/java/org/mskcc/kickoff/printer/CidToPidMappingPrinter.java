@@ -2,7 +2,7 @@ package org.mskcc.kickoff.printer;
 
 import org.apache.log4j.Logger;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
@@ -10,15 +10,13 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 
-import static org.mskcc.kickoff.printer.OutputFilesPrinter.filesCreated;
-
 public class CidToPidMappingPrinter implements FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     private String mappingFileName = "sample_c_to_p_mapping.txt";
 
     @Override
-    public void print(Request request) {
+    public void print(KickoffRequest request) {
         try {
             String mappingFileContents = "";
 
@@ -32,7 +30,6 @@ public class CidToPidMappingPrinter implements FilePrinter {
             File mappingFile = new File(String.format("%s/%s_%s", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId()), mappingFileName));
 
             PrintWriter pW = new PrintWriter(new FileWriter(mappingFile, false), false);
-            filesCreated.add(mappingFile);
             pW.write(mappingFileContents);
             pW.close();
         } catch (Exception e) {
@@ -41,7 +38,7 @@ public class CidToPidMappingPrinter implements FilePrinter {
     }
 
     @Override
-    public boolean shouldPrint(Request request) {
+    public boolean shouldPrint(KickoffRequest request) {
         return true;
     }
 }

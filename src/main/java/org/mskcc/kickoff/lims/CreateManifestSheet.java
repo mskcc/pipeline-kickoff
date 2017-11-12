@@ -6,54 +6,41 @@ import org.mskcc.kickoff.config.AppConfiguration;
 import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.kickoff.generator.ManifestGenerator;
 import org.mskcc.kickoff.util.Constants;
-import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 
-import java.io.File;
-
-import static org.mskcc.kickoff.config.Arguments.outdir;
 import static org.mskcc.kickoff.config.Arguments.parseArguments;
+import static org.mskcc.kickoff.config.Arguments.toPrintable;
 
 /**
  * @author Krista Kaz (most of the framing of this script was copied from Aaron and Dmitri's examples/scripts)
  */
 @ComponentScan(basePackages = "org.mskcc.kickoff")
 class CreateManifestSheet {
-    private static final Logger devLogger = Logger.getLogger(Constants.DEV_LOGGER);
+    private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     @Autowired
     private ManifestGenerator manifestGenerator;
 
-    @Value("${draftProjectFilePath}")
-    private String draftProjectFilePath;
-
     public static void main(String[] args) {
         try {
             parseArguments(args);
-            addShutdownHook();
+            DEV_LOGGER.info(String.format("Received program arguments: %s", toPrintable()));
+
             ConfigurableApplicationContext context = configureSpringContext();
             CreateManifestSheet createManifestSheet = context.getBean(CreateManifestSheet.class);
-
-            createManifestSheet.generate();
+            createManifestSheet.generate(Arguments.project);
         } catch (Exception e) {
-            devLogger.error(String.format("Error while generating manifest files for project: %s", Arguments.project), e);
+            DEV_LOGGER.error(String.format("Error while generating manifest files for project: %s", Arguments.project), e);
         }
-    }
-
-    private static void addShutdownHook() {
-        MySafeShutdown sh = new MySafeShutdown();
-        Runtime.getRuntime().addShutdownHook(sh);
     }
 
     private static ConfigurableApplicationContext configureSpringContext() {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-        if (!hasActiveProfiles(context))
-            context.getEnvironment().setActiveProfiles(Constants.PROD_PROFILE, Constants.IGO_PROFILE);
 
+        configureSpringProfiles(context);
         context.register(AppConfiguration.class);
         context.register(CreateManifestSheet.class);
         context.registerShutdownHook();
@@ -62,32 +49,21 @@ class CreateManifestSheet {
         return context;
     }
 
-    private static boolean hasActiveProfiles(AnnotationConfigApplicationContext context) {
-        return context.getEnvironment().getActiveProfiles().length > 0;
-    }
-
-    private void generate() {
-        outdir = getProjectOutputDir(Arguments.project);
-        manifestGenerator.generate();
-    }
-
-    private String getProjectOutputDir(String requestID) {
-        String projectFilePath = String.format("%s/%s", draftProjectFilePath, Utils.getFullProjectNameWithPrefix(requestID));
-        if (!StringUtils.isEmpty(outdir)) {
-            File f = new File(outdir);
-            if (f.exists() && f.isDirectory())
-                return String.format("%s/%s", outdir, Utils.getFullProjectNameWithPrefix(requestID));
+    private static void configureSpringProfiles(AnnotationConfigApplicationContext context) {
+        if (getActiveProfiles(context).length == 0) {
+            DEV_LOGGER.info(String.format("No spring profiles set. Setting default spring profiles: %s, %s", Constants.PROD_PROFILE, Constants.IGO_PROFILE));
+            context.getEnvironment().setActiveProfiles(Constants.PROD_PROFILE, Constants.IGO_PROFILE);
+        } else {
+            DEV_LOGGER.info(String.format("Spring profiles set: %s", StringUtils.join(getActiveProfiles(context), ",")));
         }
-
-        new File(projectFilePath).mkdirs();
-
-        return projectFilePath;
     }
 
-    public static class MySafeShutdown extends Thread {
-        @Override
-        public void run() {
-        }
+    private static String[] getActiveProfiles(AnnotationConfigApplicationContext context) {
+        return context.getEnvironment().getActiveProfiles();
+    }
+
+    private void generate(String projectId) throws Exception {
+        manifestGenerator.generate(projectId);
     }
 }
 

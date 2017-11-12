@@ -2,8 +2,9 @@ package org.mskcc.kickoff.printer;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
+import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
@@ -17,14 +18,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.function.Predicate;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
 public abstract class ClinicalPatientFilePrinter implements FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     @Override
-    public void print(Request request) {
+    public void print(KickoffRequest kickoffRequest) {
         LinkedHashMap<String, String> fieldMapping = new LinkedHashMap<>();
         ArrayList<String> fieldList = new ArrayList<>(Arrays.asList(getManualHeader().split(",")));
         for (String fields : fieldList) {
@@ -36,7 +36,7 @@ public abstract class ClinicalPatientFilePrinter implements FilePrinter {
         outputText += "\n";
         outputText = filterToAscii(outputText);
 
-        List<Sample> samples = request.getUniqueSamplesByCmoIdLastWin(getSamplePredicate());
+        List<Sample> samples = kickoffRequest.getUniqueSamplesByCmoIdLastWin(getSamplePredicate());
         for (Sample sample : samples) {
             ArrayList<String> line = new ArrayList<>();
             for (String key : fieldMapping.values()) {
@@ -63,12 +63,11 @@ public abstract class ClinicalPatientFilePrinter implements FilePrinter {
             try {
                 outputText = filterToAscii(outputText);
 
-                String filename = String.format("%s/%s%s", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId()), getOutputFilenameEnding());
+                String filename = String.format("%s/%s%s", kickoffRequest.getOutputPath(), Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()), getOutputFilenameEnding());
                 File outputFile = new File(filename);
                 PrintWriter pW = new PrintWriter(new FileWriter(outputFile, false), false);
                 pW.write(outputText);
                 pW.close();
-                OutputFilesPrinter.filesCreated.add(outputFile);
             } catch (Exception e) {
                 DEV_LOGGER.warn(String.format("Exception thrown while creating file: %s", getOutputFilenameEnding()), e);
             }
@@ -76,9 +75,9 @@ public abstract class ClinicalPatientFilePrinter implements FilePrinter {
     }
 
     @Override
-    public boolean shouldPrint(Request request) {
-        return (!request.getRequestType().equals(Constants.RNASEQ) && !request.getRequestType().equals(Constants.OTHER))
-                && !(Utils.isExitLater() && !krista && !request.isInnovationProject() && !request.getRequestType().equals(Constants.OTHER) && !request.getRequestType().equals(Constants.RNASEQ));
+    public boolean shouldPrint(KickoffRequest request) {
+        return (request.getRequestType() != RequestType.RNASEQ && request.getRequestType() != RequestType.OTHER)
+                && !(Utils.isExitLater() && !request.isInnovation() && request.getRequestType() != RequestType.OTHER && request.getRequestType() != RequestType.RNASEQ);
     }
 
     protected abstract String getManualHeader();

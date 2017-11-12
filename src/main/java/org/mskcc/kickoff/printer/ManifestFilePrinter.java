@@ -9,17 +9,15 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
-import java.io.File;
 import java.io.FileOutputStream;
 import java.util.*;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
-import static org.mskcc.kickoff.printer.OutputFilesPrinter.filesCreated;
 import static org.mskcc.util.Constants.MAX_HEADER_SIZE;
 
 public class ManifestFilePrinter implements FilePrinter  {
@@ -31,8 +29,8 @@ public class ManifestFilePrinter implements FilePrinter  {
     private static final String manualMappingHashMap = "LIBRARY_INPUT:LIBRARY_INPUT[ng],LIBRARY_YIELD:LIBRARY_YIELD[ng],CAPTURE_INPUT:CAPTURE_INPUT[ng],CAPTURE_CONCENTRATION:CAPTURE_CONCENTRATION[nM],MANIFEST_SAMPLE_ID:CMO_SAMPLE_ID";
 
     @Override
-    public void print(Request request) {
-        String filename = String.format("%s/%s_sample_manifest.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId()));
+    public void print(KickoffRequest kickoffRequest) {
+        String filename = String.format("%s/%s_sample_manifest.txt", kickoffRequest.getOutputPath(), Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
 
         try {
             char[] alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
@@ -44,8 +42,8 @@ public class ManifestFilePrinter implements FilePrinter  {
             XSSFSheet sampleRenames = wb.createSheet(Constants.Manifest.SAMPLE_RENAMES);
             sampleRenames = Utils.addRowToSheet(wb, sampleRenames, new ArrayList<>(Arrays.asList(Constants.Manifest.OLD_NAME, Constants.Manifest.NEW_NAME)), rowNum, Constants.EXCEL_ROW_TYPE_HEADER);
 
-            if (request.getNewMappingScheme() == 1) {
-                for (Sample sample : request.getUniqueSamplesByCmoIdLastWin()) {
+            if (kickoffRequest.getNewMappingScheme() == 1) {
+                for (Sample sample : kickoffRequest.getUniqueSamplesByCmoIdLastWin()) {
                     rowNum++;
                     ArrayList<String> replaceNames = new ArrayList<>(Arrays.asList(sample.get(Constants.MANIFEST_SAMPLE_ID), sample.get(Constants.CORRECTED_CMO_ID)));
                     sampleRenames = Utils.addRowToSheet(wb, sampleRenames, replaceNames, rowNum, null);
@@ -70,8 +68,8 @@ public class ManifestFilePrinter implements FilePrinter  {
                 rowNum++;
 
                 // output each line, in order!
-                for (Sample sample : request.getUniqueSamplesByCmoIdLastWin()) {
-                    sampleInfoSheet = addRowToSheet(sampleInfoSheet, sample.getProperties(), rowNum, request);
+                for (Sample sample : kickoffRequest.getUniqueSamplesByCmoIdLastWin()) {
+                    sampleInfoSheet = addRowToSheet(sampleInfoSheet, sample.getProperties(), rowNum, kickoffRequest);
                     rowNum++;
                 }
 
@@ -89,9 +87,9 @@ public class ManifestFilePrinter implements FilePrinter  {
                 if (header.size() > MAX_HEADER_SIZE) {
                     int firstLetter = header.size() / MAX_HEADER_SIZE;
                     int remainder = header.size() - (MAX_HEADER_SIZE * firstLetter);
-                    lastSpot = alphabet[firstLetter - 1] + alphabet[remainder - 1] + String.valueOf(request.getUniqueSamplesByCmoIdLastWin().size() + 1);
+                    lastSpot = alphabet[firstLetter - 1] + alphabet[remainder - 1] + String.valueOf(kickoffRequest.getUniqueSamplesByCmoIdLastWin().size() + 1);
                 } else {
-                    lastSpot = alphabet[header.size() - 1] + String.valueOf(request.getUniqueSamplesByCmoIdLastWin().size() + 1);
+                    lastSpot = alphabet[header.size() - 1] + String.valueOf(kickoffRequest.getUniqueSamplesByCmoIdLastWin().size() + 1);
                 }
                 CellRangeAddress[] regions = {CellRangeAddress.valueOf("A1:" + lastSpot)};
 
@@ -100,7 +98,6 @@ public class ManifestFilePrinter implements FilePrinter  {
                 //Now that the excel is done, print it to file
                 FileOutputStream fileOUT = new FileOutputStream(manifestFileName);
                 wb.write(fileOUT);
-                filesCreated.add(new File(manifestFileName));
                 fileOUT.close();
             } catch (Exception e) {
                 DEV_LOGGER.warn(String.format("Exception thrown while writing to file: %s", manifestFileName), e);
@@ -114,11 +111,11 @@ public class ManifestFilePrinter implements FilePrinter  {
         return Utils.addRowToSheet(wb, sampleInfoSheet, header, rowNum, Constants.EXCEL_ROW_TYPE_HEADER);
     }
 
-    public XSSFSheet addRowToSheet(XSSFSheet sheet, Map<String, String> map, int rowNum, Request request) {
+    public XSSFSheet addRowToSheet(XSSFSheet sheet, Map<String, String> map, int rowNum, KickoffRequest kickoffRequest) {
         try {
             ArrayList<String> header = new ArrayList<>(hashMapHeader);
             // If this is the old mapping scheme, don't make the CMO Sample ID include IGO ID.
-            if (request.getNewMappingScheme() == 0) {
+            if (kickoffRequest.getNewMappingScheme() == 0) {
                 int indexHeader = header.indexOf(Constants.MANIFEST_SAMPLE_ID);
                 header.set(indexHeader, Constants.CORRECTED_CMO_ID);
             }
@@ -147,8 +144,8 @@ public class ManifestFilePrinter implements FilePrinter  {
     }
 
     @Override
-    public boolean shouldPrint(Request request) {
-        return (!request.getRequestType().equals(Constants.RNASEQ) && !request.getRequestType().equals(Constants.OTHER))
-                && !(Utils.isExitLater() && !krista && !request.isInnovationProject() && !request.getRequestType().equals(Constants.OTHER) && !request.getRequestType().equals(Constants.RNASEQ));
+    public boolean shouldPrint(KickoffRequest request) {
+        return (request.getRequestType() != RequestType.RNASEQ && request.getRequestType() != RequestType.OTHER)
+                && !(Utils.isExitLater() && !request.isInnovation() && request.getRequestType() != RequestType.OTHER && request.getRequestType() != RequestType.RNASEQ);
     }
 }

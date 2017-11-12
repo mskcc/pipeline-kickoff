@@ -2,8 +2,8 @@
 
 source "${BASH_SOURCE%/*}/utils.sh"
 
-#arguments=("noArg")
-arguments=("noArg" "-noPortal" "-f" "-exome" "-s")
+arguments=("noArg" "-exome")
+#arguments=("noArg" "-noPortal" "-f" "-exome" "-s")
 
 init() {
 	jdk8=~/jdk
@@ -25,7 +25,7 @@ init() {
 	actualPath="${testDir}/actualOutput"
 	mkdir -p ${actualPath}
 
-	prodKickoff=~/krista/pipeline_kickoff_prod
+	prodKickoff=~/sources/pipeline-kickoff/krista/pipeline_kickoff_prod
 	prodTestKickoff="${testDir}/pipeline_kickoff_prod/exemplar"
 
 	currentKickoff="pipeline-kickoff"
@@ -94,7 +94,7 @@ runTest() {
 	expected=$(getOutputPath $expectedPath $1 $2)
 	echo "Actual output path: $actual"
 	echo "Expected output path: $expected"
-	./gradlew integrationTest -Dspring.profiles.active=test,igo -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList}
+	./gradlew regressionTest -Dspring.profiles.active=test,igo -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList}
 	#${java8} -cp .:libs/*:build/classes/main:build/classes/integrationTest:build/resources/integrationTest -Dspring.profiles.active=dev -Darg=${2} -Dproject=${1} -DexpectedOutput=${expected} -DactualOutput=${actual} -DfailingOutputPath=${failingDir} -DsucceededProjectsList=${succeededProjectsList} org.junit.runner.JUnitCore org.mskcc.kickoff.characterisationTest.RegressionTest
 	cd ~
 }
@@ -181,7 +181,7 @@ projects=(
 "06208_D" # Agilient Capture KAPA Libary
 "06259_B"
 "06362" #no sample level qc
-"06477_E" # !KAPAAgilentCaptureProtocol2, very slow project
+#"06477_E" # !KAPAAgilentCaptureProtocol2, very slow project
 "06507" # Request with 2 samples with same name
 "06507_D" # rename FASTQ
 "06507_E"

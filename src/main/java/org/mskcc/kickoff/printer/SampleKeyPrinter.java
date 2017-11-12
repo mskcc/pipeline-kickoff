@@ -6,19 +6,19 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.*;
 import org.mskcc.domain.LibType;
+import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.*;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
-import static org.mskcc.kickoff.printer.OutputFilesPrinter.filesCreated;
-
+@Component
 public class SampleKeyPrinter implements FilePrinter  {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
@@ -26,7 +26,7 @@ public class SampleKeyPrinter implements FilePrinter  {
     private String sampleKeyExamplesPath;
 
     @Override
-    public void print(Request request) {
+    public void print(KickoffRequest request) {
         // sample info
         String requestID = request.getId();
         File sampleKeyExcel = new File(request.getOutputPath() + "/" + Utils.getFullProjectNameWithPrefix(requestID) + "_sample_key.xlsx");
@@ -149,7 +149,6 @@ public class SampleKeyPrinter implements FilePrinter  {
 
         try {
             FileOutputStream fileOUT = new FileOutputStream(sampleKeyExcel);
-            filesCreated.add(sampleKeyExcel);
             wb.write(fileOUT);
             fileOUT.close();
         } catch (Exception e) {
@@ -158,9 +157,8 @@ public class SampleKeyPrinter implements FilePrinter  {
     }
 
     @Override
-    public boolean shouldPrint(Request request) {
-        return !(Utils.isExitLater() && !krista && !request.isInnovationProject() && !request.getRequestType().equals(Constants.OTHER) && !request.getRequestType().equals(Constants.RNASEQ))
-                && (request.getRequestType().equals(Constants.RNASEQ) && !request.getLibTypes().contains(LibType.TRU_SEQ_FUSION_DISCOVERY) && request.getAllValidSamples().size() > 1);
+    public boolean shouldPrint(KickoffRequest request) {
+        return request.getRequestType() == RequestType.RNASEQ && !request.getLibTypes().contains(LibType.TRU_SEQ_FUSION_DISCOVERY) && request.getAllValidSamples().size() > 1;
     }
 
     private XSSFSheet addRowToSheet(XSSFWorkbook wb, XSSFSheet sheet, ArrayList<String> list, int rowNum, String type) {

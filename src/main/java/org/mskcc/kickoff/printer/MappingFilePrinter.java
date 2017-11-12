@@ -4,23 +4,34 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.domain.Pairedness;
+import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.SampleInfo;
 import org.mskcc.kickoff.logger.PmLogPriority;
+import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.FileGenerated;
+import org.mskcc.kickoff.notify.GenerationError;
+import org.mskcc.kickoff.notify.Observer;
+import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.validator.PairednessValidPredicate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.util.*;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.config.Arguments.shiny;
-import static org.mskcc.kickoff.printer.OutputFilesPrinter.filesCreated;
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
+@Component
 public class MappingFilePrinter implements FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
@@ -28,236 +39,306 @@ public class MappingFilePrinter implements FilePrinter {
     private static final String NORMAL_MAPPING_FILE_NAME = "sample_mapping.txt";
     private static final String ERROR_MAPPING_FILE_NAME = "sample_mapping.error";
 
-    private final Set<SampleRun> sampleRuns = new LinkedHashSet<>();
+    private final Predicate<Set<Pairedness>> pairednessValidPredicate = new PairednessValidPredicate();
+    private final PairednessResolver pairednessResolver = new PairednessResolver();
+
+    private List<Observer> observers = new ArrayList<>();
 
     @Value("${fastq_path}")
     private String fastq_path;
 
     @Override
-    public void print(Request request) {
-        Map<String, String> sampleRenamesAndSwaps = SampleInfo.getSampleRenames();
-
-        File mappingFile = null;
-
+    public void print(KickoffRequest request) {
         try {
-            HashSet<String> runsWithMultipleFolders = new HashSet<>();
-
-            String mappingFileContents = "";
-            String requestID = request.getId();
-            for (Sample sample : request.getAllValidSamples().values()) {
-                for (String runId : sample.getValidRunIds()) {
-                    sampleRuns.add(new SampleRun(sample, runId));
-                }
-            }
-
-            for (SampleRun sampleRun : sampleRuns) {
-                HashSet<String> sample_pattern = new HashSet<>();
-                Sample sample = sampleRun.getSample();
-                String sampleId = sample.getCmoSampleId();
-                if (!StringUtils.isEmpty(sample.getAlias())) {
-                    ArrayList<String> aliasSampleNames = new ArrayList<>(Arrays.asList(sample.getAlias().split(";")));
-                    for (String aliasName : aliasSampleNames) {
-                        String message = String.format("Sample %s has alias %s", sample, aliasName);
-                        logWarning(message);
-                        sample_pattern.add(aliasName.replaceAll("[_-]", "[-_]"));
-                    }
-                } else {
-                    sample_pattern.add(sampleId.replaceAll("[_-]", "[-_]"));
-                }
-
-                // Here Find the RUN ID. Iterate through each directory in fastq_path so I can search through each FASTQ directory
-                // Search each /FASTQ/ directory for directories that start with "RUN_ID"
-                // Take the newest one?
-
-                // This takes the best guess for the run id, and has bash fill out the missing parts!
-                final String runId = sampleRun.getRunId();
-                String RunIDFull;
-
-                //Iterate through fastq_path
-                File dir = new File(fastq_path + "/hiseq/FASTQ/");
-
-                File[] files = dir.listFiles((dir1, name) -> name.startsWith(runId));
-
-                // find out how many run IDs came back
-                if (files == null) {
-                    String message = String.format("No directories for run ID %s found.", runId);
-                    logWarning(message);
-                    continue;
-                }
-                if (files.length == 0) {
-                    String message = String.format("Could not find sequencing run folder for Run ID: %s", runId);
-                    Utils.setExitLater(true);
-                    PM_LOGGER.log(Level.ERROR, message);
-                    DEV_LOGGER.log(Level.ERROR, message);
-                    request.setMappingIssue(true);
-                    return;
-                } else if (files.length > 1) {
-                    // Here I will remove any directories that do NOT have the project as a folder in the directory.
-                    ArrayList<File> runsWithProjectDir = new ArrayList<>();
-                    for (File runDir : files) {
-                        File requestPath = new File(runDir.getAbsoluteFile().toString() + "/Project_" + requestID);
-                        if (requestPath.exists() && requestPath.isDirectory()) {
-                            runsWithProjectDir.add(runDir);
-                        }
-                    }
-                    files = runsWithProjectDir.toArray(new File[runsWithProjectDir.size()]);
-                    if (files == null) {
-                        String message = "No run ids with request id found.";
-                        logWarning(message);
-                        continue;
-                    }
-                    if (files.length == 0) {
-                        String message = String.format("Could not find sequencing run folder that also contains request %s for Run ID: %s", requestID, runId);
-                        Utils.setExitLater(true);
-                        PM_LOGGER.log(Level.ERROR, message);
-                        DEV_LOGGER.log(Level.ERROR, message);
-                        request.setMappingIssue(true);
-                        return;
-                    } else if (files.length > 1) {
-                        //@TODO check if the newest folder in taken into consideration
-                        Arrays.sort(files);
-                        String foundFiles = StringUtils.join(files, ", ");
-                        if (!runsWithMultipleFolders.contains(runId)) {
-                            String message = String.format("More than one sequencing run folder found for Run ID %s: %s I will be picking the newest folder.", runId, foundFiles);
-                            logWarning(message);
-                            runsWithMultipleFolders.add(runId);
-                        }
-                        RunIDFull = files[files.length - 1].getAbsoluteFile().getName().toString();
-                    } else {
-                        RunIDFull = files[0].getAbsoluteFile().getName();
-                    }
-                } else {
-                    RunIDFull = files[0].getAbsoluteFile().getName();
-                }
-
-                // Grab RUN ID, save it for the request file.
-                request.addRunIDlist(RunIDFull);
-
-                for (String S_Pattern : sample_pattern) {
-                    String pattern;
-                    if (!isPooledNormalSample(sample)) {
-                        pattern = dir.toString() + "/" + RunIDFull + "*/Proj*" + requestID.replaceFirst("^0+(?!$)", "") + "/Sample_" + S_Pattern;
-                    } else {
-                        pattern = dir.toString() + "/" + RunIDFull + "*/Proj*" + "/Sample_" + S_Pattern + "*";
-                    }
-
-                    String cmd = "ls -d " + pattern;
-
-                    Process pr = new ProcessBuilder("/bin/bash", "-c", cmd).start();
-                    pr.waitFor();
-
-                    //@TODO move to atnoher place, manifest file depends on new mapping so it has to be done before printing any files
-                    int exit = pr.exitValue();
-                    if (exit != 0) {
-                        String igoID = sample.get(Constants.IGO_ID);
-                        String seqID = sample.get(Constants.SEQ_IGO_ID);
-
-                        cmd = "ls -d " + pattern + "_IGO_" + seqID + "*";
-
-                        pr = new ProcessBuilder("/bin/bash", "-c", cmd).start();
-                        pr.waitFor();
-                        exit = pr.exitValue();
-
-                        if (exit != 0) {
-                            cmd = "ls -d " + pattern + "_IGO_*";
-
-                            pr = new ProcessBuilder("/bin/bash", "-c", cmd).start();
-                            pr.waitFor();
-                            exit = pr.exitValue();
-
-                            if (exit != 0) {
-                                String message = String.format("Error while trying to find fastq Directory for %s it is probably mispelled, or has an alias.", sample);
-                                Utils.setExitLater(true);
-                                PM_LOGGER.log(Level.ERROR, message);
-                                DEV_LOGGER.log(Level.ERROR, message);
-                                BufferedReader bufE = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
-                                while (bufE.ready()) {
-                                    DEV_LOGGER.error(bufE.readLine());
-                                }
-                                request.setMappingIssue(true);
-                                continue;
-                            } else {
-                                request.setNewMappingScheme(1);
-                            }
-                        } else {
-                            // this working means that I have to change the cmo sample id to have the seq iD.
-                            if (!seqID.equals(igoID)) {
-                                String manifestSampleID = sample.get(Constants.MANIFEST_SAMPLE_ID).replace("IGO_" + igoID, "IGO_" + seqID);
-                                sample.put(Constants.MANIFEST_SAMPLE_ID, manifestSampleID);
-                            }
-                            request.setNewMappingScheme(1);
-                        }
-                    }
-                    String sampleFqPath = StringUtils.chomp(IOUtils.toString(pr.getInputStream()));
-
-                    if (sampleFqPath.isEmpty()) {
-                        continue;
-                    }
-
-                    String[] paths = sampleFqPath.split("\n");
-
-                    // Find out if this is single end or paired end by looking inside the directory for a R2_001.fastq.gz
-                    for (String path : paths) {
-                        if ((sampleId.contains("POOLEDNORMAL") && (sampleId.contains("FFPE") || sampleId.contains("FROZEN"))) && !path.matches("(.*)IGO_" + request.getBaitVersion().toUpperCase() + "_[ATCG](.*)")) {
-                            continue;
-                        }
-
-                        String paired = "SE";
-                        File sampleFq = new File(path);
-                        File[] listOfFiles = sampleFq.listFiles();
-                        for (File f1 : listOfFiles) {
-                            if (f1.getName().endsWith("_R2_001.fastq.gz")) {
-                                paired = "PE";
-                                break;
-                            }
-                        }
-
-                        // Confirm there is a SampleSheet.csv in the path:
-                        File samp_sheet = new File(path + "/SampleSheet.csv");
-                        if (!samp_sheet.isFile() && request.getRequestType().equals(Constants.IMPACT)) {
-                            String message = String.format("Sample %s from run %s does not have a sample sheet in the sample directory. This will not pass the validator.", sample, RunIDFull);
-                            if (shiny) {
-                                PM_LOGGER.error(message);
-                            } else {
-                                PM_LOGGER.log(PmLogPriority.WARNING, message);
-                            }
-                            DEV_LOGGER.warn(message);
-                        }
-
-
-                        // FLATTEN ALL sample ids herei:
-                        String sampleName = sampleNormalization(sampleId);
-                        if (sampleRenamesAndSwaps.containsKey(sampleId)) {
-                            sampleName = sampleNormalization(sampleRenamesAndSwaps.get(sampleId));
-                        }
-
-                        mappingFileContents += String.format("_1\t%s\t%s\t%s\t%s\n", sampleName, RunIDFull, path, paired);
-                    }
-                }
-            }
-
-            if (mappingFileContents.length() > 0) {
-                mappingFileContents = filterToAscii(mappingFileContents);
-                String mappingFileName = shouldOutputErrorFile(request) ? ERROR_MAPPING_FILE_NAME : NORMAL_MAPPING_FILE_NAME;
-                mappingFile = new File(String.format("%s/%s_%s", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(requestID), mappingFileName));
-                PrintWriter pW = new PrintWriter(new FileWriter(mappingFile, false), false);
-                filesCreated.add(mappingFile);
-                pW.write(mappingFileContents);
-                pW.close();
-            }
-
+            String mappingFileContents = getMappings(request);
+            writeMappingFile(request, mappingFileContents);
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while creating mapping file: %s", mappingFile), e);
+            DEV_LOGGER.error(String.format("Unable to create mapping file: %s", getMappingFilePath(request)), e);
         }
     }
 
-    private boolean shouldOutputErrorFile(Request request) {
+    private String getMappings(KickoffRequest request) {
+        try {
+            Map<String, String> sampleRenamesAndSwaps = SampleInfo.getSampleRenames();
+            HashSet<String> runsWithMultipleFolders = new HashSet<>();
+
+            Set<Pairedness> pairednesses = new HashSet<>();
+            StringBuilder mappingFileContents = new StringBuilder();
+            for (KickoffRequest singleRequest : request.getRequests()) {
+                for (SampleRun sampleRun : getSampleRuns(singleRequest)) {
+                    Sample sample = sampleRun.getSample();
+                    String sampleId = sample.getCmoSampleId();
+                    final String runId = sampleRun.getRunId();
+
+                    File dir = new File(String.format("%s/hiseq/FASTQ/", fastq_path));
+
+                    Optional<String> optionalRunIDFull = getRunId(request, runsWithMultipleFolders, singleRequest, runId, dir);
+                    if (!optionalRunIDFull.isPresent()) continue;
+
+                    String runIdFull = optionalRunIDFull.get();
+
+                    request.addRunID(runIdFull);
+
+                    for (String samplePattern : getSamplePatterns(sample, sampleId)) {
+                        for (String path : getPaths(request, sample, dir, runIdFull, samplePattern)) {
+                            if (isPooledNormal(sampleId) && !fastqExist(path, request.getBaitVersion()))
+                                continue;
+
+                            Pairedness pairedness = getPairedness(path);
+                            DEV_LOGGER.trace(String.format("Pairedness for sample: %s - %s", sampleId, pairedness));
+                            pairednesses.add(pairedness);
+
+                            validateSampleSheetExists(request, sample, runIdFull, path);
+                            String sampleName = sampleNormalization(sampleRenamesAndSwaps.getOrDefault(sampleId, sampleId));
+                            mappingFileContents.append(String.format("_1\t%s\t%s\t%s\t%s\n", sampleName, runIdFull, path, pairedness));
+                        }
+                    }
+                }
+            }
+
+            validatePairedness(pairednesses, request.getId());
+
+            return mappingFileContents.toString();
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("Unable to retrieve sample mappings for request: %s", request.getId()), e);
+        }
+    }
+
+    private void validatePairedness(Set<Pairedness> pairednesses, String reqId) {
+        if (!pairednessValidPredicate.test(pairednesses)) {
+            String message = String.format("Ambiguous pairedness for request: %s [%s]", reqId, StringUtils.join(pairednesses), ",");
+            PM_LOGGER.error(message);
+            DEV_LOGGER.error(message);
+            Utils.setExitLater(true);
+        }
+    }
+
+    private Pairedness getPairedness(String path) {
+        try {
+            return pairednessResolver.resolve(path);
+        } catch (IOException e) {
+            throw new RuntimeException(String.format("Unable to retrieve pairedness from path: %s", path));
+        }
+    }
+
+    private List<String> getPaths(KickoffRequest request, Sample sample, File dir, String runIDFull, String samplePattern) throws IOException, InterruptedException {
+        String pattern = getPattern(sample, runIDFull, dir, samplePattern);
+        String cmd = "ls -d " + pattern;
+        Process pr = new ProcessBuilder("/bin/bash", "-c", cmd).start();
+        pr.waitFor();
+
+        //@TODO move to atnoher place, manifest file depends on new mapping so it has to be done before printing any files
+        int exit = pr.exitValue();
+        if (exit != 0) {
+            String igoID = sample.get(Constants.IGO_ID);
+            String seqID = sample.get(Constants.SEQ_IGO_ID);
+
+            cmd = "ls -d " + pattern + "_IGO_" + seqID + "*";
+
+            pr = new ProcessBuilder("/bin/bash", "-c", cmd).start();
+            pr.waitFor();
+            exit = pr.exitValue();
+
+            if (exit != 0) {
+                cmd = "ls -d " + pattern + "_IGO_*";
+
+                pr = new ProcessBuilder("/bin/bash", "-c", cmd).start();
+                pr.waitFor();
+                exit = pr.exitValue();
+
+                if (exit != 0) {
+                    String message = String.format("Error while trying to find fastq Directory for %s it is probably mispelled, or has an alias.", sample);
+                    Utils.setExitLater(true);
+                    PM_LOGGER.log(Level.ERROR, message);
+                    DEV_LOGGER.log(Level.ERROR, message);
+                    BufferedReader bufE = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
+                    while (bufE.ready()) {
+                        DEV_LOGGER.error(bufE.readLine());
+                    }
+                    request.setMappingIssue(true);
+                    return Collections.emptyList();
+                } else {
+                    request.setNewMappingScheme(1);
+                }
+            } else {
+                if (!seqID.equals(igoID)) {
+                    String manifestSampleID = sample.get(Constants.MANIFEST_SAMPLE_ID).replace("IGO_" + igoID, "IGO_" + seqID);
+                    sample.put(Constants.MANIFEST_SAMPLE_ID, manifestSampleID);
+                }
+                request.setNewMappingScheme(1);
+            }
+        }
+        String sampleFqPath = StringUtils.chomp(IOUtils.toString(pr.getInputStream()));
+
+        if (sampleFqPath.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return Arrays.asList(sampleFqPath.split("\n"));
+    }
+
+    private Optional<String> getRunId(KickoffRequest request, HashSet<String> runsWithMultipleFolders, KickoffRequest singleRequest, String runId, File dir) {
+        String RunIDFull;
+        File[] files = dir.listFiles((dir1, name) -> name.startsWith(runId));
+
+        if (files == null) {
+            String message = String.format("No directories for run ID %s found.", runId);
+            logWarning(message);
+            return Optional.empty();
+        }
+        if (files.length == 0) {
+            String errorMessage = String.format("Sequencing run folder not found for run id: %s in path: %s", runId, dir.getPath());
+            Utils.setExitLater(true);
+            PM_LOGGER.log(Level.ERROR, errorMessage);
+            DEV_LOGGER.log(Level.ERROR, errorMessage);
+            request.setMappingIssue(true);
+
+            notifyObserversOfError(errorMessage, GenerationError.INSTANCE);
+
+            throw new NoSequencingRunFolderFoundException(errorMessage);
+        } else if (files.length > 1) {
+            List<File> runsWithProjectDir = Arrays.stream(files)
+                    .filter(f -> {
+                        File file = new File(String.format("%s/Project_%s", f.getAbsoluteFile().toString(), singleRequest));
+                        return file.exists() && file.isDirectory();
+                    })
+                    .collect(Collectors.toList());
+
+            files = runsWithProjectDir.toArray(new File[runsWithProjectDir.size()]);
+
+            if (files.length == 0) {
+                String errorMessage = String.format("Sequencing run folder not found for run id: %s and request: %s in path: %s",
+                        runId, request.getId(), dir.getPath());
+                Utils.setExitLater(true);
+                PM_LOGGER.log(Level.ERROR, errorMessage);
+                DEV_LOGGER.log(Level.ERROR, errorMessage);
+                request.setMappingIssue(true);
+
+                notifyObserversOfError(errorMessage, GenerationError.INSTANCE);
+
+                throw new NoSequencingRunFolderFoundException(errorMessage);
+            } else if (files.length > 1) {
+                Arrays.sort(files, Comparator.comparingLong(File::lastModified));
+                String foundFiles = StringUtils.join(files, ", ");
+                RunIDFull = files[files.length - 1].getAbsoluteFile().getName().toString();
+
+                if (!runsWithMultipleFolders.contains(runId)) {
+                    String message = String.format("More than one sequencing run folder found for Run ID %s: %s I will be picking the newest folder: %s.", runId, foundFiles, RunIDFull);
+                    logWarning(message);
+                    runsWithMultipleFolders.add(runId);
+                }
+            } else {
+                RunIDFull = files[0].getAbsoluteFile().getName();
+            }
+        } else {
+            RunIDFull = files[0].getAbsoluteFile().getName();
+        }
+        return Optional.of(RunIDFull);
+    }
+
+    private void notifyObserversOfError(String errorMessage, GenerationError instance) {
+        for (Observer observer : observers) {
+            observer.update(ManifestFile.MAPPING, instance, errorMessage);
+        }
+    }
+
+    private void validateSampleSheetExists(KickoffRequest request, Sample sample, String runIDFull, String path) {
+        File samp_sheet = new File(path + "/SampleSheet.csv");
+        if (!samp_sheet.isFile() && request.getRequestType() == RequestType.IMPACT) {
+            String message = String.format("Sample %s from run %s does not have a sample sheet in the sample directory. This will not pass the validator.", sample, runIDFull);
+            if (shiny) {
+                PM_LOGGER.error(message);
+            } else {
+                PM_LOGGER.log(PmLogPriority.WARNING, message);
+            }
+            DEV_LOGGER.warn(message);
+        }
+    }
+
+    private String getPattern(Sample sample, String runIDFull, File dir, String samplePattern) {
+        String pattern;
+        if (!isPooledNormalSample(sample)) {
+            pattern = String.format("%s/%s*/Proj*%s/Sample_%s", dir.toString(), runIDFull, sample.getRequestId().replaceFirst("^0+(?!$)", ""), samplePattern);
+        } else {
+            pattern = String.format("%s/%s*/Proj*/Sample_%s*", dir.toString(), runIDFull, samplePattern);
+        }
+        return pattern;
+    }
+
+    private Set<String> getSamplePatterns(Sample sample, String sampleId) {
+        Set<String> samplePatterns = new HashSet<>();
+        if (!StringUtils.isEmpty(sample.getAlias())) {
+            ArrayList<String> aliasSampleNames = new ArrayList<>(Arrays.asList(sample.getAlias().split(";")));
+            for (String aliasName : aliasSampleNames) {
+                String message = String.format("Sample %s has alias %s", sample, aliasName);
+                logWarning(message);
+                samplePatterns.add(aliasName.replaceAll("[_-]", "[-_]"));
+            }
+        } else {
+            samplePatterns.add(sampleId.replaceAll("[_-]", "[-_]"));
+        }
+        return samplePatterns;
+    }
+
+    private Set<SampleRun> getSampleRuns(KickoffRequest singleRequest) {
+        Set<SampleRun> sampleRuns = new LinkedHashSet<>();
+        for (Sample sample : singleRequest.getAllValidSamples().values()) {
+            for (String runId : sample.getValidRunIds()) {
+                sampleRuns.add(new SampleRun(sample, runId));
+            }
+        }
+        return sampleRuns;
+    }
+
+    private void writeMappingFile(KickoffRequest request, String mappingFileContents) {
+        validateMappingsExist(request, mappingFileContents);
+
+        try {
+            mappingFileContents = filterToAscii(mappingFileContents);
+            File mappingFile = new File(getMappingFilePath(request));
+            PrintWriter pW = new PrintWriter(new FileWriter(mappingFile, false), false);
+            pW.write(mappingFileContents);
+            pW.close();
+            notifyObserversOfFileCreated();
+        } catch (Exception e) {
+            throw new RuntimeException(String.format("Unable to write sample mapping file for request: %s", request.getId()));
+        }
+    }
+
+    private void notifyObserversOfFileCreated() {
+        for (Observer observer : observers) {
+            observer.update(ManifestFile.MAPPING, FileGenerated.INSTANCE);
+        }
+    }
+
+    private void validateMappingsExist(KickoffRequest request, String mappingFileContents) {
+        if (StringUtils.isEmpty(mappingFileContents)) {
+            String message = String.format("No sample mappings for request: %s", request.getId());
+            notifyObserversOfError(message, GenerationError.INSTANCE);
+            throw new NoSampleMappingExistException(message);
+        }
+    }
+
+    private String getMappingFilePath(KickoffRequest request) {
+        String mappingFileName = shouldOutputErrorFile(request) ? ERROR_MAPPING_FILE_NAME : NORMAL_MAPPING_FILE_NAME;
+        return String.format("%s/%s_%s", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId()), mappingFileName);
+    }
+
+    private boolean isPooledNormal(String sampleId) {
+        return sampleId.contains("POOLEDNORMAL") && (sampleId.contains("FFPE") || sampleId.contains("FROZEN"));
+    }
+
+    private boolean fastqExist(String path, String baitVersion) {
+        Pattern pattern = Pattern.compile(String.format("(.*)IGO_%s_[ATCG](.*)", baitVersion), Pattern.CASE_INSENSITIVE);
+        return pattern.matcher(path).matches();
+    }
+
+    private boolean shouldOutputErrorFile(KickoffRequest request) {
         return Utils.isExitLater()
                 && request.isMappingIssue()
-                && !krista
-                && !request.isInnovationProject()
-                && !Objects.equals(request.getRequestType(), Constants.RNASEQ)
-                && !Objects.equals(request.getRequestType(), Constants.OTHER);
+                && !request.isInnovation()
+                && request.getRequestType() != RequestType.RNASEQ
+                && request.getRequestType() != RequestType.OTHER;
     }
 
     private boolean isPooledNormalSample(Sample sample) {
@@ -272,10 +353,17 @@ public class MappingFilePrinter implements FilePrinter {
         DEV_LOGGER.warn(message);
     }
 
+    public void register(org.mskcc.kickoff.notify.Observer observer) {
+        observers.add(observer);
+    }
+
+    public void unregister(org.mskcc.kickoff.notify.Observer observer) {
+        observers.remove(observer);
+    }
 
     @Override
-    public boolean shouldPrint(Request request) {
-        return ((request.getRequestType().equals(Constants.RNASEQ) || request.getRequestType().equals(Constants.OTHER))
+    public boolean shouldPrint(KickoffRequest request) {
+        return ((request.getRequestType() == RequestType.RNASEQ || request.getRequestType() == RequestType.OTHER)
                 && !request.isForced()
                 && !request.isManualDemux()
         )
@@ -306,8 +394,7 @@ public class MappingFilePrinter implements FilePrinter {
 
             SampleRun sampleRun = (SampleRun) o;
 
-            if (!sample.getCmoSampleId().equals(sampleRun.sample.getCmoSampleId())) return false;
-            return runId.equals(sampleRun.runId);
+            return sample.getCmoSampleId().equals(sampleRun.sample.getCmoSampleId()) && runId.equals(sampleRun.runId);
         }
 
         @Override
@@ -317,4 +404,17 @@ public class MappingFilePrinter implements FilePrinter {
             return result;
         }
     }
+
+    private class NoSequencingRunFolderFoundException extends RuntimeException {
+        public NoSequencingRunFolderFoundException(String message) {
+            super(message);
+        }
+    }
+
+    private class NoSampleMappingExistException extends RuntimeException {
+        public NoSampleMappingExistException(String message) {
+            super(message);
+        }
+    }
+
 }

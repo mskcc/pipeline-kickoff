@@ -1,8 +1,9 @@
 package org.mskcc.kickoff.printer;
 
 import org.apache.log4j.Logger;
+import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.PairingsResolver;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
@@ -12,30 +13,25 @@ import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
-import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.config.Arguments.shiny;
-import static org.mskcc.kickoff.printer.OutputFilesPrinter.filesCreated;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
 public class PairingFilePrinter implements FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
-    private Map<String, String> pairingInfo;
-    private PairingsResolver pairingsResolver;
+    private final PairingsResolver pairingsResolver;
 
     public PairingFilePrinter(PairingsResolver pairingsResolver) {
         this.pairingsResolver = pairingsResolver;
     }
 
     @Override
-    public void print(Request request) {
-        pairingInfo = getPairingInfo(request);
+    public void print(KickoffRequest request) {
         String filename = String.format("%s/%s_sample_pairing.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId()));
+        Map<String, String> pairingInfo = getPairingInfo(request);
 
         Set<String> normalCMOids = new HashSet<>();
-        // Generate normal CMO IDs
         for (Sample sample : request.getAllValidSamples().values()) {
             if (sample.get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL)) {
                 normalCMOids.add(sample.get(Constants.CORRECTED_CMO_ID));
@@ -43,18 +39,15 @@ public class PairingFilePrinter implements FilePrinter {
         }
 
         Set<String> missingNormalsToBeAdded = new HashSet<>();
-        if (Objects.equals(request.getRequestType(), Constants.EXOME)) {
-            // Make a list of all the unmatched normals, so they can be added to the end of the pairing
+        if (request.getRequestType() == RequestType.EXOME) {
             HashSet<String> normalsPairedWithThings = new HashSet<>(pairingInfo.values());
             missingNormalsToBeAdded = new HashSet<>(normalCMOids);
             missingNormalsToBeAdded.removeAll(normalsPairedWithThings);
         }
         try {
-            //Done going through all igo ids, now print
             if (pairingInfo != null && pairingInfo.size() > 0) {
                 File pairing_file = new File(filename);
                 PrintWriter pW = new PrintWriter(new FileWriter(pairing_file, false), false);
-                filesCreated.add(pairing_file);
                 for (String tum : pairingInfo.keySet()) {
                     String norm = pairingInfo.get(tum);
                     pW.write(sampleNormalization(norm) + "\t" + sampleNormalization(tum) + "\n");
@@ -66,7 +59,7 @@ public class PairingFilePrinter implements FilePrinter {
 
                 pW.close();
 
-                if (shiny || krista) {
+                if (shiny) {
                     printPairingExcel(request, filename, pairingInfo, missingNormalsToBeAdded);
                 }
             }
@@ -76,16 +69,16 @@ public class PairingFilePrinter implements FilePrinter {
     }
 
     @Override
-    public boolean shouldPrint(Request request) {
-        return !(Utils.isExitLater() && !krista && !request.isInnovationProject() && !request.getRequestType().equals(Constants.OTHER) && !request.getRequestType().equals(Constants.RNASEQ))
-                && (!request.getRequestType().equals(Constants.RNASEQ) && !request.getRequestType().equals(Constants.OTHER));
+    public boolean shouldPrint(KickoffRequest request) {
+        return !(Utils.isExitLater() && !request.isInnovation() && !request.getRequestType().equals(RequestType.OTHER) && !request.getRequestType().equals(RequestType.RNASEQ))
+                && (!request.getRequestType().equals(RequestType.OTHER) && !request.getRequestType().equals(RequestType.RNASEQ));
     }
 
-    private Map<String, String> getPairingInfo(Request request) {
+    private Map<String, String> getPairingInfo(KickoffRequest request) {
         return pairingsResolver.resolve(request);
     }
 
-    private void printPairingExcel(Request request, String pairing_filename, Map<String, String> pair_Info, Set<String> missingNormalsToBeAdded) {
+    private void printPairingExcel(KickoffRequest request, String pairing_filename, Map<String, String> pair_Info, Set<String> missingNormalsToBeAdded) {
         new PairingXlsxPrinter(pairing_filename, pair_Info, missingNormalsToBeAdded).print(request);
     }
 }
