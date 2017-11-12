@@ -80,7 +80,8 @@ public class SampleInfo {
      * All fields of CMO Sample Level Info supersede sample data record fields<br> - Check to see if project is Xenograft and flag accordingly<br> - Add to
      * sample renames if necessary<br> - Check for genetically modified data record (*** More things need to be done if this is found, but have not yet been done***)
      **/
-    public SampleInfo(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample sample) {
+    public SampleInfo(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample
+            sample) {
         // Save logger
         this.valid_fields.addAll(base_fields);
 

@@ -107,11 +107,14 @@ public class RequestValidator {
                 DEV_LOGGER.error("No sequencing runs found for this Request ID.");
                 throw new RuntimeException("There are no sample level qc set.");
             } else if (kickoffRequest.isManualDemux()) {
-                PM_LOGGER.log(PmLogPriority.WARNING, "MANUAL DEMULTIPLEXING was performed. Nothing but the request file should be output.");
+                PM_LOGGER.log(PmLogPriority.WARNING, "MANUAL DEMULTIPLEXING was performed. Nothing but the request " +
+                        "file should be output.");
                 DEV_LOGGER.warn("MANUAL DEMULTIPLEXING was performed. Nothing but the request file should be output.");
             } else {
-                PM_LOGGER.log(PmLogPriority.WARNING, "ALERT: There are no sequencing runs passing QC for this run. Force is true, I will pull ALL samples for this project.");
-                DEV_LOGGER.warn("ALERT: There are no sequencing runs passing QC for this run. Force is true, I will pull ALL samples for this project.");
+                PM_LOGGER.log(PmLogPriority.WARNING, "ALERT: There are no sequencing runs passing QC for this run. " +
+                        "Force is true, I will pull ALL samples for this project.");
+                DEV_LOGGER.warn("ALERT: There are no sequencing runs passing QC for this run. Force is true, I will " +
+                        "pull ALL samples for this project.");
                 kickoffRequest.setProcessingType(new ForcedProcessingType());
             }
         }
@@ -143,10 +146,12 @@ public class RequestValidator {
 
     private void validateBarcodeInfo(KickoffRequest kickoffRequest) {
         for (Sample sample : kickoffRequest.getValidNonPooledNormalSamples().values()) {
-            if ((kickoffRequest.getRequestType() == RequestType.EXOME || kickoffRequest.getRequestType() == RequestType.IMPACT)
+            if ((kickoffRequest.getRequestType() == RequestType.EXOME || kickoffRequest.getRequestType() ==
+                    RequestType.IMPACT)
                     && sample.getRuns().values().stream().allMatch(r -> r.getSampleLevelQcStatus() == null)) {
                 Utils.setExitLater(true);
-                String message = String.format("Unable to get barcode for %s AKA: %s", sample.getIgoId(), sample.getCmoSampleId());
+                String message = String.format("Unable to get barcode for %s AKA: %s", sample.getIgoId(), sample
+                        .getCmoSampleId());
                 DEV_LOGGER.error(message);
                 PM_LOGGER.error(message);
 
@@ -162,7 +167,8 @@ public class RequestValidator {
 
     private void validateSampSpecificQc(KickoffRequest kickoffRequest) {
         //@TODO predicate chain?
-        Collection<Sample> nonPooledNormalUniqueSamples = kickoffRequest.getNonPooledNormalUniqueSamples(Sample::getCmoSampleId);
+        Collection<Sample> nonPooledNormalUniqueSamples = kickoffRequest.getNonPooledNormalUniqueSamples
+                (Sample::getCmoSampleId);
         for (Sample sample : nonPooledNormalUniqueSamples) {
             Collection<Run> runs = sample.getRuns().values();
             for (Run run : runs) {
@@ -172,13 +178,15 @@ public class RequestValidator {
                         PM_LOGGER.log(PmLogPriority.SAMPLE_INFO, message);
                         DEV_LOGGER.log(Level.INFO, message);
                     } else if (run.getSampleLevelQcStatus() == QcStatus.UNDER_REVIEW) {
-                        String message = String.format("Sample %s from RunID %s is still under review. I cannot guarantee this is DONE!", sample, run.getId());
+                        String message = String.format("Sample %s from RunID %s is still under review. I cannot " +
+                                "guarantee this is DONE!", sample, run.getId());
                         Utils.setExitLater(true);
                         PM_LOGGER.log(PmLogPriority.SAMPLE_ERROR, message);
                         DEV_LOGGER.log(Level.ERROR, message);
                         kickoffRequest.setMappingIssue(true);
                     } else {
-                        String message = String.format("Sample %s from RunID %s needed additional reads. This status should change when the extra reads are sequenced. Please check. ", sample, run);
+                        String message = String.format("Sample %s from RunID %s needed additional reads. This status " +
+                                "should change when the extra reads are sequenced. Please check. ", sample, run);
                         Utils.setExitLater(true);
                         PM_LOGGER.log(PmLogPriority.SAMPLE_ERROR, message);
                         DEV_LOGGER.log(Level.ERROR, message);
@@ -199,7 +207,8 @@ public class RequestValidator {
             for (Run run : pool.getRuns().values()) {
                 if (run.getPoolQcStatus() != QcStatus.PASSED) {
                     if (run.getPoolQcStatus() == QcStatus.FAILED || run.getPoolQcStatus() == QcStatus.FAILED_REPROCESS) {
-                        String message = "Skipping Run ID " + run.getId() + " because it did NOT pass Sequencing Analysis QC: " + run.getPoolQcStatus();
+                        String message = "Skipping Run ID " + run.getId() + " because it did NOT pass Sequencing " +
+                                "Analysis QC: " + run.getPoolQcStatus();
                         poolQCWarnings.add(new PriorityAwareLogMessage(PmLogPriority.POOL_INFO, message));
                         continue;
                     } else if (run.getPoolQcStatus() == QcStatus.UNDER_REVIEW) {
@@ -213,7 +222,8 @@ public class RequestValidator {
                         Utils.setExitLater(true);
                         kickoffRequest.setMappingIssue(true);
                     } else if (run.getPoolQcStatus() == null) {
-                        String message = "RunID " + run.getId() + " has no Sequencing QC Result field set in Sequencing Analysis QC Results record. Fill it in in LIMS.";
+                        String message = "RunID " + run.getId() + " has no Sequencing QC Result field set in " +
+                                "Sequencing Analysis QC Results record. Fill it in in LIMS.";
                         poolQCWarnings.add(new PriorityAwareLogMessage(PmLogPriority.POOL_ERROR, message));
                         Utils.setExitLater(true);
                         kickoffRequest.setMappingIssue(true);
@@ -285,7 +295,9 @@ public class RequestValidator {
         for (Sample sample : kickoffRequest.getSamples(s -> !s.isPooledNormal()).values()) {
             Set<Run> runsWithoutPostQc = sample.getRuns().values().stream().filter(r -> r.getPostQcStatus() == null).collect(Collectors.toSet());
             if (runsWithoutPostQc.size() > 0) {
-                String message = String.format("Sample %s has runs that do not have POST Sequencing QC. We won't be able to tell if they are failed or not: %s. They will still be added to the sample list.",
+                String message = String.format("Sample %s has runs that do not have POST Sequencing QC. We won't be " +
+                                "able to tell if they are failed or not: %s. They will still be added to the sample " +
+                                "list.",
                         sample.getCmoSampleId(), Arrays.toString(runsWithoutPostQc.toArray()));
                 PM_LOGGER.log(PmLogPriority.WARNING, message);
                 DEV_LOGGER.warn(message);
@@ -307,11 +319,13 @@ public class RequestValidator {
             }
         }
 
-        kickoffRequest.setReadmeInfo(String.format("%s %s", kickoffRequest.getReadMe(), kickoffRequest.getExtraReadMeInfo()));
+        kickoffRequest.setReadmeInfo(String.format("%s %s", kickoffRequest.getReadMe(), kickoffRequest
+                .getExtraReadMeInfo()));
     }
 
     private Collection<Sample> getSamplesWithSampleQc(KickoffRequest kickoffRequest) {
-        return kickoffRequest.getSamples(s -> s.getRuns().values().stream().anyMatch(r -> r.getSampleLevelQcStatus() == QcStatus.PASSED)).values();
+        return kickoffRequest.getSamples(s -> s.getRuns().values().stream().anyMatch(r -> r.getSampleLevelQcStatus()
+                == QcStatus.PASSED)).values();
     }
 
     private void validateSampleQcAgainstPoolQC(KickoffRequest kickoffRequest) {
@@ -375,7 +389,8 @@ public class RequestValidator {
         int numberOfValidNonNormalSamples = kickoffRequest.getValidNonPooledNormalSamples().size();
         if (numberOfValidNonNormalSamples == 0) {
             Utils.setExitLater(true);
-            String message = "None of the samples in the request were found in the passing samples and runs. Please check the LIMs to see if the names are incorrect.";
+            String message = "None of the samples in the request were found in the passing samples and runs. Please " +
+                    "check the LIMs to see if the names are incorrect.";
             PM_LOGGER.log(Level.ERROR, message);
             DEV_LOGGER.log(Level.ERROR, message);
         }

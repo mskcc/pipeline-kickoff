@@ -67,7 +67,8 @@ public class ProjectInfoRetriever {
         }
 
         try {
-            List<DataRecord> requests = drm.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestID + "'", apiUser);
+            List<DataRecord> requests = drm.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestID +
+                    "'", apiUser);
             List<String> projectFields = Arrays.asList(
                     Constants.ProjectInfo.LAB_HEAD,
                     Constants.ProjectInfo.LAB_HEAD_E_MAIL,
@@ -122,7 +123,8 @@ public class ProjectInfoRetriever {
                 if (!platforms.isEmpty()) {
                     projectInfo.put(Constants.ProjectInfo.PLATFORM, StringUtils.join(platforms, ","));
                 } else {
-                    projectInfo.put(Constants.ProjectInfo.PLATFORM, requestDataRecord.getPickListVal(VeloxConstants.REQUEST_NAME, apiUser));
+                    projectInfo.put(Constants.ProjectInfo.PLATFORM, requestDataRecord.getPickListVal(VeloxConstants
+                            .REQUEST_NAME, apiUser));
                 }
                 // ## Get Project Associated with it, print out necessary details
                 List<DataRecord> parents = requestDataRecord.getParentsOfType(VeloxConstants.PROJECT, apiUser);
@@ -130,23 +132,30 @@ public class ProjectInfoRetriever {
                     DataRecord parentRecord = parents.get(0);
 
                     projectInfo.put(Constants.ProjectInfo.IGO_PROJECT_ID, requestID);
-                    projectInfo.put(Constants.ProjectInfo.FINAL_PROJECT_TITLE, parentRecord.getStringVal("CMOFinalProjectTitle", apiUser));
-                    projectInfo.put(Constants.ProjectInfo.CMO_PROJECT_ID, parentRecord.getStringVal("CMOProjectID", apiUser));
+                    projectInfo.put(Constants.ProjectInfo.FINAL_PROJECT_TITLE, parentRecord.getStringVal
+                            ("CMOFinalProjectTitle", apiUser));
+                    projectInfo.put(Constants.ProjectInfo.CMO_PROJECT_ID, parentRecord.getStringVal("CMOProjectID",
+                            apiUser));
                     // From projct brief you have to take out the \n.
-                    projectInfo.put(Constants.ProjectInfo.CMO_PROJECT_BRIEF, parentRecord.getStringVal("CMOProjectBrief", apiUser).replace("\n", "").replace("\r", ""));
+                    projectInfo.put(Constants.ProjectInfo.CMO_PROJECT_BRIEF, parentRecord.getStringVal
+                            ("CMOProjectBrief", apiUser).replace("\n", "").replace("\r", ""));
                 }
 
-                projectInfo.put(Constants.ProjectInfo.PROJECT_MANAGER, requestDataRecord.getPickListVal("ProjectManager", apiUser));
-                projectInfo.put(Constants.ProjectInfo.PROJECT_MANAGER_EMAIL, String.valueOf(pmEmail.get(requestDataRecord.getPickListVal("ProjectManager", apiUser))));
+                projectInfo.put(Constants.ProjectInfo.PROJECT_MANAGER, requestDataRecord.getPickListVal
+                        ("ProjectManager", apiUser));
+                projectInfo.put(Constants.ProjectInfo.PROJECT_MANAGER_EMAIL, String.valueOf(pmEmail.get
+                        (requestDataRecord.getPickListVal("ProjectManager", apiUser))));
                 projectInfo.put(Constants.ProjectInfo.README_INFO, requestDataRecord.getStringVal("ReadMe", apiUser));
 
 
                 // ******************************* NEW FIELDS - will probably be moved
                 // Bioinformatic Request: FASTQ and BICAnalysis (bools, request specific)
-                projectInfo.put(Constants.ProjectInfo.BIOINFORMATIC_REQUEST, requestDataRecord.getPickListVal("DataDeliveryType", apiUser));
+                projectInfo.put(Constants.ProjectInfo.BIOINFORMATIC_REQUEST, requestDataRecord.getPickListVal
+                        ("DataDeliveryType", apiUser));
 
                 // Data Analyst, Data Analyst E-mail
-                projectInfo.put(Constants.ProjectInfo.DATA_ANALYST, requestDataRecord.getStringVal("DataAnalyst", apiUser));
+                projectInfo.put(Constants.ProjectInfo.DATA_ANALYST, requestDataRecord.getStringVal("DataAnalyst",
+                        apiUser));
                 projectInfo.put(Constants.ProjectInfo.DATA_ANALYST_EMAIL, requestDataRecord.getStringVal("DataAnalystEmail", apiUser));
 
                 // ******************************* END OF NEW FIELDS
@@ -154,8 +163,10 @@ public class ProjectInfoRetriever {
                 // Values saved because they will be used to remove duplicated emails in email child
                 String LabHeadEmail = requestDataRecord.getStringVal("LabHeadEmail", apiUser).toLowerCase();
                 String InvestigatorEmail = requestDataRecord.getStringVal("Investigatoremail", apiUser).toLowerCase();
-                String[] LabHeadName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("LaboratoryHead", apiUser)).split(" ", 2);
-                String[] RequesterName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("Investigator", apiUser)).split(" ", 2);
+                String[] LabHeadName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("LaboratoryHead",
+                        apiUser)).split(" ", 2);
+                String[] RequesterName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("Investigator",
+                        apiUser)).split(" ", 2);
 
                 if (LabHeadName.length > 1) {
                     projectInfo.put(Constants.ProjectInfo.LAB_HEAD, LabHeadName[1] + ", " + LabHeadName[0]);
@@ -197,7 +208,8 @@ public class ProjectInfoRetriever {
 
             return getTransformedProjectInfo(projectInfo);
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while retrieving project info for request: %s", requestID), e);
+            DEV_LOGGER.warn(String.format("Exception thrown while retrieving project info for request: %s",
+                    requestID), e);
         }
 
         return Collections.emptyMap();
@@ -230,9 +242,11 @@ public class ProjectInfoRetriever {
                     }
                 }
             } else {
-                List<DataRecord> kapaList = request.getDescendantsOfType(VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_1, apiUser);
+                List<DataRecord> kapaList = request.getDescendantsOfType(VeloxConstants
+                        .KAPA_AGILENT_CAPTURE_PROTOCOL_1, apiUser);
                 String requestName = request.getPickListVal(VeloxConstants.REQUEST_NAME, apiUser);
-                if (requestName.contains(VeloxConstants.EXOME) || requestName.equals(org.mskcc.util.Constants.WES) || kapaList.size() != 0) {
+                if (requestName.contains(VeloxConstants.EXOME) || requestName.equals(org.mskcc.util.Constants.WES) ||
+                        kapaList.size() != 0) {
                     reqType = RequestType.EXOME;
                     // For each kapa record, grab the capture type
                     List<Object> baitSets = drm.getValueList(kapaList, VeloxConstants.AGILENT_CAPTURE_KIT, apiUser);

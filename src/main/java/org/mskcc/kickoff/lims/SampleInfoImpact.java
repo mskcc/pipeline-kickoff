@@ -57,7 +57,8 @@ public class SampleInfoImpact extends SampleInfo {
      * @see #getSpreadOutInfo
      * @see #addPooledNormalDefaults
      **/
-    public SampleInfoImpact(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample sample) {
+    public SampleInfoImpact(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest,
+                            Sample sample) {
         super(apiUser, drm, rec, kickoffRequest, sample);
         getSpreadOutInfo(apiUser, drm, rec, kickoffRequest, sample);
         if (sample.isPooledNormal()) {
@@ -110,9 +111,11 @@ public class SampleInfoImpact extends SampleInfo {
         DEV_LOGGER.info(String.format("INCLUDE RUN ID: %s", this.INCLUDE_RUN_ID));
     }
 
-    private String getPooledNormalRuns(DataRecord rec, User apiUser, DataRecordManager drm, KickoffRequest kickoffRequest) {
+    private String getPooledNormalRuns(DataRecord rec, User apiUser, DataRecordManager drm, KickoffRequest
+            kickoffRequest) {
         Set<String> allRunIds = new HashSet<>();
-        Set<Run> runs = kickoffRequest.getAllValidSamples().values().stream().flatMap(s -> s.getValidRuns().stream()).collect(Collectors.toSet());
+        Set<Run> runs = kickoffRequest.getAllValidSamples().values().stream().flatMap(s -> s.getValidRuns().stream())
+                .collect(Collectors.toSet());
         for (Run run : runs) {
             allRunIds.add(run.getId());
         }
@@ -235,7 +238,8 @@ public class SampleInfoImpact extends SampleInfo {
         fieldDefaults.put("TissueLocation", "na");
     }
 
-    void getSpreadOutInfo(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample sample) {
+    void getSpreadOutInfo(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample
+            sample) {
         // Spread out information available for IMPACT includes this.BARCODE_ID, this.BARCODE_INDEX
         // this.LIBRARY_YIELD this.LIBRARY_INPUT
         // this.CAPTURE_NAME this.CAPTURE_CONCENTRATION
@@ -851,7 +855,9 @@ public class SampleInfoImpact extends SampleInfo {
                 }
             }
             if (chosenRec == null) {
-                logError(String.format("No VALID NimblgenHybridizationProtocol DataRecord found for %s(%s). %s The baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ", this.CMO_SAMPLE_ID, this.IGO_ID, poolNameList));
+                logError(String.format("No VALID NimblgenHybridizationProtocol DataRecord found for %s(%s). %s The " +
+                        "baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ", this
+                        .CMO_SAMPLE_ID, this.IGO_ID, poolNameList));
                 return;
             }
         }
@@ -923,7 +929,8 @@ public class SampleInfoImpact extends SampleInfo {
             List<DataRecord> nymbSiblingSamples = Arrays.asList(nymbParentSamples.getChildrenOfType(VeloxConstants.SAMPLE, apiUser));
             for (DataRecord nymbSiblingSample : nymbSiblingSamples) {
                 // HERE check tos ee if it was added ot a flowcell?
-                List<DataRecord> flowCellLanes = nymbSiblingSample.getDescendantsOfType(VeloxConstants.FLOW_CELL_LANE, apiUser);
+                List<DataRecord> flowCellLanes = nymbSiblingSample.getDescendantsOfType(VeloxConstants
+                        .FLOW_CELL_LANE, apiUser);
 
                 if (flowCellLanes == null || flowCellLanes.size() == 0)
                     continue;
@@ -939,7 +946,8 @@ public class SampleInfoImpact extends SampleInfo {
         }
     }
 
-    private void addPooledNormal(User apiUser, DataRecord nymbSiblingSample, DataRecord parentSample) throws NotFound, RemoteException {
+    private void addPooledNormal(User apiUser, DataRecord nymbSiblingSample, DataRecord parentSample) throws
+            NotFound, RemoteException {
         String pooledNormalId = nymbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
 
         if (!pooledNormals.containsKey(parentSample))

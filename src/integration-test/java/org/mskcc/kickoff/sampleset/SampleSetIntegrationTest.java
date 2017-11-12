@@ -36,12 +36,12 @@ import static org.mockito.Mockito.mock;
 
 public class SampleSetIntegrationTest {
     private static final Log LOG = LogFactory.getLog(SampleSetIntegrationTest.class);
-    private static String connectionFile = "src/integration-test/resources/Connection-dev.txt";
-    private static String connectionFileTest = "src/integration-test/resources/Connection-test.txt";
-    private final int recordId_02756_b = 278777;
-    private final String reqId_02756_b = "02756_B";
+    private static String connectionFile = "/Connection-dev.txt";
+    private static String connectionFileTest = "/Connection-test.txt";
+    private final int recordId_03498_D = 278959;
+    private final String reqId_03498_D = "03498_D";
     private final String reqId_04252_J = "04252_J";
-    private final int sampleRecordId_02756_b_1 = 278822;
+    private final int sampleRecordId_03498_D_1 = 279030;
     private String validSampleSetId;
     private String designFilePath = "/ifs/projects/CMO/targets/designs";
     private String resultsPathPrefix = "/ifs/solres/seq";
@@ -50,30 +50,35 @@ public class SampleSetIntegrationTest {
     private RequestDataPropagator reqDataPropagator = new RequestDataPropagator(designFilePath, resultsPathPrefix);
     private SampleSetProjectInfoConverter projInfoConv = new SampleSetProjectInfoConverter();
     private SampleSetToRequestConverter sampleSetToReqConv = new SampleSetToRequestConverter(projInfoConv);
-    private RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever, reqDataPropagator, sampleSetToReqConv);
-    private VeloxProjectProxy veloxProjectProxy = new VeloxProjectProxy(connectionFile, archiverMock, requestsRetrieverFactory);
+    private RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever,
+            reqDataPropagator, sampleSetToReqConv);
+    private VeloxProjectProxy veloxProjectProxy;
     private DataRecord sampleSetRecord;
     private VeloxConnection connection;
     private DataRecordManager dataRecordManager;
     private User user;
     private String request_05667_AB = "05667_AB";
     private String request_05667_AT = "05667_AT";
-    private String request_05600 = "05600";
-    private String request_04298_D = "04298_D";
 
     @Before
     public void setUp() throws Exception {
-        connection = new VeloxConnection(connectionFileTest);
+        veloxProjectProxy = new VeloxProjectProxy(getResourceFile(connectionFile), archiverMock,
+                requestsRetrieverFactory);
+        connection = new VeloxConnection(getResourceFile(connectionFileTest));
         openConnection();
     }
 
     @After
     public void tearDown() throws Exception {
-        if(sampleSetRecord != null) {
+        if (sampleSetRecord != null) {
             dataRecordManager.deleteDataRecords(Arrays.asList(sampleSetRecord), null, true, user);
             dataRecordManager.storeAndCommit(String.format("Sample Set deleted: %s", validSampleSetId), user);
         }
         closeConnection();
+    }
+
+    private String getResourceFile(String connectionFile) throws Exception {
+        return SampleSetIntegrationTest.class.getResource(connectionFile).getPath();
     }
 
     @Test
@@ -100,10 +105,10 @@ public class SampleSetIntegrationTest {
 
     @Test
     public void whenSampleSetHasOneRequestAndNoPrimaryRequestSet_shouldThrowAnException() throws Exception {
-        List<String> requests = Arrays.asList(reqId_02756_b);
+        List<String> requests = Arrays.asList(reqId_03498_D);
 
         addSampleSetRecord(requests);
-        addChildToSampleSet(recordId_02756_b);
+        addChildToSampleSet(recordId_03498_D);
         store();
 
         Optional<Exception> exception = TestUtils.assertThrown(() -> veloxProjectProxy.getRequest(validSampleSetId));
@@ -112,12 +117,13 @@ public class SampleSetIntegrationTest {
     }
 
     @Test
-    public void whenSampleSetHasOneRequestWhichIsPrimaryRequest_shouldReturnRequestWithSamplesFromThisRequest() throws Exception {
-        List<String> requests = Arrays.asList(reqId_02756_b);
+    public void whenSampleSetHasOneRequestWhichIsPrimaryRequest_shouldReturnRequestWithSamplesFromThisRequest()
+            throws Exception {
+        List<String> requests = Arrays.asList(reqId_03498_D);
 
         addSampleSetRecord(requests);
-        DataRecord reqRecord = addChildToSampleSet(recordId_02756_b);
-        addPrimaryRequest(reqId_02756_b);
+        DataRecord reqRecord = addChildToSampleSet(recordId_03498_D);
+        addPrimaryRequest(reqId_03498_D);
         store();
 
         KickoffRequest request = veloxProjectProxy.getRequest(validSampleSetId);
@@ -126,12 +132,13 @@ public class SampleSetIntegrationTest {
     }
 
     @Test
-    public void whenSampleSetHasOneSampleFromRequestWhichIsPrimaryRequest_shouldReturnRequestWithOneSample() throws Exception {
-        List<String> requests = Arrays.asList(reqId_02756_b);
+    public void whenSampleSetHasOneSampleFromRequestWhichIsPrimaryRequest_shouldReturnRequestWithOneSample() throws
+            Exception {
+        List<String> requests = Arrays.asList(reqId_03498_D);
 
         addSampleSetRecord(requests);
-        addChildToSampleSet(sampleRecordId_02756_b_1);
-        addPrimaryRequest(reqId_02756_b);
+        addChildToSampleSet(sampleRecordId_03498_D_1);
+        addPrimaryRequest(reqId_03498_D);
         store();
 
         KickoffRequest request = veloxProjectProxy.getRequest(validSampleSetId);
@@ -141,32 +148,34 @@ public class SampleSetIntegrationTest {
 
     @Test
     public void whenSampleSetHasOneSampleFromRequestWhichIsNotPrimaryRequest_shouldThrowException() throws Exception {
-        List<String> requests = Arrays.asList(reqId_02756_b);
+        List<String> requests = Arrays.asList(reqId_03498_D);
 
         addSampleSetRecord(requests);
-        addChildToSampleSet(sampleRecordId_02756_b_1);
+        addChildToSampleSet(sampleRecordId_03498_D_1);
         addPrimaryRequest(reqId_04252_J);
         store();
 
         Optional<Exception> exception = TestUtils.assertThrown(() -> veloxProjectProxy.getRequest(validSampleSetId));
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter.PrimaryRequestNotPartOfSampleSetException.class));
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter
+                .PrimaryRequestNotPartOfSampleSetException.class));
     }
 
     @Test
     public void whenSampleSetPrimaryRequestIsNotPartOfSet_shouldThrowAnException() throws Exception {
-        List<String> requests = Arrays.asList(reqId_02756_b);
+        List<String> requests = Arrays.asList(reqId_03498_D);
 
         addSampleSetRecord(requests);
-        addChildToSampleSet(recordId_02756_b);
+        addChildToSampleSet(recordId_03498_D);
         addPrimaryRequest(reqId_04252_J);
         store();
 
         Optional<Exception> exception = TestUtils.assertThrown(() -> veloxProjectProxy.getRequest(validSampleSetId));
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter.PrimaryRequestNotPartOfSampleSetException.class));
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter
+                .PrimaryRequestNotPartOfSampleSetException.class));
     }
 
     @Test
@@ -188,12 +197,14 @@ public class SampleSetIntegrationTest {
     }
 
     private List<DataRecord> getSamplesFromRequest(String requestId) throws Exception {
-        List<DataRecord> dataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestId + "'", user);
+        List<DataRecord> dataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" +
+                requestId + "'", user);
         return getSamplesFromRequest(dataRecords.get(0));
     }
 
     private void addRequestToSampleSet(String requestId) throws Exception {
-        List<DataRecord> dataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestId + "'", user);
+        List<DataRecord> dataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" +
+                requestId + "'", user);
 
         sampleSetRecord.addChild(dataRecords.get(0), user);
     }

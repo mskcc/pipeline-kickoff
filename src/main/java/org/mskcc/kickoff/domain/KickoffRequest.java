@@ -22,6 +22,7 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     private String outputPath = "";
     private List<PairingInfo> pairingInfos = new ArrayList<>();
     private boolean pairingError;
+    private String rerunReason;
 
     public KickoffRequest(String id, ProcessingType processingType) {
         super(id);
@@ -58,7 +59,7 @@ public class KickoffRequest extends org.mskcc.domain.Request {
 
     private Map<String, Sample> getAllSamples(Predicate<Sample> samplePredicate) {
         return getSamples(samplePredicate).entrySet().stream()
-                .collect(CommonUtils.getLinkedHashMapCollector()    );
+                .collect(CommonUtils.getLinkedHashMapCollector());
     }
 
     public boolean hasValidSamples() {
@@ -179,5 +180,13 @@ public class KickoffRequest extends org.mskcc.domain.Request {
 
     public void setPairingError(boolean pairingError) {
         this.pairingError = pairingError;
+    }
+
+    public String getRerunReason() {
+        return rerunReason;
+    }
+
+    public void setRerunReason(String rerunReason) {
+        this.rerunReason = rerunReason;
     }
 }

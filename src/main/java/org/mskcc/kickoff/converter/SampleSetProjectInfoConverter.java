@@ -54,19 +54,23 @@ public class SampleSetProjectInfoConverter {
         if (assayPathsForAssay.size() > 0)
             projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, assayPathsForAssay.get(0));
         else
-            DEV_LOGGER.warn(String.format("No Assay path found for assay: %s specified in sample set: %s", sampleSet.getBaitSet(), sampleSet.getName()));
+            DEV_LOGGER.warn(String.format("No Assay path found for assay: %s specified in sample set: %s", sampleSet
+                    .getBaitSet(), sampleSet.getName()));
     }
 
-    private void setPropertyFromPrimaryRequest(SampleSet sampleSet, Map<String, String> projectInfo, String propertyName) {
+    private void setPropertyFromPrimaryRequest(SampleSet sampleSet, Map<String, String> projectInfo, String
+            propertyName) {
         projectInfo.put(propertyName, getPropertyFromPrimaryRequest(sampleSet, propertyName));
     }
 
     private String getLabHead(SampleSet sampleSet) {
-        return ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.LAB_HEAD), Constants.ProjectInfo.LAB_HEAD);
+        return ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getProjectInfo().get(Constants
+                .ProjectInfo.LAB_HEAD), Constants.ProjectInfo.LAB_HEAD);
     }
 
     private String getLabHeadEmail(SampleSet sampleSet) {
-        return ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.LAB_HEAD_E_MAIL), Constants.ProjectInfo.LAB_HEAD_E_MAIL);
+        return ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getProjectInfo().get(Constants
+                .ProjectInfo.LAB_HEAD_E_MAIL), Constants.ProjectInfo.LAB_HEAD_E_MAIL);
     }
 
     private String getRequestor(SampleSet sampleSet) {
@@ -82,7 +86,8 @@ public class SampleSetProjectInfoConverter {
     }
 
     private String getAlternateEmails(SampleSet sampleSet) {
-        return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.ALTERNATE_EMAILS), ",");
+        return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo
+                .ALTERNATE_EMAILS), ",");
     }
 
     private String getIgoProjectId(SampleSet sampleSet) {
@@ -114,7 +119,8 @@ public class SampleSetProjectInfoConverter {
 
         KickoffRequest primeKickoffRequest = sampleSet.getRequestIdToRequest().get(primaryRequestId);
         if (!primeKickoffRequest.getProjectInfo().containsKey(propertyName))
-            throw new PropertyInPrimaryRequestNotSetException(String.format("Primary request: %s of project: %s has no property: %s set", primeKickoffRequest.getId(), sampleSet.getName(), propertyName));
+            throw new PropertyInPrimaryRequestNotSetException(String.format("Primary request: %s of project: %s has " +
+                    "no property: %s set", primeKickoffRequest.getId(), sampleSet.getName(), propertyName));
 
         return primeKickoffRequest.getProjectInfo().get(propertyName);
     }
@@ -122,10 +128,12 @@ public class SampleSetProjectInfoConverter {
     private void validatePrimaryRequest(SampleSet sampleSet) {
         String primaryRequestId = sampleSet.getPrimaryRequestId();
         if (StringUtils.isEmpty(primaryRequestId))
-            throw new PrimaryRequestNotSetException(String.format("Primary request not set for project: %s", sampleSet.getName()));
+            throw new PrimaryRequestNotSetException(String.format("Primary request not set for project: %s",
+                    sampleSet.getName()));
 
         if (!sampleSet.getRequestIdToRequest().containsKey(primaryRequestId))
-            throw new PrimaryRequestNotPartOfSampleSetException(String.format("Primary request: %s for project: %s is not part of this project", primaryRequestId, sampleSet.getName()));
+            throw new PrimaryRequestNotPartOfSampleSetException(String.format("Primary request: %s for project: %s is" +
+                    " not part of this project", primaryRequestId, sampleSet.getName()));
     }
 
     private String getCmoProjectBrief(SampleSet sampleSet) {
@@ -141,15 +149,18 @@ public class SampleSetProjectInfoConverter {
     }
 
     private String getReadmeInfo(SampleSet sampleSet) {
-        return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.README_INFO), ",");
+        return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo
+                .README_INFO), ",");
     }
 
     private String getDataAnalyst(SampleSet sampleSet) {
-        return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.DATA_ANALYST), ",");
+        return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo
+                .DATA_ANALYST), ",");
     }
 
     private String getDataAnalystEmail(SampleSet sampleSet) {
-        return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.DATA_ANALYST_EMAIL), ",");
+        return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo
+                .DATA_ANALYST_EMAIL), ",");
     }
 
     private String getNumberOfSamples(SampleSet sampleSet) {
@@ -167,7 +178,8 @@ public class SampleSetProjectInfoConverter {
     }
 
     private String getSpecies(SampleSet sampleSet) {
-        return ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo.SPECIES), Constants.ProjectInfo.SPECIES);
+        return ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getProjectInfo().get(Constants
+                .ProjectInfo.SPECIES), Constants.ProjectInfo.SPECIES);
     }
 
     private String getBioinformaticRequest(SampleSet sampleSet) {
@@ -175,7 +187,8 @@ public class SampleSetProjectInfoConverter {
     }
 
     private void setOptionalProjectProperty(Map<String, String> projectInfo, SampleSet sampleSet, String propertyName) {
-        Optional<String> optionalProperty = ConverterUtils.getOptionalProperty(sampleSet, r -> r.getProjectInfo().get(propertyName), propertyName);
+        Optional<String> optionalProperty = ConverterUtils.getOptionalProperty(sampleSet, r -> r.getProjectInfo().get
+                (propertyName), propertyName);
 
         if (optionalProperty.isPresent())
             projectInfo.put(propertyName, optionalProperty.get());

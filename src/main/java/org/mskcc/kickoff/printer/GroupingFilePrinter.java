@@ -27,7 +27,8 @@ public class GroupingFilePrinter implements FilePrinter {
     private final DecimalFormat groupNumberFormat = new DecimalFormat("000");
 
     public void print(KickoffRequest kickoffRequest) {
-        String filename = String.format("%s/%s_sample_grouping.txt", kickoffRequest.getOutputPath(), Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
+        String filename = String.format("%s/%s_sample_grouping.txt", kickoffRequest.getOutputPath(), Utils
+                .getFullProjectNameWithPrefix(kickoffRequest.getId()));
 
         StringBuilder outputText = new StringBuilder();
 
@@ -73,7 +74,8 @@ public class GroupingFilePrinter implements FilePrinter {
     public boolean shouldPrint(KickoffRequest request) {
         boolean patientsExist = doPatientsExist(request);
         return patientsExist
-                && !(Utils.isExitLater() && !request.isInnovation() && request.getRequestType() != RequestType.OTHER && request.getRequestType() != RequestType.RNASEQ)
+                && !(Utils.isExitLater() && !request.isInnovation() && request.getRequestType() != RequestType.OTHER
+                && request.getRequestType() != RequestType.RNASEQ)
                 && (request.getRequestType() != RequestType.RNASEQ && request.getRequestType() != RequestType.OTHER);
     }
 }

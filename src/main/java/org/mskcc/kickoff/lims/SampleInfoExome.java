@@ -17,7 +17,8 @@ public class SampleInfoExome extends SampleInfoImpact {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private Map<String, String> baitSetToDesignFileMapping;
 
-    public SampleInfoExome(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample sample) {
+    public SampleInfoExome(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample
+            sample) {
         super(apiUser, drm, rec, kickoffRequest, sample);
     }
 
@@ -32,7 +33,8 @@ public class SampleInfoExome extends SampleInfoImpact {
     }
 
     @Override
-    protected void getSpreadOutInfo(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample sample) {
+    protected void getSpreadOutInfo(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest
+            kickoffRequest, Sample sample) {
         // Spread out information available for IMPACT includes this.BARCODE_ID, this.BARCODE_INDEX
         // this.LIBRARY_YIELD this.LIBRARY_INPUT
         // this.CAPTURE_NAME this.CAPTURE_CONCENTRATION
@@ -74,7 +76,8 @@ public class SampleInfoExome extends SampleInfoImpact {
                 }
             }
 
-            double libConc = getLibraryConcentration(rec, drm, apiUser, sample.isTransfer(), VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_1);
+            double libConc = getLibraryConcentration(rec, drm, apiUser, sample.isTransfer(), VeloxConstants
+                    .KAPA_AGILENT_CAPTURE_PROTOCOL_1);
             if (libVol <= 0 && (this.LIBRARY_YIELD == null || this.LIBRARY_YIELD.startsWith("#"))) {
                 // No matter what I cannot get LIBRARY_YIELD
                 this.LIBRARY_YIELD = "-2";
@@ -101,8 +104,10 @@ public class SampleInfoExome extends SampleInfoImpact {
         List<List<Map<String, Object>>> kapa2FieldsList = null;
         try {
             requestAsList.add(rec);
-            kapa1FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, KAPA_AGILENT_CAPTURE_PROTOCOL_1, apiUser);
-            kapa2FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, KAPA_AGILENT_CAPTURE_PROTOCOL_2, apiUser);
+            kapa1FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, KAPA_AGILENT_CAPTURE_PROTOCOL_1,
+                    apiUser);
+            kapa2FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, KAPA_AGILENT_CAPTURE_PROTOCOL_2,
+                    apiUser);
         } catch (Exception e) {
             DEV_LOGGER.error("Exception thrown while retrieving information about process capture", e);
         }
@@ -143,7 +148,8 @@ public class SampleInfoExome extends SampleInfoImpact {
                             continue;
                         }
                     } else {
-                        // if KAPA2 isn't being used, make sure KAPA 1 is valid and then pull all the info you need from it.
+                        // if KAPA2 isn't being used, make sure KAPA 1 is valid and then pull all the info you need
+                        // from it.
                         if (!kapa1Map.containsKey(VALID) || kapa1Map.get(VALID) == null || !(Boolean) kapa1Map.get(VALID)) {
                             continue;
                         }

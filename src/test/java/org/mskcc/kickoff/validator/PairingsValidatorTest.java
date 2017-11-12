@@ -14,7 +14,8 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 
 public class PairingsValidatorTest {
-    private final PairingsValidator pairingsValidator = new PairingsValidator((t, n) -> t.getIgoId().startsWith("valid") && n.getIgoId().startsWith("valid"));
+    private final PairingsValidator pairingsValidator = new PairingsValidator((t, n) -> t.getIgoId().startsWith
+            ("valid") && n.getIgoId().startsWith("valid"));
     private KickoffRequest request;
 
     @Before

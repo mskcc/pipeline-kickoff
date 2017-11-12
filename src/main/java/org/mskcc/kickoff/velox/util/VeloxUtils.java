@@ -25,7 +25,8 @@ public class VeloxUtils {
             username = connectionElements[2].replace("User: ", "");
             password = connectionElements[3].replace("Password: ", "");
             guid = connectionElements[4].trim().replace("GUID: ", "");
-            devLogger.warn(String.format("Connecting to lims using parameters: host: %s, port: %s, username: %s", host, port, username));
+            devLogger.warn(String.format("Connecting to lims using parameters: host: %s, port: %s, username: %s",
+                    host, port, username));
         } catch (IOException ioe) {
             devLogger.warn(String.format("Cannot read connection file: %s", connectionFilePath), ioe);
         }

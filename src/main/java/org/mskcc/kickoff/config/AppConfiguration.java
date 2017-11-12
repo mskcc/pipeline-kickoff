@@ -78,7 +78,8 @@ public class AppConfiguration {
 
     @Bean
     public Predicate<String> projectNamePredicate() {
-        return new ProjectNamePredicate(sampleSetProjectPredicate(), sampleSetNamePredicate(), singleRequestNamePredicate());
+        return new ProjectNamePredicate(sampleSetProjectPredicate(), sampleSetNamePredicate(),
+                singleRequestNamePredicate());
     }
 
     @Bean
@@ -166,7 +167,8 @@ public class AppConfiguration {
 
     @Bean
     public RequestsRetrieverFactory requestsRetrieverFactory() {
-        return new RequestsRetrieverFactory(projectInfoRetriever(), requestDataPropagator(), sampleSetToRequestConverter());
+        return new RequestsRetrieverFactory(projectInfoRetriever(), requestDataPropagator(),
+                sampleSetToRequestConverter());
     }
 
     @Bean
