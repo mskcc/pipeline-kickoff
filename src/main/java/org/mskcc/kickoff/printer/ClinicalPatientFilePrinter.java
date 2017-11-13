@@ -63,7 +63,8 @@ public abstract class ClinicalPatientFilePrinter implements FilePrinter {
             try {
                 outputText = filterToAscii(outputText);
 
-                String filename = String.format("%s/%s%s", kickoffRequest.getOutputPath(), Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()), getOutputFilenameEnding());
+                String filename = String.format("%s/%s%s", kickoffRequest.getOutputPath(), Utils
+                        .getFullProjectNameWithPrefix(kickoffRequest.getId()), getOutputFilenameEnding());
                 File outputFile = new File(filename);
                 PrintWriter pW = new PrintWriter(new FileWriter(outputFile, false), false);
                 pW.write(outputText);
@@ -77,7 +78,8 @@ public abstract class ClinicalPatientFilePrinter implements FilePrinter {
     @Override
     public boolean shouldPrint(KickoffRequest request) {
         return (request.getRequestType() != RequestType.RNASEQ && request.getRequestType() != RequestType.OTHER)
-                && !(Utils.isExitLater() && !request.isInnovation() && request.getRequestType() != RequestType.OTHER && request.getRequestType() != RequestType.RNASEQ);
+                && !(Utils.isExitLater() && !request.isInnovation() && request.getRequestType() != RequestType.OTHER
+                && request.getRequestType() != RequestType.RNASEQ);
     }
 
     protected abstract String getManualHeader();

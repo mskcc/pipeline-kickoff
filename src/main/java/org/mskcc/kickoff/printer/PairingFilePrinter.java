@@ -70,15 +70,18 @@ public class PairingFilePrinter implements FilePrinter {
 
     @Override
     public boolean shouldPrint(KickoffRequest request) {
-        return !(Utils.isExitLater() && !request.isInnovation() && !request.getRequestType().equals(RequestType.OTHER) && !request.getRequestType().equals(RequestType.RNASEQ))
-                && (!request.getRequestType().equals(RequestType.OTHER) && !request.getRequestType().equals(RequestType.RNASEQ));
+        return !(Utils.isExitLater() && !request.isInnovation() && !request.getRequestType().equals(RequestType
+                .OTHER) && !request.getRequestType().equals(RequestType.RNASEQ))
+                && (!request.getRequestType().equals(RequestType.OTHER) && !request.getRequestType().equals
+                (RequestType.RNASEQ));
     }
 
     private Map<String, String> getPairingInfo(KickoffRequest request) {
         return pairingsResolver.resolve(request);
     }
 
-    private void printPairingExcel(KickoffRequest request, String pairing_filename, Map<String, String> pair_Info, Set<String> missingNormalsToBeAdded) {
+    private void printPairingExcel(KickoffRequest request, String pairing_filename, Map<String, String> pair_Info,
+                                   Set<String> missingNormalsToBeAdded) {
         new PairingXlsxPrinter(pairing_filename, pair_Info, missingNormalsToBeAdded).print(request);
     }
 }

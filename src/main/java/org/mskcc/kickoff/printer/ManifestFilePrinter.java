@@ -30,7 +30,8 @@ public class ManifestFilePrinter implements FilePrinter  {
 
     @Override
     public void print(KickoffRequest kickoffRequest) {
-        String filename = String.format("%s/%s_sample_manifest.txt", kickoffRequest.getOutputPath(), Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
+        String filename = String.format("%s/%s_sample_manifest.txt", kickoffRequest.getOutputPath(), Utils
+                .getFullProjectNameWithPrefix(kickoffRequest.getId()));
 
         try {
             char[] alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
@@ -87,9 +88,11 @@ public class ManifestFilePrinter implements FilePrinter  {
                 if (header.size() > MAX_HEADER_SIZE) {
                     int firstLetter = header.size() / MAX_HEADER_SIZE;
                     int remainder = header.size() - (MAX_HEADER_SIZE * firstLetter);
-                    lastSpot = alphabet[firstLetter - 1] + alphabet[remainder - 1] + String.valueOf(kickoffRequest.getUniqueSamplesByCmoIdLastWin().size() + 1);
+                    lastSpot = alphabet[firstLetter - 1] + alphabet[remainder - 1] + String.valueOf(kickoffRequest
+                            .getUniqueSamplesByCmoIdLastWin().size() + 1);
                 } else {
-                    lastSpot = alphabet[header.size() - 1] + String.valueOf(kickoffRequest.getUniqueSamplesByCmoIdLastWin().size() + 1);
+                    lastSpot = alphabet[header.size() - 1] + String.valueOf(kickoffRequest
+                            .getUniqueSamplesByCmoIdLastWin().size() + 1);
                 }
                 CellRangeAddress[] regions = {CellRangeAddress.valueOf("A1:" + lastSpot)};
 
@@ -111,7 +114,8 @@ public class ManifestFilePrinter implements FilePrinter  {
         return Utils.addRowToSheet(wb, sampleInfoSheet, header, rowNum, Constants.EXCEL_ROW_TYPE_HEADER);
     }
 
-    public XSSFSheet addRowToSheet(XSSFSheet sheet, Map<String, String> map, int rowNum, KickoffRequest kickoffRequest) {
+    public XSSFSheet addRowToSheet(XSSFSheet sheet, Map<String, String> map, int rowNum, KickoffRequest
+            kickoffRequest) {
         try {
             ArrayList<String> header = new ArrayList<>(hashMapHeader);
             // If this is the old mapping scheme, don't make the CMO Sample ID include IGO ID.
@@ -146,6 +150,7 @@ public class ManifestFilePrinter implements FilePrinter  {
     @Override
     public boolean shouldPrint(KickoffRequest request) {
         return (request.getRequestType() != RequestType.RNASEQ && request.getRequestType() != RequestType.OTHER)
-                && !(Utils.isExitLater() && !request.isInnovation() && request.getRequestType() != RequestType.OTHER && request.getRequestType() != RequestType.RNASEQ);
+                && !(Utils.isExitLater() && !request.isInnovation() && request.getRequestType() != RequestType.OTHER
+                && request.getRequestType() != RequestType.RNASEQ);
     }
 }

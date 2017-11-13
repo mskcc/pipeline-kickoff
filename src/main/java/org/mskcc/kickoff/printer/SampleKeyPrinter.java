@@ -158,7 +158,8 @@ public class SampleKeyPrinter implements FilePrinter  {
 
     @Override
     public boolean shouldPrint(KickoffRequest request) {
-        return request.getRequestType() == RequestType.RNASEQ && !request.getLibTypes().contains(LibType.TRU_SEQ_FUSION_DISCOVERY) && request.getAllValidSamples().size() > 1;
+        return request.getRequestType() == RequestType.RNASEQ && !request.getLibTypes().contains(LibType
+                .TRU_SEQ_FUSION_DISCOVERY) && request.getAllValidSamples().size() > 1;
     }
 
     private XSSFSheet addRowToSheet(XSSFWorkbook wb, XSSFSheet sheet, ArrayList<String> list, int rowNum, String type) {

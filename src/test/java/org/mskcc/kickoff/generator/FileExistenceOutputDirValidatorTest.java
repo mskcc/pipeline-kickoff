@@ -10,7 +10,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class FileExistenceOutputDirValidatorTest {
-    private final FileExistenceOutputDirValidator fileExistenceOutputDirValidator = new FileExistenceOutputDirValidator();
+    private final FileExistenceOutputDirValidator fileExistenceOutputDirValidator = new
+            FileExistenceOutputDirValidator();
 
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();

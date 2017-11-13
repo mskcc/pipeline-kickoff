@@ -46,7 +46,8 @@ class SampleSetRetriever {
         return kickoffRequests;
     }
 
-    private Collection<KickoffRequest> convertToRequests(Collection<Sample> samples, ProcessingType processingType) throws Exception {
+    private Collection<KickoffRequest> convertToRequests(Collection<Sample> samples, ProcessingType processingType)
+            throws Exception {
         return samplesToRequestsConverter.convert(samples, processingType).values();
     }
 }

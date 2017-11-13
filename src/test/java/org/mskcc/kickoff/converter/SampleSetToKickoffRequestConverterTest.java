@@ -33,10 +33,12 @@ public class SampleSetToKickoffRequestConverterTest {
     private static int id = 0;
     private final ProjectFilesArchiver projectFilesArchiver = mock(ProjectFilesArchiver.class);
     private final NormalProcessingType normalProcessingType = new NormalProcessingType(projectFilesArchiver);
-    private final SampleSetProjectInfoConverter sampleSetProjectInfoConverterMock = mock(SampleSetProjectInfoConverter.class);
+    private final SampleSetProjectInfoConverter sampleSetProjectInfoConverterMock = mock
+            (SampleSetProjectInfoConverter.class);
     private final Sample sample1 = new Sample("sample1");
     private final Sample sample2 = new Sample("sample2");
-    private SampleSetToRequestConverter sampleSetToRequestConverter = new SampleSetToRequestConverter(sampleSetProjectInfoConverterMock);
+    private SampleSetToRequestConverter sampleSetToRequestConverter = new SampleSetToRequestConverter
+            (sampleSetProjectInfoConverterMock);
     private SampleSet sampleSet;
 
     @Before
@@ -46,7 +48,8 @@ public class SampleSetToKickoffRequestConverterTest {
 
     @Test
     public void whenOneRequestIsForced_shouldProjectBeForced() {
-        sampleSet.setRequests(Arrays.asList(getForcedImpactRequest(), getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest()));
+        sampleSet.setRequests(Arrays.asList(getForcedImpactRequest(), getNormalImpactHumanPiRequest(),
+                getNormalImpactHumanPiRequest()));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
         assertThat(request.getProcessingType().getClass(), typeCompatibleWith(ForcedProcessingType.class));
@@ -54,7 +57,8 @@ public class SampleSetToKickoffRequestConverterTest {
 
     @Test
     public void whenAllRequestsAreNormal_shouldProjectBeNormal() {
-        sampleSet.setRequests(Arrays.asList(getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest()));
+        sampleSet.setRequests(Arrays.asList(getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest(),
+                getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest()));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
         assertThat(request.getProcessingType().getClass(), typeCompatibleWith(NormalProcessingType.class));
@@ -62,7 +66,8 @@ public class SampleSetToKickoffRequestConverterTest {
 
     @Test
     public void whenAllRequestsAreForced_shouldProjectBeForced() {
-        sampleSet.setRequests(Arrays.asList(getForcedImpactRequest(), getForcedImpactRequest(), getForcedImpactRequest()));
+        sampleSet.setRequests(Arrays.asList(getForcedImpactRequest(), getForcedImpactRequest(),
+                getForcedImpactRequest()));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
         assertThat(request.getProcessingType().getClass(), typeCompatibleWith(ForcedProcessingType.class));
@@ -79,7 +84,8 @@ public class SampleSetToKickoffRequestConverterTest {
     @Test
     public void whenOneRequestsWithSamples_shouldProjectContainSameNumberOfSamples() {
         List<Integer> samplesCounts = Arrays.asList(3);
-        sampleSet.setRequests(getRequestWithEntities(samplesCounts, (r, id) -> r.putSampleIfAbsent(id), SAMPLE_ENTITY_NAME));
+        sampleSet.setRequests(getRequestWithEntities(samplesCounts, (r, id) -> r.putSampleIfAbsent(id),
+                SAMPLE_ENTITY_NAME));
 
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
@@ -89,7 +95,8 @@ public class SampleSetToKickoffRequestConverterTest {
     @Test
     public void whenTwoRequestsWithSamples_shouldProjectContainSamplesFromBoth() {
         List<Integer> samplesCounts = Arrays.asList(5, 7);
-        sampleSet.setRequests(getRequestWithEntities(samplesCounts, (r, id) -> r.putSampleIfAbsent(id), SAMPLE_ENTITY_NAME));
+        sampleSet.setRequests(getRequestWithEntities(samplesCounts, (r, id) -> r.putSampleIfAbsent(id),
+                SAMPLE_ENTITY_NAME));
 
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
@@ -117,7 +124,8 @@ public class SampleSetToKickoffRequestConverterTest {
         sampleSet.setRequests(Arrays.asList(kickoffRequest1, kickoffRequest2));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
-        assertProjectList(request.getLibTypes(), Arrays.asList(LibType.KAPA_M_RNA_STRANDED, LibType.SMARTER_AMPLIFICATION, LibType.TRU_SEQ_POLY_A_SELECTION_NON_STRANDED, LibType.TRU_SEQ_SM_RNA));
+        assertProjectList(request.getLibTypes(), Arrays.asList(LibType.KAPA_M_RNA_STRANDED, LibType
+                .SMARTER_AMPLIFICATION, LibType.TRU_SEQ_POLY_A_SELECTION_NON_STRANDED, LibType.TRU_SEQ_SM_RNA));
     }
 
     @Test
@@ -134,13 +142,15 @@ public class SampleSetToKickoffRequestConverterTest {
         sampleSet.setRequests(Arrays.asList(kickoffRequest1, kickoffRequest2));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
-        assertProjectList(request.getLibTypes(), Arrays.asList(LibType.KAPA_M_RNA_STRANDED, LibType.SMARTER_AMPLIFICATION, LibType.TRU_SEQ_POLY_A_SELECTION_NON_STRANDED, LibType.TRU_SEQ_SM_RNA));
+        assertProjectList(request.getLibTypes(), Arrays.asList(LibType.KAPA_M_RNA_STRANDED, LibType
+                .SMARTER_AMPLIFICATION, LibType.TRU_SEQ_POLY_A_SELECTION_NON_STRANDED, LibType.TRU_SEQ_SM_RNA));
     }
 
     @Test
     public void whenTwoRequestsWithPools_shouldProjectContainPoolsFromBoth() {
         List<Integer> poolsCounts = Arrays.asList(4, 3);
-        List<KickoffRequest> kickoffRequests = getRequestWithEntities(poolsCounts, (r, id) -> r.putPoolIfAbsent(id), POOL_ENTITY_NAME);
+        List<KickoffRequest> kickoffRequests = getRequestWithEntities(poolsCounts, (r, id) -> r.putPoolIfAbsent(id),
+                POOL_ENTITY_NAME);
 
         sampleSet.setRequests(kickoffRequests);
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
@@ -178,7 +188,8 @@ public class SampleSetToKickoffRequestConverterTest {
         sampleSet.setRequests(Arrays.asList(kickoffRequest));
         Optional<Exception> exception = assertThrown(() -> sampleSetToRequestConverter.convert(sampleSet));
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter.AmbiguousStrandException.class));
+        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter
+                .AmbiguousStrandException.class));
     }
 
     @Test
@@ -191,7 +202,8 @@ public class SampleSetToKickoffRequestConverterTest {
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         Optional<Exception> exception = assertThrown(() -> sampleSetToRequestConverter.convert(sampleSet));
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter.AmbiguousStrandException.class));
+        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter
+                .AmbiguousStrandException.class));
     }
 
     @Test
@@ -216,7 +228,8 @@ public class SampleSetToKickoffRequestConverterTest {
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         Optional<Exception> exception = assertThrown(() -> sampleSetToRequestConverter.convert(sampleSet));
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter.AmbiguousRequestType.class));
+        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter.AmbiguousRequestType
+                .class));
     }
 
     @Test
@@ -268,47 +281,54 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getReadMe(), is(String.format("%s: %s\n%s: %s", kickoffRequest.getId(), readMe, kickoffRequest1.getId(), readMe1)));
+        assertThat(request.getReadMe(), is(String.format("%s: %s\n%s: %s", kickoffRequest.getId(), readMe,
+                kickoffRequest1.getId(), readMe1)));
     }
 
     @Test
     public void whenAllRequestAreNotMannualDemux_shouldProjectNotBeManualDemux() {
-        sampleSet.setRequests(Arrays.asList(getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest(), getForcedImpactRequest()));
+        sampleSet.setRequests(Arrays.asList(getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest(),
+                getForcedImpactRequest()));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
         assertThat(request.isManualDemux(), is(false));
     }
 
     @Test
     public void whenAllRequestMannualDemux_shouldProjectBeManualDemux() {
-        sampleSet.setRequests(Arrays.asList(getMannualDemuxRequest(), getMannualDemuxRequest(), getMannualDemuxRequest()));
+        sampleSet.setRequests(Arrays.asList(getMannualDemuxRequest(), getMannualDemuxRequest(),
+                getMannualDemuxRequest()));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
         assertThat(request.isManualDemux(), is(true));
     }
 
     @Test
     public void whenOneRequestMannualDemux_shouldProjectBeManualDemux() {
-        sampleSet.setRequests(Arrays.asList(getMannualDemuxRequest(), getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest()));
+        sampleSet.setRequests(Arrays.asList(getMannualDemuxRequest(), getNormalImpactHumanPiRequest(),
+                getNormalImpactHumanPiRequest()));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
         assertThat(request.isManualDemux(), is(true));
     }
 
     @Test
     public void whenAllRequestAreNotBicAutorunnable_shouldProjectBeNotBicAutorunnable() {
-        sampleSet.setRequests(Arrays.asList(getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest(), getForcedImpactRequest()));
+        sampleSet.setRequests(Arrays.asList(getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest(),
+                getForcedImpactRequest()));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
         assertThat(request.isBicAutorunnable(), is(false));
     }
 
     @Test
     public void whenAllRequestBicAutorunnable_shouldProjectBeBicAutorunnable() {
-        sampleSet.setRequests(Arrays.asList(getBicAutorunnableRequest(), getBicAutorunnableRequest(), getBicAutorunnableRequest()));
+        sampleSet.setRequests(Arrays.asList(getBicAutorunnableRequest(), getBicAutorunnableRequest(),
+                getBicAutorunnableRequest()));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
         assertThat(request.isBicAutorunnable(), is(true));
     }
 
     @Test
     public void whenOneRequestNotBicAutorunnable_shouldProjectNotBeBicAutorunnable() {
-        sampleSet.setRequests(Arrays.asList(getBicAutorunnableRequest(), getBicAutorunnableRequest(), getNormalImpactHumanPiRequest()));
+        sampleSet.setRequests(Arrays.asList(getBicAutorunnableRequest(), getBicAutorunnableRequest(),
+                getNormalImpactHumanPiRequest()));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
         assertThat(request.isBicAutorunnable(), is(false));
     }
@@ -349,7 +369,8 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getReadmeInfo(), is(String.format("%s: %s\n%s: %s", kickoffRequest.getId(), readMe, kickoffRequest1.getId(), readMe1)));
+        assertThat(request.getReadmeInfo(), is(String.format("%s: %s\n%s: %s", kickoffRequest.getId(), readMe,
+                kickoffRequest1.getId(), readMe1)));
     }
 
     @Test
@@ -362,7 +383,8 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getRunNumbers(), is(String.format("%s: %s,%s: %s", kickoffRequest.getId(), 1, kickoffRequest1.getId(), 2)));
+        assertThat(request.getRunNumbers(), is(String.format("%s: %s,%s: %s", kickoffRequest.getId(), 1,
+                kickoffRequest1.getId(), 2)));
     }
 
     @Test
@@ -401,7 +423,8 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getExtraReadMeInfo(), is(String.format("%s: %s\n%s: %s", kickoffRequest.getId(), readMe, kickoffRequest1.getId(), readMe1)));
+        assertThat(request.getExtraReadMeInfo(), is(String.format("%s: %s\n%s: %s", kickoffRequest.getId(), readMe,
+                kickoffRequest1.getId(), readMe1)));
     }
 
     @Test
@@ -428,7 +451,8 @@ public class SampleSetToKickoffRequestConverterTest {
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         Optional<Exception> exception = assertThrown(() -> sampleSetToRequestConverter.convert(sampleSet));
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter.AmbiguousPropertyException.class));
+        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter
+                .AmbiguousPropertyException.class));
     }
 
     @Test
@@ -436,7 +460,8 @@ public class SampleSetToKickoffRequestConverterTest {
         sampleSet.setRequests(Arrays.asList(getNormalImpactPiRequest(), getNormalImpactPiRequest()));
         Optional<Exception> exception = assertThrown(() -> sampleSetToRequestConverter.convert(sampleSet));
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), typeCompatibleWith(ConverterUtils.RequiredPropertyNotSetException.class));
+        assertThat(exception.get().getClass(), typeCompatibleWith(ConverterUtils.RequiredPropertyNotSetException
+                .class));
     }
 
     @Test
@@ -518,7 +543,8 @@ public class SampleSetToKickoffRequestConverterTest {
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         Optional<Exception> exception = assertThrown(() -> sampleSetToRequestConverter.convert(sampleSet));
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter.AmbiguousPropertyException.class));
+        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter
+                .AmbiguousPropertyException.class));
     }
 
     @Test
@@ -526,7 +552,8 @@ public class SampleSetToKickoffRequestConverterTest {
         sampleSet.setRequests(Arrays.asList(getNormalImpactHumanRequest(), getNormalImpactHumanRequest()));
         Optional<Exception> exception = assertThrown(() -> sampleSetToRequestConverter.convert(sampleSet));
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter.NoPropertySetException.class));
+        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter.NoPropertySetException
+                .class));
     }
 
     @Test
@@ -565,7 +592,8 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getInvest(), is(String.format("%s: %s,%s: %s", kickoffRequest.getId(), invest, kickoffRequest1.getId(), invest1)));
+        assertThat(request.getInvest(), is(String.format("%s: %s,%s: %s", kickoffRequest.getId(), invest,
+                kickoffRequest1.getId(), invest1)));
     }
 
     @Test
@@ -621,7 +649,8 @@ public class SampleSetToKickoffRequestConverterTest {
 
     @Test
     public void whenRequestsHasNoPatients_shouldProjectContainNoPatients() {
-        List<KickoffRequest> kickoffRequests = getRequestWithEntities(Arrays.asList(0), (r, id) -> r.putPatientIfAbsent(id), PATIENT_ENTITY_NAME);
+        List<KickoffRequest> kickoffRequests = getRequestWithEntities(Arrays.asList(0), (r, id) -> r
+                .putPatientIfAbsent(id), PATIENT_ENTITY_NAME);
         sampleSet.setRequests(kickoffRequests);
 
         //when
@@ -650,7 +679,8 @@ public class SampleSetToKickoffRequestConverterTest {
     @Test
     public void whenThereAreThreeRequestsWithMultiplePatients_shouldProjectContainPatientsFromAll() {
         List<Integer> patientsCounts = Arrays.asList(2, 9, 4);
-        List<KickoffRequest> kickoffRequests = getRequestWithEntities(patientsCounts, (r, id) -> r.putPatientIfAbsent(id), PATIENT_ENTITY_NAME);
+        List<KickoffRequest> kickoffRequests = getRequestWithEntities(patientsCounts, (r, id) -> r.putPatientIfAbsent
+                (id), PATIENT_ENTITY_NAME);
 
         sampleSet.setRequests(kickoffRequests);
 
@@ -661,7 +691,8 @@ public class SampleSetToKickoffRequestConverterTest {
     }
 
     @Test
-    public void whenThereIsOneRequestWithTwoPatients_patientsShouldHaveDifferentGroupsAndHaveSamplesForEach() throws Exception {
+    public void whenThereIsOneRequestWithTwoPatients_patientsShouldHaveDifferentGroupsAndHaveSamplesForEach() throws
+            Exception {
         //given
         KickoffRequest req1 = getNormalImpactHumanPiRequest();
         addSamplesToPatient(req1, 1, PATIENT_ID_1);
@@ -678,7 +709,8 @@ public class SampleSetToKickoffRequestConverterTest {
     }
 
     @Test
-    public void whenThereAreTwoRequestsWithSamePatient_thisPatientShouldBeInOneGroupAndContainSamplesFromBoth() throws Exception {
+    public void whenThereAreTwoRequestsWithSamePatient_thisPatientShouldBeInOneGroupAndContainSamplesFromBoth()
+            throws Exception {
         //given
         KickoffRequest req1 = getNormalImpactHumanPiRequest();
         KickoffRequest req2 = getNormalImpactHumanPiRequest();
@@ -696,7 +728,8 @@ public class SampleSetToKickoffRequestConverterTest {
     }
 
     @Test
-    public void whenThereAreMultipleRequestsWithMultiplePatients_requestShouldContainAllPatientsWithTheirSamples() throws Exception {
+    public void whenThereAreMultipleRequestsWithMultiplePatients_requestShouldContainAllPatientsWithTheirSamples()
+            throws Exception {
         //given
         KickoffRequest req1 = getNormalImpactHumanPiRequest();
         addSamplesToPatient(req1, 2, PATIENT_ID_1);
@@ -726,7 +759,8 @@ public class SampleSetToKickoffRequestConverterTest {
         assertContainsPatientsWithSamples(kickoffRequest, requests);
     }
 
-    private void assertContainsPatientsWithSamples(KickoffRequest resultRequest, List<KickoffRequest> originalRequests) {
+    private void assertContainsPatientsWithSamples(KickoffRequest resultRequest, List<KickoffRequest>
+            originalRequests) {
         Map<String, List<Patient>> patientIdToPatients = originalRequests.stream()
                 .flatMap(r -> r.getPatients().values().stream())
                 .collect(Collectors.groupingBy(Patient::getPatientId));
@@ -740,7 +774,8 @@ public class SampleSetToKickoffRequestConverterTest {
         assertThat(groups.size(), is(patientIdToPatients.size()));
     }
 
-    private void assertPatientContainsSamples(KickoffRequest resultRequest, Set<Integer> groups, List<Patient> patientList) {
+    private void assertPatientContainsSamples(KickoffRequest resultRequest, Set<Integer> groups, List<Patient>
+            patientList) {
         String patientId = patientList.get(0).getPatientId();
         assertThat(resultRequest.getPatients().containsKey(patientId), is(true));
 
@@ -930,7 +965,8 @@ public class SampleSetToKickoffRequestConverterTest {
         }
     }
 
-    private List<KickoffRequest> getRequestWithEntities(List<Integer> counts, BiConsumer<? super KickoffRequest, String> action, String entityName) {
+    private List<KickoffRequest> getRequestWithEntities(List<Integer> counts, BiConsumer<? super KickoffRequest,
+            String> action, String entityName) {
         List<KickoffRequest> kickoffRequests = new ArrayList<>();
         for (int i = 0; i < counts.size(); i++) {
             KickoffRequest kickoffRequest = getNormalImpactHumanPiRequest();

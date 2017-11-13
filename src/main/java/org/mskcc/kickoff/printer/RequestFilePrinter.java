@@ -85,7 +85,8 @@ public class RequestFilePrinter implements FilePrinter {
             } else if (propertyName.equals("Project_Manager")) {
                 String[] tempName = value.split(", ");
                 if (tempName.length > 1) {
-                    requestFileContents.append(propertyName).append(": ").append(tempName[1]).append(" ").append(tempName[0]).append("\n");
+                    requestFileContents.append(propertyName).append(": ").append(tempName[1]).append(" ").append
+                            (tempName[0]).append("\n");
                 } else {
                     requestFileContents.append(propertyName).append(": ").append(value).append("\n");
                 }
@@ -116,7 +117,12 @@ public class RequestFilePrinter implements FilePrinter {
             } else {
                 request.setRerunReason(rerunReason);
             }
-            requestFileContents.append("Reason_for_rerun: ").append(rerunReason).append("\n");
+
+            DEV_LOGGER.info(message);
+            if (!shiny)
+                PM_LOGGER.info(message);
+
+            requestFileContents.append("Reason_for_rerun: ").append(request.getRerunReason()).append("\n");
 
             DEV_LOGGER.info(message);
             if (!shiny)
@@ -130,11 +136,13 @@ public class RequestFilePrinter implements FilePrinter {
         requestFileContents.append("Institution: cmo\n");
 
         if (request.getRequestType() == RequestType.OTHER) {
-            requestFileContents.append("Recipe: ").append(request.getRecipe() == null ? "" : request.getRecipe().getValue()).append("\n");
+            requestFileContents.append("Recipe: ").append(request.getRecipe() == null ? "" : request.getRecipe()
+                    .getValue()).append("\n");
         }
 
         if (request.getRequestType() == RequestType.RNASEQ) {
-            requestFileContents.append("AmplificationTypes: ").append(getJoinedCollection(request.getAmpTypes(), ", ")).append("\n");
+            requestFileContents.append("AmplificationTypes: ").append(getJoinedCollection(request.getAmpTypes(), ", " +
+                    "")).append("\n");
             requestFileContents.append("LibraryTypes: ").append(getJoinedLibTypes(request)).append("\n");
 
             if (request.getStrands().size() > 1) {
@@ -158,9 +166,11 @@ public class RequestFilePrinter implements FilePrinter {
         // adding projectFolder back
         String projDir = request.getOutputPath();
         if (request.getRequestType() == RequestType.IMPACT || request.getRequestType() == RequestType.EXOME) {
-            requestFileContents.append("ProjectFolder: ").append(String.valueOf(projDir).replaceAll("BIC/drafts", "CMO")).append("\n");
+            requestFileContents.append("ProjectFolder: ").append(String.valueOf(projDir).replaceAll("BIC/drafts",
+                    "CMO")).append("\n");
         } else {
-            requestFileContents.append("ProjectFolder: ").append(String.valueOf(projDir).replaceAll("drafts", request.getRequestType().getName())).append("\n");
+            requestFileContents.append("ProjectFolder: ").append(String.valueOf(projDir).replaceAll("drafts", request
+                    .getRequestType().getName())).append("\n");
         }
 
         // Date of last update
@@ -188,7 +198,8 @@ public class RequestFilePrinter implements FilePrinter {
     }
 
     private String getFileName(KickoffRequest request) {
-        return String.format("%s/%s_request.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId()));
+        return String.format("%s/%s_request.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request
+                .getId()));
     }
 
     @Override

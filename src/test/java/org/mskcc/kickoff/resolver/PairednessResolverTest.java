@@ -33,7 +33,8 @@ public class PairednessResolverTest {
 
     @Test
     public void whenOneNonPairedFileWithPairedSuffixNotAtTheEndInPath_shouldReturnSE() throws Exception {
-        fastqDir.newFile("whateverIsThere_thereIsNo" + Constants.PAIRED_FILE_SUFFIX + "_ale_zonk_a_myslales_ze_to_paired_end.fastq.gz");
+        fastqDir.newFile("whateverIsThere_thereIsNo" + Constants.PAIRED_FILE_SUFFIX +
+                "_ale_zonk_a_myslales_ze_to_paired_end.fastq.gz");
 
         Pairedness pairedness = pairednessResolver.resolve(fastqDir.getRoot().getPath());
 

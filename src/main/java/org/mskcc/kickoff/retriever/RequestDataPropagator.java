@@ -36,7 +36,8 @@ public class RequestDataPropagator implements DataPropagator {
                 request.setRequestType(RequestType.EXOME);
 
             Map<String, String> projectInfo = request.getProjectInfo();
-            projectInfo.put(Constants.ProjectInfo.NUMBER_OF_SAMPLES, String.valueOf(request.getValidUniqueCmoIdSamples(s -> !s.isPooledNormal()).size()));
+            projectInfo.put(Constants.ProjectInfo.NUMBER_OF_SAMPLES, String.valueOf(request
+                    .getValidUniqueCmoIdSamples(s -> !s.isPooledNormal()).size()));
 
             assignProjectSpecificInfo(request);
             projectInfo.put(Constants.ProjectInfo.SPECIES, String.valueOf(request.getSpecies()));
@@ -62,14 +63,18 @@ public class RequestDataPropagator implements DataPropagator {
             projectInfo.put(Constants.ProjectInfo.DESIGN_FILE, "");
             projectInfo.put(Constants.ProjectInfo.SPIKEIN_DESIGN_FILE, "");
             projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, "");
-            DEV_LOGGER.info(String.format("There are more than 1 designs (bait versions) for request: %s [%s]. Design file, Spikein design file and Assay Path will be empty", kickoffRequest.getId(), kickoffRequest.getBaitVersion()));
+            DEV_LOGGER.info(String.format("There are more than 1 designs (bait versions) for request: %s [%s]. Design" +
+                    " file, Spikein design file and Assay Path will be empty", kickoffRequest.getId(), kickoffRequest
+                    .getBaitVersion()));
         } else if (kickoffRequest.getRequestType() == RequestType.IMPACT) {
             projectInfo.put(Constants.ProjectInfo.DESIGN_FILE, "");
             projectInfo.put(Constants.ProjectInfo.SPIKEIN_DESIGN_FILE, "");
             projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, "");
-            DEV_LOGGER.info(String.format("Request: %s is of type IMPACT. Design file, Spikein design file and Assay Path will be empty", kickoffRequest.getId()));
+            DEV_LOGGER.info(String.format("Request: %s is of type IMPACT. Design file, Spikein design file and Assay " +
+                    "Path will be empty", kickoffRequest.getId()));
         } else {
-            projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, findDesignFile(kickoffRequest, kickoffRequest.getBaitVersion()));
+            projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, findDesignFile(kickoffRequest, kickoffRequest
+                    .getBaitVersion()));
         }
     }
 
@@ -115,7 +120,8 @@ public class RequestDataPropagator implements DataPropagator {
             String patientId = sampleProperties.getOrDefault(Constants.CMO_PATIENT_ID, "");
             Patient patient = kickoffRequest.putPatientIfAbsent(patientId);
             if (!patient.isValid()) {
-                String message = String.format("Cannot make smart mapping because Patient ID is emtpy or has an issue: %s", patientId);
+                String message = String.format("Cannot make smart mapping because Patient ID is emtpy or has an " +
+                        "issue: %s", patientId);
                 PM_LOGGER.log(PmLogPriority.WARNING, message);
                 DEV_LOGGER.warn(message);
                 //@TODO check how to avoid clearnig patients list
@@ -186,14 +192,17 @@ public class RequestDataPropagator implements DataPropagator {
             //baitVerison - sometimes bait version needs to be changed. If so, the CAPTURE_BAIT_SET must also be changed
             if (request.getRequestType() == RequestType.RNASEQ || request.getRequestType() == RequestType.OTHER) {
                 String emptyBatVersion = Constants.EMPTY;
-                DEV_LOGGER.info(String.format("Setting bait version to: %s for request: %s of type: %s", emptyBatVersion, request.getId(), request.getRequestType().getName()));
+                DEV_LOGGER.info(String.format("Setting bait version to: %s for request: %s of type: %s",
+                        emptyBatVersion, request.getId(), request.getRequestType().getName()));
                 request.setBaitVersion(emptyBatVersion);
             } else {
                 String baitVersion = sample.get(Constants.BAIT_VERSION);
                 if (!StringUtils.isEmpty(baitVersion)) {
                     if (request.getRequestType() == RequestType.EXOME) {
-                        // First check xenograft, if yes, then if bait version is Agilent (manual bait version for exomes) change to xenograft version of Agilent
-                        if (request.getSpecies() == RequestSpecies.XENOGRAFT && baitVersion.equals(Constants.MANUAL_EXOME_BAIT_VERSION_HUMAN)) {
+                        // First check xenograft, if yes, then if bait version is Agilent (manual bait version for
+                        // exomes) change to xenograft version of Agilent
+                        if (request.getSpecies() == RequestSpecies.XENOGRAFT && baitVersion.equals(Constants
+                                .MANUAL_EXOME_BAIT_VERSION_HUMAN)) {
                             baitVersion = Constants.MANUAL_EXOME_XENOGRAFT_BAIT_VERSION_HUMAN_MOUSE;
                             bvChanged = true;
                         }
@@ -209,14 +218,16 @@ public class RequestDataPropagator implements DataPropagator {
                             } else if (request.getSpecies() == RequestSpecies.XENOGRAFT) {
                                 bv_sp = baitVersion + "_" + humanAbrevSpecies + "_" + mouseAbrevSpecies;
                             }
-                            if (!Objects.equals(bv_sp, baitVersion) && !Objects.equals(findDesignFile(request, bv_sp), Constants.NA)) {
+                            if (!Objects.equals(bv_sp, baitVersion) && !Objects.equals(findDesignFile(request, bv_sp)
+                                    , Constants.NA)) {
                                 request.setBaitVersion(bv_sp);
                                 baitVersion = bv_sp;
                                 bvChanged = true;
                             }
                         }
                     } else {
-                        if (!baitVersion.contains("+") && Objects.equals(findDesignFile(request, baitVersion), Constants.NA)) {
+                        if (!baitVersion.contains("+") && Objects.equals(findDesignFile(request, baitVersion),
+                                Constants.NA)) {
                             Utils.setExitLater(true);
                             String message = String.format("Cannot find bait version %s design files!", baitVersion);
                             PM_LOGGER.log(Level.ERROR, message);
@@ -224,8 +235,11 @@ public class RequestDataPropagator implements DataPropagator {
                             return;
                         }
                     }
-                    if (!Objects.equals(request.getBaitVersion(), baitVersion) && !Objects.equals(request.getBaitVersion(), Constants.EMPTY)) {
-                        String message = String.format("Request Bait version is not consistent: Current sample Bait verion: %s Bait version for request so far: %s", baitVersion, request.getBaitVersion());
+                    if (!Objects.equals(request.getBaitVersion(), baitVersion) && !Objects.equals(request
+                            .getBaitVersion(), Constants.EMPTY)) {
+                        String message = String.format("Request Bait version is not consistent: Current sample Bait " +
+                                "verion: %s Bait version for request so far: %s", baitVersion, request.getBaitVersion
+                                ());
                         Utils.setExitLater(true);
                         PM_LOGGER.log(Level.ERROR, message);
                         DEV_LOGGER.log(Level.ERROR, message);
@@ -250,21 +264,26 @@ public class RequestDataPropagator implements DataPropagator {
                 // Xenograft projects may only have samples of sampleSpecies human or xenograft
                 if (sampleSpecies != RequestSpecies.HUMAN && sampleSpecies != RequestSpecies.XENOGRAFT) {
                     Utils.setExitLater(true);
-                    String message = String.format("Request species has been determined as xenograft, but this sample is neither xenograft or human: %s", sampleSpecies);
+                    String message = String.format("Request species has been determined as xenograft, but this sample" +
+                            " is neither xenograft or human: %s", sampleSpecies);
                     PM_LOGGER.log(Level.ERROR, message);
                     DEV_LOGGER.log(Level.ERROR, message);
                 }
             } else if (kickoffRequest.getSpecies() == null) {
                 kickoffRequest.setSpecies(sampleSpecies);
             } else if (kickoffRequest.getSpecies() != sampleSpecies) {
-                // Requests that are not xenograft must have 100% the same sampleSpecies for each sample. If that is not true, it will output issue here:
-                String message = String.format("There seems to be a clash between sampleSpecies of each sample: Species for sample %s=%s Species for request so far=%s", sample.getProperties().get(Constants.IGO_ID), sampleSpecies, kickoffRequest.getSpecies());
+                // Requests that are not xenograft must have 100% the same sampleSpecies for each sample. If that is
+                // not true, it will output issue here:
+                String message = String.format("There seems to be a clash between sampleSpecies of each sample: " +
+                        "Species for sample %s=%s Species for request so far=%s", sample.getProperties().get
+                        (Constants.IGO_ID), sampleSpecies, kickoffRequest.getSpecies());
                 Utils.setExitLater(true);
                 PM_LOGGER.log(PmLogPriority.SAMPLE_ERROR, message);
                 DEV_LOGGER.log(Level.ERROR, message);
             }
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about request species for request id: %s", kickoffRequest.getId()));
+            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about request species for " +
+                    "request id: %s", kickoffRequest.getId()));
         }
     }
 
@@ -284,7 +303,8 @@ public class RequestDataPropagator implements DataPropagator {
             }
         }
 
-        DEV_LOGGER.info(String.format("Request: %s is neither EXOME nor IMPACT thus skipping searching design file", request.getId()));
+        DEV_LOGGER.info(String.format("Request: %s is neither EXOME nor IMPACT thus skipping searching design file",
+                request.getId()));
         return Constants.NA;
     }
 
@@ -293,7 +313,8 @@ public class RequestDataPropagator implements DataPropagator {
         for (File iterDirContents : Utils.getFilesInDir(dir)) {
             String exomeDesignFileExtention = "targets.ilist";
             if (iterDirContents.toString().endsWith(exomeDesignFileExtention)) {
-                DEV_LOGGER.info(String.format("Found design path: %s (%s) for exome request: %s", dir, exomeDesignFileExtention, requestId));
+                DEV_LOGGER.info(String.format("Found design path: %s (%s) for exome request: %s", dir,
+                        exomeDesignFileExtention, requestId));
                 return dir.toString();
             }
         }
@@ -311,7 +332,8 @@ public class RequestDataPropagator implements DataPropagator {
             } catch (Throwable ignored) {
             }
         } else if (request.getRequestType() == RequestType.IMPACT && !runAsExome) {
-            String message = String.format("Cannot find design file for assay %s. Expected file: %s doesn't exist", assay, expectedDesignFileName);
+            String message = String.format("Cannot find design file for assay %s. Expected file: %s doesn't exist",
+                    assay, expectedDesignFileName);
             Utils.setExitLater(true);
             PM_LOGGER.log(PmLogPriority.SAMPLE_ERROR, message);
             DEV_LOGGER.log(Level.ERROR, message);
@@ -322,9 +344,11 @@ public class RequestDataPropagator implements DataPropagator {
 
     @Override
     public int getRunNumber(KickoffRequest kickoffRequest) {
-        File resultDir = new File(String.format("%s/%s/%s", resultsPathPrefix, kickoffRequest.getPi(), kickoffRequest.getInvest()));
+        File resultDir = new File(String.format("%s/%s/%s", resultsPathPrefix, kickoffRequest.getPi(), kickoffRequest
+                .getInvest()));
 
-        File[] files = resultDir.listFiles((dir, name) -> name.endsWith(kickoffRequest.getId().replaceFirst("^0+(?!$)", "")));
+        File[] files = resultDir.listFiles((dir, name) -> name.endsWith(kickoffRequest.getId().replaceFirst("^0+(?!$)" +
+                "", "")));
         if (files != null && files.length == 1) {
             File projectResultDir = files[0];
             File[] files2 = projectResultDir.listFiles((dir, name) -> name.startsWith("r_"));
@@ -342,7 +366,8 @@ public class RequestDataPropagator implements DataPropagator {
                 return runs[runs.length - 1] + 1;
             }
         }
-        String message = "Could not determine PIPELINE RUN NUMBER from delivery directory. Setting to: 1. If this is incorrect, email cmo-project-start@cbio.mskcc.org";
+        String message = "Could not determine PIPELINE RUN NUMBER from delivery directory. Setting to: 1. If this is " +
+                "incorrect, email cmo-project-start@cbio.mskcc.org";
         PM_LOGGER.log(PmLogPriority.WARNING, message);
         DEV_LOGGER.warn(message);
 

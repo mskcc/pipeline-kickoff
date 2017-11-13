@@ -20,7 +20,8 @@ public class SmartPairingRetriever {
 
     public Map<String, String> retrieve(KickoffRequest request) {
         if (request.getPatients().isEmpty()) {
-            String noPatientsMessage = String.format("There are no patients for request: %s. There will be no pairing file generated", request.getId());
+            String noPatientsMessage = String.format("There are no patients for request: %s. There will be no pairing" +
+                    " file generated", request.getId());
             PM_LOGGER.log(PmLogPriority.WARNING, noPatientsMessage);
             DEV_LOGGER.warn(noPatientsMessage);
             return Collections.emptyMap();
@@ -34,7 +35,8 @@ public class SmartPairingRetriever {
             for (Sample tumor : tumorSamples) {
                 String tumorCorrectedId = tumor.getProperties().get(Constants.CORRECTED_CMO_ID);
                 String normalId = getNormal(normalSamples, tumor);
-                DEV_LOGGER.info(String.format("Smart pairing found: tumor: %s - normal: %s", tumorCorrectedId, normalId));
+                DEV_LOGGER.info(String.format("Smart pairing found: tumor: %s - normal: %s", tumorCorrectedId,
+                        normalId));
                 smartPairings.put(tumorCorrectedId, normalId);
             }
         }
@@ -87,13 +89,15 @@ public class SmartPairingRetriever {
 
     private List<Sample> getNormalSamples(Set<Sample> samples) {
         return samples.stream()
-                .filter(s -> !StringUtils.isEmpty(s.get(Constants.SAMPLE_CLASS)) && s.get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL))
+                .filter(s -> !StringUtils.isEmpty(s.get(Constants.SAMPLE_CLASS)) && s.get(Constants.SAMPLE_CLASS)
+                        .contains(Constants.NORMAL))
                 .collect(Collectors.toList());
     }
 
     private List<Sample> getTumorSamples(Set<Sample> samples) {
         return samples.stream()
-                .filter(s -> !StringUtils.isEmpty(s.get(Constants.SAMPLE_CLASS)) && !s.get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL))
+                .filter(s -> !StringUtils.isEmpty(s.get(Constants.SAMPLE_CLASS)) && !s.get(Constants.SAMPLE_CLASS)
+                        .contains(Constants.NORMAL))
                 .collect(Collectors.toList());
     }
 }

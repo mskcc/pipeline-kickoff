@@ -9,7 +9,8 @@ public class SequencerRunFolderRetriever {
         Matcher matcher = pattern.matcher(runFolder);
 
         if (!matcher.matches())
-            throw new InvalidSequencerRunFolderException(String.format("Invalid sequencer run folder name: \"%s\". Expected format is: \"<SEQUENCER_NAME>_<RUN_ID>\"", runFolder));
+            throw new InvalidSequencerRunFolderException(String.format("Invalid sequencer run folder name: \"%s\". " +
+                    "Expected format is: \"<SEQUENCER_NAME>_<RUN_ID>\"", runFolder));
 
         return matcher.group(1);
     }

@@ -34,7 +34,8 @@ public class VeloxProjectProxy implements RequestProxy {
     private User user;
     private RequestsRetriever requestsRetriever;
 
-    public VeloxProjectProxy(String limsConnectionFilePath, ProjectFilesArchiver projectFilesArchiver, RequestsRetrieverFactory requestsRetrieverFactory) {
+    public VeloxProjectProxy(String limsConnectionFilePath, ProjectFilesArchiver projectFilesArchiver,
+                             RequestsRetrieverFactory requestsRetrieverFactory) {
         this.limsConnectionFilePath = limsConnectionFilePath;
         this.projectFilesArchiver = projectFilesArchiver;
         this.requestsRetrieverFactory = requestsRetrieverFactory;
@@ -103,7 +104,8 @@ public class VeloxProjectProxy implements RequestProxy {
         try {
             retrieveInstruments();
             requestsRetriever = requestsRetrieverFactory.getRequestsRetriever(user, dataRecordManager, projectId);
-            KickoffRequest kickoffRequest = requestsRetriever.retrieve(projectId, new NormalProcessingType(projectFilesArchiver));
+            KickoffRequest kickoffRequest = requestsRetriever.retrieve(projectId, new NormalProcessingType
+                    (projectFilesArchiver));
             resolvePairings(kickoffRequest);
 
             return kickoffRequest;
@@ -111,11 +113,14 @@ public class VeloxProjectProxy implements RequestProxy {
             String message = String.format("No matching requests for request id: %s", projectId);
             PM_LOGGER.info(message);
             throw e;
-        } catch (SampleSetProjectInfoConverter.PrimaryRequestNotSetException | SampleSetProjectInfoConverter.PrimaryRequestNotPartOfSampleSetException | SampleSetProjectInfoConverter.PropertyInPrimaryRequestNotSetException e) {
+        } catch (SampleSetProjectInfoConverter.PrimaryRequestNotSetException | SampleSetProjectInfoConverter
+                .PrimaryRequestNotPartOfSampleSetException | SampleSetProjectInfoConverter
+                .PropertyInPrimaryRequestNotSetException e) {
             PM_LOGGER.error(e.getMessage());
             throw e;
         } catch (Exception e) {
-            throw new ProjectRetrievalException(String.format("Error while retrieving information about project: %s", projectId), e);
+            throw new ProjectRetrievalException(String.format("Error while retrieving information about project: %s",
+                    projectId), e);
         } finally {
             closeConnection(connection);
         }
@@ -131,7 +136,8 @@ public class VeloxProjectProxy implements RequestProxy {
             try {
                 InstrumentType.mapNameToType(instrumentName, InstrumentType.fromString(instrumentType));
             } catch (Exception e) {
-                String message = String.format("Skipping instrument type: %s as it's not supported (is invalid or outdated).", instrumentType);
+                String message = String.format("Skipping instrument type: %s as it's not supported (is invalid or " +
+                        "outdated).", instrumentType);
                 DEV_LOGGER.info(message);
                 PM_LOGGER.info(message);
             }

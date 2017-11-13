@@ -24,7 +24,8 @@ class VeloxPairingsRetriever {
 
     public List<PairingInfo> retrieve(DataRecord dataRecord, KickoffRequest kickoffRequest) {
         try {
-            List<DataRecord> pairingRecords = Arrays.asList(dataRecord.getChildrenOfType(VeloxConstants.PAIRING_INFO, user));
+            List<DataRecord> pairingRecords = Arrays.asList(dataRecord.getChildrenOfType(VeloxConstants.PAIRING_INFO,
+                    user));
             List<PairingInfo> pairings = new ArrayList<>();
             for (DataRecord pairingRecord : pairingRecords) {
                 try {
@@ -39,7 +40,8 @@ class VeloxPairingsRetriever {
 
                     pairings.add(new PairingInfo(tumor, normal));
                 } catch (Exception e) {
-                    throw new RuntimeException(String.format("Unable to retrieve pairing with Record id: %s ", pairingRecord.getRecordId()));
+                    throw new RuntimeException(String.format("Unable to retrieve pairing with Record id: %s ",
+                            pairingRecord.getRecordId()));
                 }
             }
 
@@ -51,7 +53,8 @@ class VeloxPairingsRetriever {
 
     private Sample getSample(KickoffRequest kickoffRequest, String sampleId) {
         if (!kickoffRequest.getSamples().containsKey(sampleId)) {
-            DEV_LOGGER.warn(String.format("Sample: %s from pairing info is not part of given request: %s", sampleId, kickoffRequest.getId()));
+            DEV_LOGGER.warn(String.format("Sample: %s from pairing info is not part of given request: %s", sampleId,
+                    kickoffRequest.getId()));
             return Sample.getNotAvailableSample();
         }
 
