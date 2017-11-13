@@ -124,6 +124,12 @@ public class RequestFilePrinter implements FilePrinter {
 
             requestFileContents.append("Reason_for_rerun: ").append(request.getRerunReason()).append("\n");
 
+            DEV_LOGGER.info(message);
+            if (!shiny)
+                PM_LOGGER.info(message);
+
+            requestFileContents += "Reason_for_rerun: " + request.getRerunReason() + "\n";
+
         }
         requestFileContents.append("RunID: ").append(getJoinedCollection(request.getRunIds(), ", ")).append("\n");
 
