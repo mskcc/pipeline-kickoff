@@ -72,7 +72,8 @@ public class MappingFilePrinter implements FilePrinter {
 
                     File dir = new File(String.format("%s/hiseq/FASTQ/", fastq_path));
 
-                    Optional<String> optionalRunIDFull = getRunId(request, runsWithMultipleFolders, singleRequest, runId, dir);
+                    Optional<String> optionalRunIDFull = getRunId(request, runsWithMultipleFolders, singleRequest,
+                            runId, dir);
                     if (!optionalRunIDFull.isPresent()) continue;
 
                     String runIdFull = optionalRunIDFull.get();
@@ -89,8 +90,10 @@ public class MappingFilePrinter implements FilePrinter {
                             pairednesses.add(pairedness);
 
                             validateSampleSheetExists(request, sample, runIdFull, path);
-                            String sampleName = sampleNormalization(sampleRenamesAndSwaps.getOrDefault(sampleId, sampleId));
-                            mappingFileContents.append(String.format("_1\t%s\t%s\t%s\t%s\n", sampleName, runIdFull, path, pairedness));
+                            String sampleName = sampleNormalization(sampleRenamesAndSwaps.getOrDefault(sampleId,
+                                    sampleId));
+                            mappingFileContents.append(String.format("_1\t%s\t%s\t%s\t%s\n", sampleName, runIdFull,
+                                    path, pairedness));
                         }
                     }
                 }
@@ -100,13 +103,15 @@ public class MappingFilePrinter implements FilePrinter {
 
             return mappingFileContents.toString();
         } catch (Exception e) {
-            throw new RuntimeException(String.format("Unable to retrieve sample mappings for request: %s", request.getId()), e);
+            throw new RuntimeException(String.format("Unable to retrieve sample mappings for request: %s", request
+                    .getId()), e);
         }
     }
 
     private void validatePairedness(Set<Pairedness> pairednesses, String reqId) {
         if (!pairednessValidPredicate.test(pairednesses)) {
-            String message = String.format("Ambiguous pairedness for request: %s [%s]", reqId, StringUtils.join(pairednesses), ",");
+            String message = String.format("Ambiguous pairedness for request: %s [%s]", reqId, StringUtils.join
+                    (pairednesses), ",");
             PM_LOGGER.error(message);
             DEV_LOGGER.error(message);
             Utils.setExitLater(true);
@@ -121,13 +126,15 @@ public class MappingFilePrinter implements FilePrinter {
         }
     }
 
-    private List<String> getPaths(KickoffRequest request, Sample sample, File dir, String runIDFull, String samplePattern) throws IOException, InterruptedException {
+    private List<String> getPaths(KickoffRequest request, Sample sample, File dir, String runIDFull, String
+            samplePattern) throws IOException, InterruptedException {
         String pattern = getPattern(sample, runIDFull, dir, samplePattern);
         String cmd = "ls -d " + pattern;
         Process pr = new ProcessBuilder("/bin/bash", "-c", cmd).start();
         pr.waitFor();
 
-        //@TODO move to atnoher place, manifest file depends on new mapping so it has to be done before printing any files
+        //@TODO move to atnoher place, manifest file depends on new mapping so it has to be done before printing any
+        // files
         int exit = pr.exitValue();
         if (exit != 0) {
             String igoID = sample.get(Constants.IGO_ID);
@@ -147,7 +154,8 @@ public class MappingFilePrinter implements FilePrinter {
                 exit = pr.exitValue();
 
                 if (exit != 0) {
-                    String message = String.format("Error while trying to find fastq Directory for %s it is probably mispelled, or has an alias.", sample);
+                    String message = String.format("Error while trying to find fastq Directory for %s it is probably " +
+                            "mispelled, or has an alias.", sample);
                     Utils.setExitLater(true);
                     PM_LOGGER.log(Level.ERROR, message);
                     DEV_LOGGER.log(Level.ERROR, message);
@@ -162,7 +170,8 @@ public class MappingFilePrinter implements FilePrinter {
                 }
             } else {
                 if (!seqID.equals(igoID)) {
-                    String manifestSampleID = sample.get(Constants.MANIFEST_SAMPLE_ID).replace("IGO_" + igoID, "IGO_" + seqID);
+                    String manifestSampleID = sample.get(Constants.MANIFEST_SAMPLE_ID).replace("IGO_" + igoID, "IGO_"
+                            + seqID);
                     sample.put(Constants.MANIFEST_SAMPLE_ID, manifestSampleID);
                 }
                 request.setNewMappingScheme(1);
@@ -177,7 +186,8 @@ public class MappingFilePrinter implements FilePrinter {
         return Arrays.asList(sampleFqPath.split("\n"));
     }
 
-    private Optional<String> getRunId(KickoffRequest request, HashSet<String> runsWithMultipleFolders, KickoffRequest singleRequest, String runId, File dir) {
+    private Optional<String> getRunId(KickoffRequest request, HashSet<String> runsWithMultipleFolders, KickoffRequest
+            singleRequest, String runId, File dir) {
         String RunIDFull;
         File[] files = dir.listFiles((dir1, name) -> name.startsWith(runId));
 
@@ -187,7 +197,8 @@ public class MappingFilePrinter implements FilePrinter {
             return Optional.empty();
         }
         if (files.length == 0) {
-            String errorMessage = String.format("Sequencing run folder not found for run id: %s in path: %s", runId, dir.getPath());
+            String errorMessage = String.format("Sequencing run folder not found for run id: %s in path: %s", runId,
+                    dir.getPath());
             Utils.setExitLater(true);
             PM_LOGGER.log(Level.ERROR, errorMessage);
             DEV_LOGGER.log(Level.ERROR, errorMessage);
@@ -199,7 +210,8 @@ public class MappingFilePrinter implements FilePrinter {
         } else if (files.length > 1) {
             List<File> runsWithProjectDir = Arrays.stream(files)
                     .filter(f -> {
-                        File file = new File(String.format("%s/Project_%s", f.getAbsoluteFile().toString(), singleRequest));
+                        File file = new File(String.format("%s/Project_%s", f.getAbsoluteFile().toString(),
+                                singleRequest));
                         return file.exists() && file.isDirectory();
                     })
                     .collect(Collectors.toList());
@@ -207,7 +219,8 @@ public class MappingFilePrinter implements FilePrinter {
             files = runsWithProjectDir.toArray(new File[runsWithProjectDir.size()]);
 
             if (files.length == 0) {
-                String errorMessage = String.format("Sequencing run folder not found for run id: %s and request: %s in path: %s",
+                String errorMessage = String.format("Sequencing run folder not found for run id: %s and request: %s " +
+                                "in path: %s",
                         runId, request.getId(), dir.getPath());
                 Utils.setExitLater(true);
                 PM_LOGGER.log(Level.ERROR, errorMessage);
@@ -223,7 +236,8 @@ public class MappingFilePrinter implements FilePrinter {
                 RunIDFull = files[files.length - 1].getAbsoluteFile().getName().toString();
 
                 if (!runsWithMultipleFolders.contains(runId)) {
-                    String message = String.format("More than one sequencing run folder found for Run ID %s: %s I will be picking the newest folder: %s.", runId, foundFiles, RunIDFull);
+                    String message = String.format("More than one sequencing run folder found for Run ID %s: %s I " +
+                            "will be picking the newest folder: %s.", runId, foundFiles, RunIDFull);
                     logWarning(message);
                     runsWithMultipleFolders.add(runId);
                 }
@@ -245,7 +259,8 @@ public class MappingFilePrinter implements FilePrinter {
     private void validateSampleSheetExists(KickoffRequest request, Sample sample, String runIDFull, String path) {
         File samp_sheet = new File(path + "/SampleSheet.csv");
         if (!samp_sheet.isFile() && request.getRequestType() == RequestType.IMPACT) {
-            String message = String.format("Sample %s from run %s does not have a sample sheet in the sample directory. This will not pass the validator.", sample, runIDFull);
+            String message = String.format("Sample %s from run %s does not have a sample sheet in the sample " +
+                    "directory. This will not pass the validator.", sample, runIDFull);
             if (shiny) {
                 PM_LOGGER.error(message);
             } else {
@@ -258,7 +273,8 @@ public class MappingFilePrinter implements FilePrinter {
     private String getPattern(Sample sample, String runIDFull, File dir, String samplePattern) {
         String pattern;
         if (!isPooledNormalSample(sample)) {
-            pattern = String.format("%s/%s*/Proj*%s/Sample_%s", dir.toString(), runIDFull, sample.getRequestId().replaceFirst("^0+(?!$)", ""), samplePattern);
+            pattern = String.format("%s/%s*/Proj*%s/Sample_%s", dir.toString(), runIDFull, sample.getRequestId()
+                    .replaceFirst("^0+(?!$)", ""), samplePattern);
         } else {
             pattern = String.format("%s/%s*/Proj*/Sample_%s*", dir.toString(), runIDFull, samplePattern);
         }
@@ -301,7 +317,8 @@ public class MappingFilePrinter implements FilePrinter {
             pW.close();
             notifyObserversOfFileCreated();
         } catch (Exception e) {
-            throw new RuntimeException(String.format("Unable to write sample mapping file for request: %s", request.getId()));
+            throw new RuntimeException(String.format("Unable to write sample mapping file for request: %s", request
+                    .getId()));
         }
     }
 
@@ -321,7 +338,8 @@ public class MappingFilePrinter implements FilePrinter {
 
     private String getMappingFilePath(KickoffRequest request) {
         String mappingFileName = shouldOutputErrorFile(request) ? ERROR_MAPPING_FILE_NAME : NORMAL_MAPPING_FILE_NAME;
-        return String.format("%s/%s_%s", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId()), mappingFileName);
+        return String.format("%s/%s_%s", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId())
+                , mappingFileName);
     }
 
     private boolean isPooledNormal(String sampleId) {
@@ -329,7 +347,8 @@ public class MappingFilePrinter implements FilePrinter {
     }
 
     private boolean fastqExist(String path, String baitVersion) {
-        Pattern pattern = Pattern.compile(String.format("(.*)IGO_%s_[ATCG](.*)", baitVersion), Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile(String.format("(.*)IGO_%s_[ATCG](.*)", baitVersion), Pattern
+                .CASE_INSENSITIVE);
         return pattern.matcher(path).matches();
     }
 

@@ -36,7 +36,8 @@ public class ProdConfiguration {
     @Bean
     @Profile(Constants.TANGO_PROFILE)
     public static PropertySourcesPlaceholderConfigurer tangoPropertyConfigurer() {
-        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
+        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new
+                PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/lims-tango-prod.properties"));
         propertySourcesPlaceholderConfigurer.setOrder(1);
 

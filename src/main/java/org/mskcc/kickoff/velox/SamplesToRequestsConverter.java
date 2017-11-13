@@ -18,7 +18,8 @@ public class SamplesToRequestsConverter {
         this.singleRequestRetriever = singleRequestRetriever;
     }
 
-    public Map<String, KickoffRequest> convert(Collection<Sample> samples, ProcessingType processingType) throws Exception {
+    public Map<String, KickoffRequest> convert(Collection<Sample> samples, ProcessingType processingType) throws
+            Exception {
         Map<String, KickoffRequest> requests = new HashMap<>();
         List<String> sampleIds = getSampleIds(samples);
         for (Sample sample : samples) {

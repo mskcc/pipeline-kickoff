@@ -24,7 +24,8 @@ public class DefaultPathAwareOutputDirRetrieverTest {
 
     @Test
     public void whenOutputDirIsNotValid_shouldDefaultPathBeUsed() {
-        DefaultPathAwareOutputDirRetriever defaultPathAwareOutputDirRetriever = new DefaultPathAwareOutputDirRetriever(defaultPath, s -> false);
+        DefaultPathAwareOutputDirRetriever defaultPathAwareOutputDirRetriever = new
+                DefaultPathAwareOutputDirRetriever(defaultPath, s -> false);
 
         String projectId = "projecId";
         String outputDir = "";
@@ -37,7 +38,8 @@ public class DefaultPathAwareOutputDirRetrieverTest {
 
     @Test
     public void whenOutputDirIsProvided_shouldThisPathBeUsed() {
-        DefaultPathAwareOutputDirRetriever defaultPathAwareOutputDirRetriever = new DefaultPathAwareOutputDirRetriever(defaultPath, s -> true);
+        DefaultPathAwareOutputDirRetriever defaultPathAwareOutputDirRetriever = new
+                DefaultPathAwareOutputDirRetriever(defaultPath, s -> true);
 
         String projectId = "projecId";
         String outputDir = "some/dir";
@@ -49,14 +51,17 @@ public class DefaultPathAwareOutputDirRetrieverTest {
 
     @Test
     public void whenOutputDirProvidedDoesntExist_shouldThrowException() {
-        DefaultPathAwareOutputDirRetriever defaultPathAwareOutputDirRetriever = new DefaultPathAwareOutputDirRetriever(defaultPath, s -> false);
+        DefaultPathAwareOutputDirRetriever defaultPathAwareOutputDirRetriever = new
+                DefaultPathAwareOutputDirRetriever(defaultPath, s -> false);
 
         String projectId = "projecId";
         String outputDir = "notExisting/dir";
 
-        Optional<Exception> exception = TestUtils.assertThrown(() -> defaultPathAwareOutputDirRetriever.retrieve(projectId, outputDir));
+        Optional<Exception> exception = TestUtils.assertThrown(() -> defaultPathAwareOutputDirRetriever.retrieve
+                (projectId, outputDir));
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(DefaultPathAwareOutputDirRetriever.ProjectOutputDirNotExistsException.class));
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(DefaultPathAwareOutputDirRetriever
+                .ProjectOutputDirNotExistsException.class));
     }
 }

@@ -94,7 +94,8 @@ public class SampleSetRetrieverTest {
     }
 
     @Test
-    public void whenSampleSetHasSamplesFromMultipleRequests_shouldReturnSampleSetWithAllThoseRequests() throws Exception {
+    public void whenSampleSetHasSamplesFromMultipleRequests_shouldReturnSampleSetWithAllThoseRequests() throws
+            Exception {
         List<Sample> samples = getSamples(1, 2, 3, 4);
 
         when(sampleSetProxyMock.getSamples()).thenReturn(samples);
@@ -108,7 +109,9 @@ public class SampleSetRetrieverTest {
     }
 
     @Test
-    public void whenSampleSetHasSamplesFromMultipleRequestsAndMultipleRequests_shouldReturnSampleSetWithAllThoseRequests() throws Exception {
+    public void
+    whenSampleSetHasSamplesFromMultipleRequestsAndMultipleRequests_shouldReturnSampleSetWithAllThoseRequests() throws
+            Exception {
         List<Sample> samples = getSamples(1, 2, 3, 4);
         List<KickoffRequest> requests = getKickoffRequests(3);
 
@@ -123,7 +126,8 @@ public class SampleSetRetrieverTest {
         assertContainsAllSamplesRequests(samples, requests, sampleSet);
     }
 
-    private void assertContainsAllSamplesRequests(List<Sample> samples, List<KickoffRequest> requests, SampleSet sampleSet) throws Exception {
+    private void assertContainsAllSamplesRequests(List<Sample> samples, List<KickoffRequest> requests, SampleSet
+            sampleSet) throws Exception {
         Map<String, KickoffRequest> sampleRequests = getRequestsFromSamples(samples);
 
         Set<KickoffRequest> uniqueRequests = new HashSet<>(requests);
@@ -181,7 +185,8 @@ public class SampleSetRetrieverTest {
 
     private class SingleRequestRetrieverMock implements SingleRequestRetriever {
         @Override
-        public KickoffRequest retrieve(String requestId, List<String> sampleIds, ProcessingType processingType) throws Exception {
+        public KickoffRequest retrieve(String requestId, List<String> sampleIds, ProcessingType processingType)
+                throws Exception {
             return new KickoffRequest(requestId, processingType);
         }
 

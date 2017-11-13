@@ -33,7 +33,8 @@ public class NormalProcessingType implements ProcessingType {
     @Override
     public void archiveFilesToOld(KickoffRequest request) {
         if (shouldArchive(request)) {
-            String finalDir = String.valueOf(request.getOutputPath()).replaceAll("drafts", request.getRequestType().getName());
+            String finalDir = String.valueOf(request.getOutputPath()).replaceAll("drafts", request.getRequestType()
+                    .getName());
             File oldReqFile = new File(String.format("%s/%s_request.txt", finalDir, Utils.getFullProjectNameWithPrefix(request.getId())));
             if (oldReqFile.exists()) {
                 String lastUpdated = getPreviousDateOfLastUpdate(oldReqFile);

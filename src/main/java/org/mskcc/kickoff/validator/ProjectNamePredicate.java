@@ -7,7 +7,8 @@ public class ProjectNamePredicate implements Predicate<String> {
     private final Predicate<String> sampleSetNamePredicate;
     private final Predicate<String> singleRequestNamePredicate;
 
-    public ProjectNamePredicate(Predicate<String> sampleSetProjectPredicate, Predicate<String> sampleSetNamePredicate, Predicate<String> singleRequestNamePredicate) {
+    public ProjectNamePredicate(Predicate<String> sampleSetProjectPredicate, Predicate<String>
+            sampleSetNamePredicate, Predicate<String> singleRequestNamePredicate) {
         this.sampleSetProjectPredicate = sampleSetProjectPredicate;
         this.sampleSetNamePredicate = sampleSetNamePredicate;
         this.singleRequestNamePredicate = singleRequestNamePredicate;

@@ -78,11 +78,13 @@ public class FileManifestGenerator implements ManifestGenerator {
     private void sendEmailIfFileNotCreated(String projectId) {
         if (!ManifestFile.MAPPING.isFileGenerated()) {
             try {
-                DEV_LOGGER.info(String.format("Sending email notification about mapping file not generated for request: %s", projectId));
+                DEV_LOGGER.info(String.format("Sending email notification about mapping file not generated for " +
+                        "request: %s", projectId));
 
                 emailNotificator.notifyMessage(projectId, StringUtils.join(ManifestFile.MAPPING.getGenerationErrors()));
             } catch (Exception e) {
-                DEV_LOGGER.warn(String.format("Unable to send email notification about not generated manifest files for request: %s.",
+                DEV_LOGGER.warn(String.format("Unable to send email notification about not generated manifest files " +
+                                "for request: %s.",
                         projectId), e);
             }
         }

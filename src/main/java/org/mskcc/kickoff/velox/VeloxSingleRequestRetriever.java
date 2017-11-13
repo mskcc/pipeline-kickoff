@@ -44,17 +44,20 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private final SequencerRunFolderRetriever sequencerRunFolderRetriever = new SequencerRunFolderRetriever();
     private ProjectInfoRetriever projectInfoRetriever;
 
-    public VeloxSingleRequestRetriever(User user, DataRecordManager dataRecordManager, ProjectInfoRetriever projectInfoRetriever) {
+    public VeloxSingleRequestRetriever(User user, DataRecordManager dataRecordManager, ProjectInfoRetriever
+            projectInfoRetriever) {
         this.user = user;
         this.dataRecordManager = dataRecordManager;
         this.projectInfoRetriever = projectInfoRetriever;
     }
 
     @Override
-    public KickoffRequest retrieve(String requestId, List<String> sampleIds, ProcessingType processingType) throws Exception {
+    public KickoffRequest retrieve(String requestId, List<String> sampleIds, ProcessingType processingType) throws
+            Exception {
         DEV_LOGGER.info(String.format("Retrieving information about request: %s", requestId));
 
-        List<DataRecord> requestsDataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestId + "'", user);
+        List<DataRecord> requestsDataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId " +
+                "= '" + requestId + "'", user);
         if (requestsDataRecords != null && requestsDataRecords.size() > 0) {
             KickoffRequest kickoffRequest = new KickoffRequest(requestId, processingType);
 
@@ -87,7 +90,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     @Override
     public KickoffRequest retrieve(String requestId, ProcessingType processingType) throws Exception {
-        List<DataRecord> requestsDataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestId + "'", user);
+        List<DataRecord> requestsDataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId " +
+                "= '" + requestId + "'", user);
         if (requestsDataRecords != null && requestsDataRecords.size() > 0) {
             List<DataRecord> samples = Arrays.asList(getAliquots(requestsDataRecords.get(0)));
             List<String> allSampleIds = new ArrayList<>();
@@ -103,7 +107,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     }
 
     private Map<String, String> getProjectInfo(KickoffRequest kickoffRequest) {
-        Map<String, String> projectInfo = projectInfoRetriever.queryProjectInfo(user, dataRecordManager, kickoffRequest);
+        Map<String, String> projectInfo = projectInfoRetriever.queryProjectInfo(user, dataRecordManager,
+                kickoffRequest);
         kickoffRequest.setPi(projectInfoRetriever.getPI().split("@")[0]);
         kickoffRequest.setInvest(projectInfoRetriever.getInvest().split("@")[0]);
 
@@ -169,7 +174,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             if (recipeList.size() == 1)
                 kickoffRequest.setRecipe(recipeList.get(0));
         } catch (Recipe.UnsupportedRecipeException | Recipe.EmptyRecipeException e) {
-            DEV_LOGGER.warn(String.format("Invalid recipe for request %s: %s", kickoffRequest.getId(), e.getMessage()), e);
+            DEV_LOGGER.warn(String.format("Invalid recipe for request %s: %s", kickoffRequest.getId(), e.getMessage()
+            ), e);
         }
     }
 
@@ -193,10 +199,12 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private void addSampleInfo(KickoffRequest kickoffRequest) {
         for (Sample sample : kickoffRequest.getValidNonPooledNormalSamples().values()) {
-            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(sampleToDataRecord.get(sample), sample, kickoffRequest);
+            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(sampleToDataRecord.get(sample), sample,
+                    kickoffRequest);
             sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
             sample.setProperties(sampleInfo);
-            sample.setIsTumor(sample.get(Constants.SAMPLE_CLASS) != null && !sample.get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL));
+            sample.setIsTumor(sample.get(Constants.SAMPLE_CLASS) != null && !sample.get(Constants.SAMPLE_CLASS)
+                    .contains(Constants.NORMAL));
         }
     }
 
@@ -219,7 +227,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private void processPooledNormals(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         try {
-            Map<DataRecord, Collection<String>> pooledNormals = new LinkedHashMap<>(SampleInfoImpact.getPooledNormals());
+            Map<DataRecord, Collection<String>> pooledNormals = new LinkedHashMap<>(SampleInfoImpact.getPooledNormals
+                    ());
             if (pooledNormals.size() > 0) {
                 DEV_LOGGER.info(String.format("Number of Pooled Normal Samples: %d", pooledNormals.size()));
 
@@ -248,10 +257,12 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     // If the sample pooled normal type (ex: FROZEN POOLED NORMAL) is already in the manfiest list
                     // Concatenate the include/ exclude run ids
                     //@TODO move to app side, combine in file generator
-                    if (hasPooledNormal(kickoffRequest, cmoNormalId) && tempHashMap.get(Constants.INCLUDE_RUN_ID) != null) {
+                    if (hasPooledNormal(kickoffRequest, cmoNormalId) && tempHashMap.get(Constants.INCLUDE_RUN_ID) !=
+                            null) {
                         DEV_LOGGER.info(String.format("Combining Two Pooled Normals: %s", sample));
 
-                        Map<String, String> originalPooledNormalSample = getPooledNormal(kickoffRequest, cmoNormalId).getProperties();
+                        Map<String, String> originalPooledNormalSample = getPooledNormal(kickoffRequest, cmoNormalId)
+                                .getProperties();
                         Set<String> currIncludeRuns = new TreeSet<>(Arrays.asList(originalPooledNormalSample.get(Constants.INCLUDE_RUN_ID).split(";")));
 
                         DEV_LOGGER.info(String.format("OLD include runs: %s", originalPooledNormalSample.get(Constants.INCLUDE_RUN_ID)));
@@ -287,11 +298,13 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     }
 
     private Sample getPooledNormal(KickoffRequest kickoffRequest, String cmoNormalId) {
-        return kickoffRequest.getSamples().values().stream().filter(s -> s.getCmoSampleId().equals(cmoNormalId)).findFirst().get();
+        return kickoffRequest.getSamples().values().stream().filter(s -> s.getCmoSampleId().equals(cmoNormalId))
+                .findFirst().get();
     }
 
     private boolean hasPooledNormal(KickoffRequest kickoffRequest, String cmoNormalId) {
-        return kickoffRequest.getSamples().values().stream().anyMatch(s -> Objects.equals(s.getCmoSampleId(), cmoNormalId) && s.getProperties() != null && s.getProperties().size() > 0);
+        return kickoffRequest.getSamples().values().stream().anyMatch(s -> Objects.equals(s.getCmoSampleId(),
+                cmoNormalId) && s.getProperties() != null && s.getProperties().size() > 0);
     }
 
     private Set<Run> getPooledNormalRuns(Collection<String> pooledNormalPools, KickoffRequest kickoffRequest) {
@@ -299,7 +312,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         try {
             for (String pooledNormalPool : pooledNormalPools) {
                 if (kickoffRequest.getPools().keySet().stream().anyMatch(p -> p.contains(pooledNormalPool))) {
-                    Optional<Map.Entry<String, Pool>> pool = kickoffRequest.getPools().entrySet().stream().filter(p -> p.getKey().contains(pooledNormalPool)).findFirst();
+                    Optional<Map.Entry<String, Pool>> pool = kickoffRequest.getPools().entrySet().stream().filter(p
+                            -> p.getKey().contains(pooledNormalPool)).findFirst();
                     if (pool.isPresent()) {
                         Collection<Run> poolRuns = pool.get().getValue().getRuns().values();
                         poolRuns.forEach(r -> r.setValid(true));
@@ -318,7 +332,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         if (kickoffRequest.getRequestType() == null) {
             // Here I will pull the childs field recipe
             Recipe recipe = kickoffRequest.getRecipe();
-            logWarning(String.format("RECIPE for request %s is: %s", kickoffRequest.getId(), kickoffRequest.getRecipe()));
+            logWarning(String.format("RECIPE for request %s is: %s", kickoffRequest.getId(), kickoffRequest.getRecipe
+                    ()));
             if (kickoffRequest.getName().matches("(.*)PACT(.*)")) {
                 kickoffRequest.setRequestType(RequestType.IMPACT);
             }
@@ -335,7 +350,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                 } else if (runAsExome) {
                     kickoffRequest.setRequestType(RequestType.EXOME);
                 } else {
-                    logWarning("Request Name doesn't match one of the supported request types: " + kickoffRequest.getName() + ". Information will be pulled as if it is an rnaseq/unknown run.");
+                    logWarning("Request Name doesn't match one of the supported request types: " + kickoffRequest
+                            .getName() + ". Information will be pulled as if it is an rnaseq/unknown run.");
                     kickoffRequest.setRequestType(RequestType.OTHER);
                 }
             }
@@ -466,7 +482,9 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private void addSampleQcInformation(KickoffRequest kickoffRequest, Sample sample) {
         try {
-            List<DataRecord> sampleQCList = dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC, "Request = '" + kickoffRequest.getId() + "' AND OtherSampleId = '" + sample.getCmoSampleId() + "'", user);
+            List<DataRecord> sampleQCList = dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC,
+                    "Request = '" + kickoffRequest.getId() + "' AND OtherSampleId = '" + sample.getCmoSampleId() +
+                            "'", user);
 
             if (sampleQCList.size() > 0) {
                 for (DataRecord sampleQc : sampleQCList) {
@@ -490,12 +508,14 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                 }
             }
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about Sample specific QC for sample id: %s", sample.getIgoId()), e);
+            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about Sample specific QC for" +
+                    " sample id: %s", sample.getIgoId()), e);
         }
     }
 
     private void addPoolRunsToSample(KickoffRequest kickoffRequest, Sample sample) {
-        Set<Pool> poolsWithCurrentSample = kickoffRequest.getPools().values().stream().filter(p -> p.getSamples().contains(sample)).collect(Collectors.toSet());
+        Set<Pool> poolsWithCurrentSample = kickoffRequest.getPools().values().stream().filter(p -> p.getSamples()
+                .contains(sample)).collect(Collectors.toSet());
         for (Pool pool : poolsWithCurrentSample) {
             for (Run run : pool.getRuns().values()) {
                 if (!sample.getRuns().values().contains(run))
@@ -540,7 +560,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         return note;
     }
 
-    private void addPoolSeqQc(KickoffRequest kickoffRequest, DataRecord dataRecordRequest, Collection<DataRecord> samplesToAddPoolQc) {
+    private void addPoolSeqQc(KickoffRequest kickoffRequest, DataRecord dataRecordRequest, Collection<DataRecord>
+            samplesToAddPoolQc) {
         try {
             ArrayList<DataRecord> sequencingRuns = new ArrayList<>(dataRecordRequest.getDescendantsOfType(VeloxConstants.SEQ_ANALYSIS_QC, user));
             for (DataRecord seqrun : sequencingRuns) {
@@ -637,46 +658,54 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             // Try finalSampleList FIRST. If this doesn't have any library types, just try samples from seq run.
             checkSamplesForLibTypes(kickoffRequest, finalSampleList);
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about Library Types for request id: %s", Arguments.project), e);
+            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about Library Types for " +
+                    "request id: %s", Arguments.project), e);
         }
     }
 
     private void checkSamplesForLibTypes(KickoffRequest kickoffRequest, Set<DataRecord> finalSampleList) {
         try {
             for (DataRecord sampleRecord : finalSampleList) {
-                List<DataRecord> truSeqRnaProtocolChildren = Arrays.asList(sampleRecord.getChildrenOfType(VeloxConstants.TRU_SEQ_RNA_PROTOCOL, user));
+                List<DataRecord> truSeqRnaProtocolChildren = Arrays.asList(sampleRecord.getChildrenOfType
+                        (VeloxConstants.TRU_SEQ_RNA_PROTOCOL, user));
                 if (checkValidBool(truSeqRnaProtocolChildren, dataRecordManager, user))
                     for (DataRecord rnaProtocol : truSeqRnaProtocolChildren)
                         setLibAndStrandForProtocol(kickoffRequest, rnaProtocol);
                 setLibAndStrandForSample(kickoffRequest, sampleRecord);
             }
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about protocols for request id: %s", Arguments.project), e);
+            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about protocols for request " +
+                    "id: %s", Arguments.project), e);
         }
     }
 
-    private void setLibAndStrandForSample(KickoffRequest kickoffRequest, DataRecord rec) throws IoError, RemoteException {
+    private void setLibAndStrandForSample(KickoffRequest kickoffRequest, DataRecord rec) throws IoError,
+            RemoteException {
         if (Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RNA_SM_RNA_PROTOCOL_4, user)).size() > 0) {
             kickoffRequest.addLibType(LibType.TRU_SEQ_SM_RNA);
             kickoffRequest.addStrand(Strand.EMPTY);
             kickoffRequest.setRequestType(RequestType.RNASEQ);
         }
-        if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RIBO_DEPLETE_PROTOCOL_1, user)), dataRecordManager, user)) {
+        if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RIBO_DEPLETE_PROTOCOL_1, user))
+                , dataRecordManager, user)) {
             kickoffRequest.addLibType(LibType.TRU_SEQ_RIBO_DEPLETE);
             kickoffRequest.addStrand(Strand.REVERSE);
             kickoffRequest.setRequestType(RequestType.RNASEQ);
         }
-        if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RNA_FUSION_PROTOCOL_1, user)), dataRecordManager, user)) {
+        if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RNA_FUSION_PROTOCOL_1, user)),
+                dataRecordManager, user)) {
             kickoffRequest.addLibType(LibType.TRU_SEQ_FUSION_DISCOVERY);
             kickoffRequest.addStrand(Strand.NONE);
             kickoffRequest.setRequestType(RequestType.RNASEQ);
         }
-        if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.SMAR_TER_AMPLIFICATION_PROTOCOL_1, user)), dataRecordManager, user)) {
+        if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.SMAR_TER_AMPLIFICATION_PROTOCOL_1,
+                user)), dataRecordManager, user)) {
             kickoffRequest.addLibType(LibType.SMARTER_AMPLIFICATION);
             kickoffRequest.addStrand(Strand.NONE);
             kickoffRequest.setRequestType(RequestType.RNASEQ);
         }
-        if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.KAPA_MRNA_STRANDED_SEQ_PROTOCOL_1, user)), dataRecordManager, user)) {
+        if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.KAPA_MRNA_STRANDED_SEQ_PROTOCOL_1,
+                user)), dataRecordManager, user)) {
             kickoffRequest.addLibType(LibType.KAPA_M_RNA_STRANDED);
             kickoffRequest.addStrand(Strand.REVERSE);
             kickoffRequest.setRequestType(RequestType.RNASEQ);
@@ -693,11 +722,14 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         try {
             if (getBoolean(rnaProtocol, VeloxConstants.VALID)) {
                 String exID = rnaProtocol.getStringVal(VeloxConstants.EXPERIMENT_ID, user);
-                List<DataRecord> rnaExp = dataRecordManager.queryDataRecords(VeloxConstants.TRU_SEQ_RNA_EXPERIMENT, "ExperimentId='" + exID + "'", user);
+                List<DataRecord> rnaExp = dataRecordManager.queryDataRecords(VeloxConstants.TRU_SEQ_RNA_EXPERIMENT,
+                        "ExperimentId='" + exID + "'", user);
                 if (rnaExp.size() != 0) {
-                    List<Object> strandedness = dataRecordManager.getValueList(rnaExp, VeloxConstants.TRU_SEQ_STRANDING, user);
+                    List<Object> strandedness = dataRecordManager.getValueList(rnaExp, VeloxConstants
+                            .TRU_SEQ_STRANDING, user);
                     for (Object x : strandedness) {
-                        // Only check for Stranded, because older kits were not stranded and did not have this field, ie null"
+                        // Only check for Stranded, because older kits were not stranded and did not have this field,
+                        // ie null"
                         if (String.valueOf(x).equals(Constants.STRANDED)) {
                             kickoffRequest.addLibType(LibType.TRU_SEQ_POLY_A_SELECTION_STRANDED);
                             kickoffRequest.addStrand(Strand.REVERSE);
@@ -710,7 +742,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                 }
             }
         } catch (NullPointerException e) {
-            String message = "You hit a null pointer exception while trying to find valid for library types. Please let BIC know.";
+            String message = "You hit a null pointer exception while trying to find valid for library types. Please " +
+                    "let BIC know.";
             DEV_LOGGER.warn(message);
             PM_LOGGER.warn(message);
         } catch (Exception e) {
@@ -731,11 +764,13 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                 }
             }
         } catch (NullPointerException e) {
-            String message = "You hit a null pointer exception while trying to find valid for library types. Please let BIC know.";
+            String message = "You hit a null pointer exception while trying to find valid for library types. Please " +
+                    "let BIC know.";
             PM_LOGGER.log(PmLogPriority.WARNING, message);
             DEV_LOGGER.warn(message);
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while looking for valid for Library Types for request id: %s", Arguments.project), e);
+            DEV_LOGGER.warn(String.format("Exception thrown while looking for valid for Library Types for request id:" +
+                    " %s", Arguments.project), e);
         }
 
         return false;
@@ -744,7 +779,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private List<Long> getPassingSeqRuns(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         List<Long> passingRuns = new ArrayList<>();
         try {
-            List<DataRecord> sampleQCList = dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC, "Request = '" + kickoffRequest.getId() + "'", user);
+            List<DataRecord> sampleQCList = dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC,
+                    "Request = '" + kickoffRequest.getId() + "'", user);
 
             if (sampleQCList.size() == 0 && forced && !kickoffRequest.isManualDemux())
                 kickoffRequest.setProcessingType(new ForcedProcessingType());
@@ -762,7 +798,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         return passingRuns;
     }
 
-    private LinkedHashMap<String, String> getSampleInfoMap(DataRecord dataRecord, Sample sample, KickoffRequest kickoffRequest) {
+    private LinkedHashMap<String, String> getSampleInfoMap(DataRecord dataRecord, Sample sample, KickoffRequest
+            kickoffRequest) {
         LinkedHashMap<String, String> sampleInfoMap;
         // Latest attempt at refactoring the code. Why does species come up so much?
         SampleInfo sampleInfo;

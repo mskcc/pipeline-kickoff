@@ -36,7 +36,8 @@ public class SequencerRunFolderRetrieverTest {
         });
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SequencerRunFolderRetriever.InvalidSequencerRunFolderException.class));
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SequencerRunFolderRetriever
+                .InvalidSequencerRunFolderException.class));
     }
 
     private void assertSequencerName(String seqName, String runFolderSuffix) {

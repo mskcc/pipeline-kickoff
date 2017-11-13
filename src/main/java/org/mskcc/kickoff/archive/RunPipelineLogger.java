@@ -5,6 +5,7 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -13,6 +14,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+@Component
 public class RunPipelineLogger {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 

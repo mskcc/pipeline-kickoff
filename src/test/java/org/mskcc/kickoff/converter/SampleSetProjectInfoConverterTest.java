@@ -124,7 +124,8 @@ public class SampleSetProjectInfoConverterTest {
 
     @Test
     public void whenSampleSetHasRequestsWithSamples_shouldSetHaveNumberOfSamplesEqualToSumOfAll() {
-        KickoffRequest kickoffRequest = getRequestWithProperty(primaryReqId, Constants.ProjectInfo.NUMBER_OF_SAMPLES, "3");
+        KickoffRequest kickoffRequest = getRequestWithProperty(primaryReqId, Constants.ProjectInfo.NUMBER_OF_SAMPLES,
+                "3");
         KickoffRequest kickoffRequest2 = getRequestWithProperty("1232", Constants.ProjectInfo.NUMBER_OF_SAMPLES, "10");
         KickoffRequest kickoffRequest3 = getRequestWithProperty("75354", Constants.ProjectInfo.NUMBER_OF_SAMPLES, "42");
 
@@ -176,7 +177,8 @@ public class SampleSetProjectInfoConverterTest {
         Optional<Exception> exception = TestUtils.assertThrown(() -> sampleSetProjectInfoConverter.convert(sampleSet));
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter.PrimaryRequestNotSetException.class));
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter
+                .PrimaryRequestNotSetException.class));
     }
 
     @Test
@@ -187,7 +189,8 @@ public class SampleSetProjectInfoConverterTest {
         Optional<Exception> exception = TestUtils.assertThrown(() -> sampleSetProjectInfoConverter.convert(sampleSet));
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter.PrimaryRequestNotPartOfSampleSetException.class));
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter
+                .PrimaryRequestNotPartOfSampleSetException.class));
     }
 
     @Test
@@ -221,7 +224,8 @@ public class SampleSetProjectInfoConverterTest {
         Optional<Exception> exception = TestUtils.assertThrown(() -> sampleSetProjectInfoConverter.convert(sampleSet));
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetToRequestConverter.AmbiguousPropertyException.class));
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetToRequestConverter
+                .AmbiguousPropertyException.class));
     }
 
     private void assertPropertyIsMerged(String propertyToMerge) {
@@ -247,7 +251,8 @@ public class SampleSetProjectInfoConverterTest {
                 missingProperty,
                 SampleSetProjectInfoConverter.PropertyInPrimaryRequestNotSetException.class,
                 Arrays.asList(primaryReqId, "missing1"),
-                String.format("Primary request: %s of project: %s has no property: %s set", primaryReqId, sampleSet.getName(), missingProperty));
+                String.format("Primary request: %s of project: %s has no property: %s set", primaryReqId, sampleSet
+                        .getName(), missingProperty));
     }
 
     private void assertExceptionThrownOnMissingRequiredRequestProperty(String missingProperty) {
@@ -255,10 +260,12 @@ public class SampleSetProjectInfoConverterTest {
                 missingProperty,
                 ConverterUtils.RequiredPropertyNotSetException.class,
                 Arrays.asList("missing1", "missing2", "missing3"),
-                String.format("Required field: %s not set for requests: [%s]", missingProperty, "missing1, missing2, missing3"));
+                String.format("Required field: %s not set for requests: [%s]", missingProperty, "missing1, missing2, " +
+                        "missing3"));
     }
 
-    private void assertExceptionThrownOnMissingProperty(String missingProperty, Class exceptionClass, List<String> missingPropReqId, String message) {
+    private void assertExceptionThrownOnMissingProperty(String missingProperty, Class exceptionClass, List<String>
+            missingPropReqId, String message) {
         List<KickoffRequest> requests = new ArrayList<>();
         requests.add(getRequestWithRequiredProperties(primaryReqId));
 
@@ -294,7 +301,8 @@ public class SampleSetProjectInfoConverterTest {
             if (!primaryKickoffRequest.getProjectInfo().containsKey(info.getKey()))
                 assertThat("Property " + info.getKey(), StringUtils.isEmpty(info.getValue()), is(true));
             else
-                assertThat("Property " + info.getKey(), info.getValue(), is(primaryKickoffRequest.getProjectInfo().get(info.getKey())));
+                assertThat("Property " + info.getKey(), info.getValue(), is(primaryKickoffRequest.getProjectInfo()
+                        .get(info.getKey())));
         }
     }
 

@@ -32,13 +32,16 @@ public class PairingInfoRetriever {
             String tumorIgoId = sample.getIgoId();
             String normalCmoId = getInitialNormalId(pairingSample);
 
-            if (StringUtils.isEmpty(pairingSample.getIgoId()) && (StringUtils.isEmpty(pairingSample.getCmoSampleId()) || Objects.equals(pairingSample.getCmoSampleId(), org.mskcc.util.Constants.UNDEFINED))) {
+            if (StringUtils.isEmpty(pairingSample.getIgoId()) && (StringUtils.isEmpty(pairingSample.getCmoSampleId())
+                    || Objects.equals(pairingSample.getCmoSampleId(), org.mskcc.util.Constants.UNDEFINED))) {
                 if (Objects.equals(request.getRequestType(), Constants.EXOME))
                     normalCmoId = Constants.NA_LOWER_CASE;
                 else continue;
             } else {
                 if (!isSampleFromRequest(request, pairingSample)) {
-                    String message = String.format("Normal: %s (%s) matching with tumor: %s (%s) does NOT belong to request: %s. The normal will be changed to na.", pairingSample.getCmoSampleId(), pairingSample.getIgoId(),
+                    String message = String.format("Normal: %s (%s) matching with tumor: %s (%s) does NOT belong to " +
+                                    "request: %s. The normal will be changed to na.", pairingSample.getCmoSampleId(),
+                            pairingSample.getIgoId(),
                             tumorIgoToCmoId.get(tumorIgoId), tumorIgoId, request.getId());
                     PM_LOGGER.log(PmLogPriority.WARNING, message);
                     DEV_LOGGER.warn(message);
@@ -112,6 +115,7 @@ public class PairingInfoRetriever {
 
     private boolean isPairingInfo(KickoffRequest request) {
         return request.getSamples().values().stream()
-                .allMatch(s -> s.getPairing() == null || (s.getPairing() != null && Objects.equals(s.getPairing().getCmoSampleId(), org.mskcc.util.Constants.UNDEFINED)));
+                .allMatch(s -> s.getPairing() == null || (s.getPairing() != null && Objects.equals(s.getPairing()
+                        .getCmoSampleId(), org.mskcc.util.Constants.UNDEFINED)));
     }
 }

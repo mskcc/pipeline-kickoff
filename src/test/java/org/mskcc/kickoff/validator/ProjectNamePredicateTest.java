@@ -14,7 +14,8 @@ public class ProjectNamePredicateTest {
         Predicate<String> sampleSetNamePredicate = s -> true;
         Predicate<String> singleReqNamePredicate = s -> false;
 
-        ProjectNamePredicate projectNamePredicate = new ProjectNamePredicate(sampleSetPredicate, sampleSetNamePredicate, singleReqNamePredicate);
+        ProjectNamePredicate projectNamePredicate = new ProjectNamePredicate(sampleSetPredicate,
+                sampleSetNamePredicate, singleReqNamePredicate);
 
         boolean isValid = projectNamePredicate.test("whatever");
 
@@ -27,7 +28,8 @@ public class ProjectNamePredicateTest {
         Predicate<String> sampleSetNamePredicate = s -> false;
         Predicate<String> singleReqNamePredicate = s -> false;
 
-        ProjectNamePredicate projectNamePredicate = new ProjectNamePredicate(sampleSetPredicate, sampleSetNamePredicate, singleReqNamePredicate);
+        ProjectNamePredicate projectNamePredicate = new ProjectNamePredicate(sampleSetPredicate,
+                sampleSetNamePredicate, singleReqNamePredicate);
 
         boolean isValid = projectNamePredicate.test("whatever");
 
@@ -40,7 +42,8 @@ public class ProjectNamePredicateTest {
         Predicate<String> sampleSetNamePredicate = s -> true;
         Predicate<String> singleReqNamePredicate = s -> true;
 
-        ProjectNamePredicate projectNamePredicate = new ProjectNamePredicate(sampleSetPredicate, sampleSetNamePredicate, singleReqNamePredicate);
+        ProjectNamePredicate projectNamePredicate = new ProjectNamePredicate(sampleSetPredicate,
+                sampleSetNamePredicate, singleReqNamePredicate);
 
         boolean isValid = projectNamePredicate.test("whatever");
 
@@ -53,7 +56,8 @@ public class ProjectNamePredicateTest {
         Predicate<String> sampleSetNamePredicate = s -> true;
         Predicate<String> singleReqNamePredicate = s -> false;
 
-        ProjectNamePredicate projectNamePredicate = new ProjectNamePredicate(sampleSetPredicate, sampleSetNamePredicate, singleReqNamePredicate);
+        ProjectNamePredicate projectNamePredicate = new ProjectNamePredicate(sampleSetPredicate,
+                sampleSetNamePredicate, singleReqNamePredicate);
 
         boolean isValid = projectNamePredicate.test("whatever");
 

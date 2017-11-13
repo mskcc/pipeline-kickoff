@@ -28,9 +28,12 @@ public class SamplesToRequestsConverterTest {
     @Before
     public void setUp() throws Exception {
         SingleRequestRetriever singleReqRetriever = mock(SingleRequestRetriever.class);
-        when(singleReqRetriever.retrieve(eq(REQUEST_ID_1), any(), eq(procType))).thenReturn(new KickoffRequest(REQUEST_ID_1, procType));
-        when(singleReqRetriever.retrieve(eq(REQUEST_ID_2), any(), eq(procType))).thenReturn(new KickoffRequest(REQUEST_ID_2, procType));
-        when(singleReqRetriever.retrieve(eq(REQUEST_ID_3), any(), eq(procType))).thenReturn(new KickoffRequest(REQUEST_ID_3, procType));
+        when(singleReqRetriever.retrieve(eq(REQUEST_ID_1), any(), eq(procType))).thenReturn(new KickoffRequest
+                (REQUEST_ID_1, procType));
+        when(singleReqRetriever.retrieve(eq(REQUEST_ID_2), any(), eq(procType))).thenReturn(new KickoffRequest
+                (REQUEST_ID_2, procType));
+        when(singleReqRetriever.retrieve(eq(REQUEST_ID_3), any(), eq(procType))).thenReturn(new KickoffRequest
+                (REQUEST_ID_3, procType));
         samplesToRequestsConverter = new SamplesToRequestsConverter(singleReqRetriever);
     }
 

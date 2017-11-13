@@ -56,7 +56,8 @@ public class VeloxSampleSetProxy implements SampleSetProxy {
 
     @Override
     public Collection<Sample> getSamples() throws Exception {
-        List<DataRecord> sampleRecords = new LinkedList<>(Arrays.asList(sampleSetRecord.getChildrenOfType(SAMPLE, user)));
+        List<DataRecord> sampleRecords = new LinkedList<>(Arrays.asList(sampleSetRecord.getChildrenOfType(SAMPLE,
+                user)));
 
         List<Sample> samples = new LinkedList<>();
 

@@ -33,7 +33,8 @@ class CreateManifestSheet {
             CreateManifestSheet createManifestSheet = context.getBean(CreateManifestSheet.class);
             createManifestSheet.generate(Arguments.project);
         } catch (Exception e) {
-            DEV_LOGGER.error(String.format("Error while generating manifest files for project: %s", Arguments.project), e);
+            DEV_LOGGER.error(String.format("Error while generating manifest files for project: %s", Arguments
+                    .project), e);
         }
     }
 
@@ -51,10 +52,12 @@ class CreateManifestSheet {
 
     private static void configureSpringProfiles(AnnotationConfigApplicationContext context) {
         if (getActiveProfiles(context).length == 0) {
-            DEV_LOGGER.info(String.format("No spring profiles set. Setting default spring profiles: %s, %s", Constants.PROD_PROFILE, Constants.IGO_PROFILE));
+            DEV_LOGGER.info(String.format("No spring profiles set. Setting default spring profiles: %s, %s",
+                    Constants.PROD_PROFILE, Constants.IGO_PROFILE));
             context.getEnvironment().setActiveProfiles(Constants.PROD_PROFILE, Constants.IGO_PROFILE);
         } else {
-            DEV_LOGGER.info(String.format("Spring profiles set: %s", StringUtils.join(getActiveProfiles(context), ",")));
+            DEV_LOGGER.info(String.format("Spring profiles set: %s", StringUtils.join(getActiveProfiles(context), "," +
+                    "")));
         }
     }
 

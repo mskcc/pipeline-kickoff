@@ -26,7 +26,8 @@ public class SampleSetRequestRetrieverTest {
 
     @Before
     public void setUp() throws Exception {
-        sampleSetRequestRetriever = new SampleSetRequestRetriever(requetsDataPropagator, sampleSetToReqConv, sampleSetRetriever, mock(DataRecord.class), mock(VeloxPairingsRetriever.class));
+        sampleSetRequestRetriever = new SampleSetRequestRetriever(requetsDataPropagator, sampleSetToReqConv,
+                sampleSetRetriever, mock(DataRecord.class), mock(VeloxPairingsRetriever.class));
     }
 
     @Test

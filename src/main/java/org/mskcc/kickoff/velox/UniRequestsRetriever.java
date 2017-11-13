@@ -37,7 +37,8 @@ public class UniRequestsRetriever implements RequestsRetriever {
 
     @Override
     public KickoffRequest retrieve(String requestId, ProcessingType processingType) throws Exception {
-        List<DataRecord> requestsDataRecords = dataRecordManager.queryDataRecords(REQUEST, "RequestId = '" + requestId + "'", user);
+        List<DataRecord> requestsDataRecords = dataRecordManager.queryDataRecords(REQUEST, "RequestId = '" +
+                requestId + "'", user);
 
         if (requestsDataRecords == null || requestsDataRecords.size() != 1)
             throw new RequestNotFoundException(String.format("Request with id: %s not found", requestId));

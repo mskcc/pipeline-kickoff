@@ -30,27 +30,34 @@ public class RequestsRetrieverFactory {
         this.sampleSetProjectPredicate = new SampleSetProjectPredicate();
     }
 
-    public RequestsRetriever getRequestsRetriever(User user, DataRecordManager dataRecordManager, String projectId) throws RequestNotFoundException {
+    public RequestsRetriever getRequestsRetriever(User user, DataRecordManager dataRecordManager, String projectId)
+            throws RequestNotFoundException {
         VeloxPairingsRetriever veloxPairingsRetriever = new VeloxPairingsRetriever(user);
 
         if (sampleSetProjectPredicate.test(projectId))
             return getSampleSetRequestsRetriever(user, dataRecordManager, projectId, veloxPairingsRetriever);
 
-        return new UniRequestsRetriever(user, dataRecordManager, projectInfoRetriever, requestDataPropagator, veloxPairingsRetriever);
+        return new UniRequestsRetriever(user, dataRecordManager, projectInfoRetriever, requestDataPropagator,
+                veloxPairingsRetriever);
     }
 
-    private RequestsRetriever getSampleSetRequestsRetriever(User user, DataRecordManager dataRecordManager, String projectId, VeloxPairingsRetriever veloxPairingsRetriever) {
-        SingleRequestRetriever requestsRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager, projectInfoRetriever);
+    private RequestsRetriever getSampleSetRequestsRetriever(User user, DataRecordManager dataRecordManager, String
+            projectId, VeloxPairingsRetriever veloxPairingsRetriever) {
+        SingleRequestRetriever requestsRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager,
+                projectInfoRetriever);
         DataRecord sampleSetRecord = getSampleSetRecord(projectId, dataRecordManager, user);
         SampleSetProxy veloxSampleSetProxy = new VeloxSampleSetProxy(sampleSetRecord, user, requestsRetriever);
 
-        SamplesToRequestsConverter samplesToRequestsConverter = new SamplesToRequestsConverter(new VeloxSingleRequestRetriever(user, dataRecordManager, projectInfoRetriever));
+        SamplesToRequestsConverter samplesToRequestsConverter = new SamplesToRequestsConverter(new
+                VeloxSingleRequestRetriever(user, dataRecordManager, projectInfoRetriever));
         SampleSetRetriever sampleSetRetriever = new SampleSetRetriever(veloxSampleSetProxy, samplesToRequestsConverter);
 
-        return new SampleSetRequestRetriever(requestDataPropagator, sampleSetToRequestConverter, sampleSetRetriever, sampleSetRecord, veloxPairingsRetriever);
+        return new SampleSetRequestRetriever(requestDataPropagator, sampleSetToRequestConverter, sampleSetRetriever,
+                sampleSetRecord, veloxPairingsRetriever);
     }
 
-    private DataRecord getSampleSetRecord(String projectId, DataRecordManager dataRecordManager, User user) throws RequestNotFoundException {
+    private DataRecord getSampleSetRecord(String projectId, DataRecordManager dataRecordManager, User user) throws
+            RequestNotFoundException {
         List<DataRecord> sampleSets;
         try {
             sampleSets = dataRecordManager.queryDataRecords(SAMPLE_SET, "Name = '" + projectId + "'", user);
@@ -63,7 +70,8 @@ public class RequestsRetrieverFactory {
         return sampleSets.get(0);
     }
 
-    private void validateSampleSetExists(String projectId, List<DataRecord> sampleSets) throws RequestNotFoundException {
+    private void validateSampleSetExists(String projectId, List<DataRecord> sampleSets) throws
+            RequestNotFoundException {
         if (sampleSets == null || sampleSets.size() == 0)
             throw new RequestNotFoundException(String.format("Sample set: %s doesn't exist", projectId));
     }

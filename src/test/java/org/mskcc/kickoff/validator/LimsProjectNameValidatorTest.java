@@ -25,7 +25,8 @@ public class LimsProjectNameValidatorTest {
     public void whenProjectNameNotValid_shouldThrowAnException() {
         projectNameValidator = new LimsProjectNameValidator(s -> false);
 
-        Optional<Exception> exception = TestUtils.assertThrown(() -> projectNameValidator.validate("notValidProjectName"));
+        Optional<Exception> exception = TestUtils.assertThrown(() -> projectNameValidator.validate
+                ("notValidProjectName"));
         assertThat(exception.isPresent(), is(true));
         assertThat(exception.get().getClass(), typeCompatibleWith(LimsProjectNameValidator.InvalidProjectNameException.class));
     }
