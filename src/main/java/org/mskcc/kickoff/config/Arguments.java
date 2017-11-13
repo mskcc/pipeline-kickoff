@@ -19,7 +19,7 @@ public class Arguments {
     public static String project;
     @Argument(alias = "o", description = "Pipeline files output dir")
     public static String outdir;
-    @Argument(alias = "rerunReason", description = "Reason for rerun, *REQUIRED if this is not the first run for this project*")
+    @Argument(alias = "rerunReason", description = "Reason for rerun, for not first run if reason is not provided, default value is used")
     public static String rerunReason;
 
     public static String toPrintable() {
