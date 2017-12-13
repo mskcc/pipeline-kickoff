@@ -131,10 +131,12 @@ public class VeloxProjectProxy implements RequestProxy {
 
         for (DataRecord instrument : instruments) {
             String instrumentName = instrument.getStringVal(VeloxConstants.INSTRUMENT_NAME, user);
+            String instrumentSerialNumber = instrument.getStringVal("SerialNumber", user);
             String instrumentType = instrument.getPickListVal(VeloxConstants.INSTRUMENT_TYPE, user);
 
             try {
                 InstrumentType.mapNameToType(instrumentName, InstrumentType.fromString(instrumentType));
+                InstrumentType.mapNameToType(instrumentSerialNumber, InstrumentType.fromString(instrumentType));
             } catch (Exception e) {
                 String message = String.format("Skipping instrument type: %s as it's not supported (is invalid or " +
                         "outdated).", instrumentType);

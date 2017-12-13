@@ -5,14 +5,19 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.helpers.Loader;
+import org.mskcc.domain.Pairedness;
 import org.mskcc.domain.PassedRunPredicate;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.converter.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
 import org.mskcc.kickoff.generator.*;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
+import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.proxy.RequestProxy;
+import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
+import org.mskcc.kickoff.upload.FileUploader;
+import org.mskcc.kickoff.upload.JiraFileUploader;
 import org.mskcc.kickoff.validator.*;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
 import org.mskcc.kickoff.velox.SampleSetProjectPredicate;
@@ -31,13 +36,14 @@ import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 
 @Configuration
 @Import({ProdConfiguration.class, DevConfiguration.class, TestConfiguration.class})
 public class AppConfiguration {
-    @Value("${archivePath}")
-    private String archivePath;
+    @Value("${manifestArchivePath}")
+    private String manifestArchivePath;
 
     @Value("${designFilePath}")
     private String designFilePath;
@@ -45,8 +51,8 @@ public class AppConfiguration {
     @Value("${resultsPathPrefix}")
     private String resultsPathPrefix;
 
-    @Value("${draftProjectFilePath}")
-    private String draftProjectFilePath;
+    @Value("${manifestOutputFilePath}")
+    private String manifestOutputFilePath;
 
     @Value("${limsConnectionFilePath}")
     private String limsConnectionFilePath;
@@ -59,6 +65,18 @@ public class AppConfiguration {
 
     @Value("#{'${file.generation.failure.notification.recipients}'.split(',')}")
     private List<String> recipients;
+
+    @Value("${jira.url}")
+    private String jiraUrl;
+
+    @Value("${jira.username}")
+    private String jiraUsername;
+
+    @Value("${jira.password}")
+    private String jiraPassword;
+
+    @Value("${jira.roslin.project.name}")
+    private String jiraRoslinProjectName;
 
     static void configureLogger(String loggerPropertiesPath) {
         LogManager.resetConfiguration();
@@ -113,6 +131,11 @@ public class AppConfiguration {
         return new JavaxEmailSender(emailToMimeMessageConverter());
     }
 
+    /**
+     * Dummy Email Sender used in tests to avoid overflowing of emails. In TEST profile emails won't be sent.
+     *
+     * @return
+     */
     @Bean
     @Profile(Constants.TEST_PROFILE)
     public EmailSender dummySender() {
@@ -127,7 +150,7 @@ public class AppConfiguration {
 
     @Bean
     public ProjectFilesArchiver projectFilesArchiver() {
-        return new ProjectFilesArchiver(archivePath);
+        return new ProjectFilesArchiver(manifestArchivePath);
     }
 
     @Bean
@@ -178,11 +201,31 @@ public class AppConfiguration {
 
     @Bean
     public OutputDirRetriever outputDirRetriever() {
-        return new DefaultPathAwareOutputDirRetriever(draftProjectFilePath, outputDirPredicate());
+        return new DefaultPathAwareOutputDirRetriever(manifestOutputFilePath, outputDirPredicate());
     }
 
     @Bean
     public Predicate<String> outputDirPredicate() {
         return new FileExistenceOutputDirValidator();
+    }
+
+    @Bean
+    public FileUploader fileUploader() {
+        return new JiraFileUploader(jiraUrl, jiraUsername, jiraPassword, jiraRoslinProjectName);
+    }
+
+    @Bean
+    public ManifestFile.FilePrinterInjector filePrinterInjector() {
+        return new ManifestFile.FilePrinterInjector();
+    }
+
+    @Bean
+    public Predicate<Set<Pairedness>> pairednessValidPredicate() {
+        return new PairednessValidPredicate();
+    }
+
+    @Bean
+    public PairednessResolver pairednessResolver() {
+        return new PairednessResolver();
     }
 }

@@ -151,24 +151,7 @@ public class SampleSetToRequestConverter {
         DEV_LOGGER.info(String.format("Samples found for sample set: %s [%s]", sampleSet.getName(), Utils
                 .getJoinedCollection(sampleSetSamples.keySet())));
 
-        setPairings(sampleSet, sampleSetSamples);
         kickoffRequest.setSamples(sampleSetSamples);
-    }
-
-    private void setPairings(SampleSet sampleSet, Map<String, Sample> sampleSetSamples) {
-        DEV_LOGGER.info(String.format("Found %s pairings for sample set: %s", sampleSet.getPairings().size(),
-                sampleSet.getName()));
-
-        for (PairingInfo pairingInfo : sampleSet.getPairings()) {
-            Sample normalSample = sampleSetSamples.get(pairingInfo.getNormal());
-            Sample tumorSample = sampleSetSamples.get(pairingInfo.getTumor());
-
-            DEV_LOGGER.info(String.format("Found pairing for sample set: %s. Tumor: %s - normal: %s", sampleSet
-                    .getName(), tumorSample, normalSample));
-
-            normalSample.setPairing(tumorSample);
-            tumorSample.setPairing(normalSample);
-        }
     }
 
     private void setProjectInfo(KickoffRequest kickoffRequest, SampleSet sampleSet) {

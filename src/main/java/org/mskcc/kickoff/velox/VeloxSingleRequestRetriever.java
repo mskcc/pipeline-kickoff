@@ -19,7 +19,7 @@ import org.mskcc.kickoff.lims.SampleInfoImpact;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
-import org.mskcc.kickoff.retriever.SequencerRunFolderRetriever;
+import org.mskcc.kickoff.retriever.SequencerIdentifierRetriever;
 import org.mskcc.kickoff.retriever.SingleRequestRetriever;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
@@ -41,7 +41,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private final DataRecordManager dataRecordManager;
 
     private final Map<Sample, DataRecord> sampleToDataRecord = new HashMap<>();
-    private final SequencerRunFolderRetriever sequencerRunFolderRetriever = new SequencerRunFolderRetriever();
+    private final SequencerIdentifierRetriever sequencerIdentifierRetriever = new SequencerIdentifierRetriever();
     private ProjectInfoRetriever projectInfoRetriever;
 
     public VeloxSingleRequestRetriever(User user, DataRecordManager dataRecordManager, ProjectInfoRetriever
@@ -442,7 +442,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private String getSeqName(DataRecord sampleLevelQc) throws NotFound, RemoteException {
         String runFolder = sampleLevelQc.getStringVal(VeloxConstants.SEQUENCER_RUN_FOLDER, user);
 
-        return sequencerRunFolderRetriever.retrieve(runFolder);
+        return sequencerIdentifierRetriever.retrieve(runFolder);
     }
 
     private boolean isPassed(DataRecord sampleLevelQc) throws Exception {

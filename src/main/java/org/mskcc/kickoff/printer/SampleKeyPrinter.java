@@ -27,9 +27,9 @@ public class SampleKeyPrinter implements FilePrinter  {
 
     @Override
     public void print(KickoffRequest request) {
-        // sample info
-        String requestID = request.getId();
-        File sampleKeyExcel = new File(request.getOutputPath() + "/" + Utils.getFullProjectNameWithPrefix(requestID) + "_sample_key.xlsx");
+        DEV_LOGGER.info(String.format("Starting to create file: %s", getFilePath(request)));
+
+        File sampleKeyExcel = new File(getFilePath(request));
 
         //create the workbook
         XSSFWorkbook wb = new XSSFWorkbook();
@@ -154,6 +154,11 @@ public class SampleKeyPrinter implements FilePrinter  {
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Exception thrown while writing to file: %s", sampleKeyExcel), e);
         }
+    }
+
+    @Override
+    public String getFilePath(KickoffRequest request) {
+        return request.getOutputPath() + "/" + Utils.getFullProjectNameWithPrefix(request.getId()) + "_sample_key.xlsx";
     }
 
     @Override

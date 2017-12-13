@@ -47,7 +47,7 @@ public class PairingsResolver {
     }
 
     private boolean shouldOverride(Map<String, String> pairings, Map.Entry<String, String> pairingInfo) {
-        return !isEmptyPairingInfo(pairingInfo) && isNormalDifferent(pairings, pairingInfo);
+        return !isEmptyPairingInfo(pairingInfo);
     }
 
     private boolean isNormalDifferent(Map<String, String> pairings, Map.Entry<String, String> pairingInfo) {

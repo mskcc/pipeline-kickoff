@@ -18,15 +18,15 @@ import java.util.Date;
 public class RunPipelineLogger {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
-    @Value("${archivePath}")
-    private String archivePath;
+    @Value("${manifestArchivePath}")
+    private String manifestArchivePath;
 
     void invoke(KickoffRequest request) {
         boolean newFile = false;
         // If this project already has a pipeline run log add rerun information to it.
         // IF the rerun number has already been marked in there, just add to it....
         // Create file is not created before:
-        File archiveProject = new File(archivePath + "/" + Utils.getFullProjectNameWithPrefix(request.getId()));
+        File archiveProject = new File(manifestArchivePath + "/" + Utils.getFullProjectNameWithPrefix(request.getId()));
 
         if (!archiveProject.exists()) {
             DEV_LOGGER.info(String.format("Creating archive directory: %s", archiveProject));

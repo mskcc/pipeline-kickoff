@@ -30,8 +30,8 @@ public class ManifestFilePrinter implements FilePrinter  {
 
     @Override
     public void print(KickoffRequest kickoffRequest) {
-        String filename = String.format("%s/%s_sample_manifest.txt", kickoffRequest.getOutputPath(), Utils
-                .getFullProjectNameWithPrefix(kickoffRequest.getId()));
+        String filename = getFilePath(kickoffRequest);
+        DEV_LOGGER.info(String.format("Starting to create file: %s", filename));
 
         try {
             char[] alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
@@ -108,6 +108,12 @@ public class ManifestFilePrinter implements FilePrinter  {
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Exception thrown while creating mapping file", e));
         }
+    }
+
+    @Override
+    public String getFilePath(KickoffRequest request) {
+        return String.format("%s/%s_sample_manifest.txt", request.getOutputPath(), Utils
+                .getFullProjectNameWithPrefix(request.getId()));
     }
 
     private XSSFSheet getHeader(XSSFWorkbook wb, int rowNum, ArrayList<String> header, XSSFSheet sampleInfoSheet) {

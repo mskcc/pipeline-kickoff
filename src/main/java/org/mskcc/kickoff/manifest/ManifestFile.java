@@ -1,10 +1,10 @@
 package org.mskcc.kickoff.manifest;
 
-import org.mskcc.kickoff.generator.PairingsResolver;
-import org.mskcc.kickoff.notify.FilePrinterObserver;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.printer.*;
+import org.mskcc.kickoff.printer.observer.FileGenerationStatusManifestFileObserver;
+import org.mskcc.kickoff.printer.observer.FileUploadingManifestFileObserver;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
@@ -16,16 +16,23 @@ public enum ManifestFile {
     SAMPLE_KEY("Sample Key file"),
     PATIENT("Patient file", new PatientFilePrinter()),
     CLINICAL("Clinical file", new ClinicalFilePrinter()),
-    GROUPING("Grouping file", new GroupingFilePrinter()),
-    REQUEST("Request file", new RequestFilePrinter()),
+    GROUPING("Grouping file"),
+    REQUEST("Request file"),
     README("Readme file", new ReadMePrinter()),
     MANIFEST("Manifest file", new ManifestFilePrinter()),
     C_TO_P_MAPPING("C to p mapping file", new CidToPidMappingPrinter());
 
+    private static List<ManifestFile> requiredFiles = new ArrayList<>();
+
+    static {
+        requiredFiles.add(MAPPING);
+        requiredFiles.add(GROUPING);
+        requiredFiles.add(PAIRING);
+        requiredFiles.add(REQUEST);
+    }
+
     private final String name;
-
     private FilePrinter filePrinter;
-
     private boolean fileGenerated;
     private List<String> generationErrors = new ArrayList<>();
 
@@ -38,11 +45,15 @@ public enum ManifestFile {
         this.name = name;
     }
 
+    public static List<ManifestFile> getRequiredFiles() {
+        return requiredFiles;
+    }
+
     public FilePrinter getFilePrinter() {
         return filePrinter;
     }
 
-    private void setFilePrinter(FilePrinter filePrinter) {
+    public void setFilePrinter(FilePrinter filePrinter) {
         this.filePrinter = filePrinter;
     }
 
@@ -66,35 +77,59 @@ public enum ManifestFile {
         this.generationErrors.add(generationError);
     }
 
+    public String getFilePath(KickoffRequest kickoffRequest) {
+        return filePrinter.getFilePath(kickoffRequest);
+    }
+
     @Override
     public String toString() {
         return name;
     }
 
-    @Component
     public static class FilePrinterInjector {
         @Autowired
-        private PairingsResolver pairingsResolver;
+        private FileGenerationStatusManifestFileObserver fileGenerationStatusObserver;
 
         @Autowired
-        private FilePrinterObserver filePrinterObserver;
+        private FileUploadingManifestFileObserver fileUploadingManifestFileObserver;
+
+        @Autowired
+        private GroupingFilePrinter groupingFilePrinter;
 
         @Autowired
         private MappingFilePrinter mappingFilePrinter;
+
+        @Autowired
+        private PairingFilePrinter pairingFilePrinter;
+
+        @Autowired
+        private RequestFilePrinter requestFilePrinter;
 
         @Autowired
         private SampleKeyPrinter sampleKeyPrinter;
 
         @PostConstruct
         public void init() {
-            ManifestFile.MAPPING.setFilePrinter(getMappingFilePrinter());
-            ManifestFile.PAIRING.setFilePrinter(new PairingFilePrinter(pairingsResolver));
+            initObservers();
+            ManifestFile.GROUPING.setFilePrinter(groupingFilePrinter);
+            ManifestFile.MAPPING.setFilePrinter(mappingFilePrinter);
+            ManifestFile.PAIRING.setFilePrinter(pairingFilePrinter);
+            ManifestFile.REQUEST.setFilePrinter(requestFilePrinter);
             ManifestFile.SAMPLE_KEY.setFilePrinter(sampleKeyPrinter);
         }
 
-        private FilePrinter getMappingFilePrinter() {
-            mappingFilePrinter.register(filePrinterObserver);
-            return mappingFilePrinter;
+        private void initObservers() {
+            groupingFilePrinter.register(fileUploadingManifestFileObserver);
+            groupingFilePrinter.register(fileGenerationStatusObserver);
+
+            mappingFilePrinter.register(fileUploadingManifestFileObserver);
+            mappingFilePrinter.register(fileGenerationStatusObserver);
+
+            pairingFilePrinter.register(fileUploadingManifestFileObserver);
+            pairingFilePrinter.register(fileGenerationStatusObserver);
+
+            requestFilePrinter.register(fileUploadingManifestFileObserver);
+            requestFilePrinter.register(fileGenerationStatusObserver);
         }
     }
 }

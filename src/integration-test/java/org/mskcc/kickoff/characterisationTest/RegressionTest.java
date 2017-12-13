@@ -2,6 +2,7 @@ package org.mskcc.kickoff.characterisationTest;
 
 import org.apache.log4j.Logger;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
@@ -14,6 +15,7 @@ import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,6 +25,7 @@ import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Properties;
 import java.util.function.BiPredicate;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -37,7 +40,9 @@ public class RegressionTest {
     private static final String SUCCEEDED_PROJECTS_LIST_PATH = "succeededProjectsList";
     private static final String FAILING_OUTPUT_PATH = "failingOutputPath";
     private static final String ARG = "arg";
-    private final String archivePath = "/home/reza/testIfs/projects/BIC/archive";
+
+    private static String archivePath;
+
     @Rule
     public WriteToTestReportOnFailure ruleExample = new WriteToTestReportOnFailure();
     private boolean isShiny = false;
@@ -50,6 +55,14 @@ public class RegressionTest {
     private String failingOutputPath = "failing";
     private String arg;
     private BiPredicate<String, String> areLinesEqualExceptPathsAndDatesPredicate;
+
+    @BeforeClass
+    public static void init() throws Exception {
+        FileInputStream input = new FileInputStream("src/main/resources/application-dev.properties");
+        Properties prop = new Properties();
+        prop.load(input);
+        archivePath = prop.getProperty("manifestArchivePath");
+    }
 
     @Before
     public void setUp() throws Exception {

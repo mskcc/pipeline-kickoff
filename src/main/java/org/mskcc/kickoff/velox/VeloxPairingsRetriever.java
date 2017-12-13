@@ -26,11 +26,18 @@ class VeloxPairingsRetriever {
         try {
             List<DataRecord> pairingRecords = Arrays.asList(dataRecord.getChildrenOfType(VeloxConstants.PAIRING_INFO,
                     user));
+
+            DEV_LOGGER.info(String.format("Found %d pairing infos for request: %s", pairingRecords.size(),
+                    kickoffRequest.getId()));
+
             List<PairingInfo> pairings = new ArrayList<>();
             for (DataRecord pairingRecord : pairingRecords) {
                 try {
                     String tumorId = pairingRecord.getStringVal(VeloxConstants.TUMOR_ID, user);
                     String normalId = pairingRecord.getStringVal(VeloxConstants.NORMAL_ID, user);
+
+                    DEV_LOGGER.info(String.format("Found pairing for request: %s. Tumor: \"%s\", normal: \"%s\"",
+                            kickoffRequest.getId(), tumorId, normalId));
 
                     if (StringUtils.isEmpty(tumorId) || StringUtils.isEmpty(normalId))
                         continue;

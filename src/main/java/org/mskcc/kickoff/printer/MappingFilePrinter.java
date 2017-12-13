@@ -11,13 +11,13 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.SampleInfo;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.manifest.ManifestFile;
-import org.mskcc.kickoff.notify.FileGenerated;
 import org.mskcc.kickoff.notify.GenerationError;
-import org.mskcc.kickoff.notify.Observer;
+import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
-import org.mskcc.kickoff.validator.PairednessValidPredicate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -39,21 +39,30 @@ public class MappingFilePrinter implements FilePrinter {
     private static final String NORMAL_MAPPING_FILE_NAME = "sample_mapping.txt";
     private static final String ERROR_MAPPING_FILE_NAME = "sample_mapping.error";
 
-    private final Predicate<Set<Pairedness>> pairednessValidPredicate = new PairednessValidPredicate();
-    private final PairednessResolver pairednessResolver = new PairednessResolver();
-
-    private List<Observer> observers = new ArrayList<>();
+    private final Predicate<Set<Pairedness>> pairednessValidPredicate;
+    private final PairednessResolver pairednessResolver;
+    private final ObserverManager observerManager;
 
     @Value("${fastq_path}")
     private String fastq_path;
 
+    @Autowired
+    public MappingFilePrinter(Predicate<Set<Pairedness>> pairednessValidPredicate, PairednessResolver
+            pairednessResolver, ObserverManager observerManager) {
+        this.pairednessValidPredicate = pairednessValidPredicate;
+        this.pairednessResolver = pairednessResolver;
+        this.observerManager = observerManager;
+    }
+
     @Override
     public void print(KickoffRequest request) {
+        DEV_LOGGER.info(String.format("Starting to create file: %s", getFilePath(request)));
+
         try {
             String mappingFileContents = getMappings(request);
             writeMappingFile(request, mappingFileContents);
         } catch (Exception e) {
-            DEV_LOGGER.error(String.format("Unable to create mapping file: %s", getMappingFilePath(request)), e);
+            DEV_LOGGER.error(String.format("Unable to create mapping file: %s", getFilePath(request)), e);
         }
     }
 
@@ -85,7 +94,7 @@ public class MappingFilePrinter implements FilePrinter {
                             if (isPooledNormal(sampleId) && !fastqExist(path, request.getBaitVersion()))
                                 continue;
 
-                            Pairedness pairedness = getPairedness(path);
+                            Pairedness pairedness = getPairedness(path, request);
                             DEV_LOGGER.trace(String.format("Pairedness for sample: %s - %s", sampleId, pairedness));
                             pairednesses.add(pairedness);
 
@@ -118,11 +127,15 @@ public class MappingFilePrinter implements FilePrinter {
         }
     }
 
-    private Pairedness getPairedness(String path) {
+    private Pairedness getPairedness(String path, KickoffRequest request) {
         try {
             return pairednessResolver.resolve(path);
         } catch (IOException e) {
-            throw new RuntimeException(String.format("Unable to retrieve pairedness from path: %s", path));
+            String errorMessage = String.format("Unable to retrieve pairedness from path: %s", path);
+            observerManager.notifyObserversOfError(request, ManifestFile.MAPPING, errorMessage, GenerationError
+                    .INSTANCE);
+
+            throw new RuntimeException(errorMessage);
         }
     }
 
@@ -204,7 +217,7 @@ public class MappingFilePrinter implements FilePrinter {
             DEV_LOGGER.log(Level.ERROR, errorMessage);
             request.setMappingIssue(true);
 
-            notifyObserversOfError(errorMessage, GenerationError.INSTANCE);
+            observerManager.notifyObserversOfError(request, ManifestFile.MAPPING, errorMessage, GenerationError.INSTANCE);
 
             throw new NoSequencingRunFolderFoundException(errorMessage);
         } else if (files.length > 1) {
@@ -227,7 +240,7 @@ public class MappingFilePrinter implements FilePrinter {
                 DEV_LOGGER.log(Level.ERROR, errorMessage);
                 request.setMappingIssue(true);
 
-                notifyObserversOfError(errorMessage, GenerationError.INSTANCE);
+                observerManager.notifyObserversOfError(request, ManifestFile.MAPPING, errorMessage, GenerationError.INSTANCE);
 
                 throw new NoSequencingRunFolderFoundException(errorMessage);
             } else if (files.length > 1) {
@@ -248,12 +261,6 @@ public class MappingFilePrinter implements FilePrinter {
             RunIDFull = files[0].getAbsoluteFile().getName();
         }
         return Optional.of(RunIDFull);
-    }
-
-    private void notifyObserversOfError(String errorMessage, GenerationError instance) {
-        for (Observer observer : observers) {
-            observer.update(ManifestFile.MAPPING, instance, errorMessage);
-        }
     }
 
     private void validateSampleSheetExists(KickoffRequest request, Sample sample, String runIDFull, String path) {
@@ -311,32 +318,27 @@ public class MappingFilePrinter implements FilePrinter {
 
         try {
             mappingFileContents = filterToAscii(mappingFileContents);
-            File mappingFile = new File(getMappingFilePath(request));
+            File mappingFile = new File(getFilePath(request));
             PrintWriter pW = new PrintWriter(new FileWriter(mappingFile, false), false);
             pW.write(mappingFileContents);
             pW.close();
-            notifyObserversOfFileCreated();
+            observerManager.notifyObserversOfFileCreated(request, ManifestFile.MAPPING);
         } catch (Exception e) {
             throw new RuntimeException(String.format("Unable to write sample mapping file for request: %s", request
                     .getId()));
         }
     }
 
-    private void notifyObserversOfFileCreated() {
-        for (Observer observer : observers) {
-            observer.update(ManifestFile.MAPPING, FileGenerated.INSTANCE);
-        }
-    }
-
     private void validateMappingsExist(KickoffRequest request, String mappingFileContents) {
         if (StringUtils.isEmpty(mappingFileContents)) {
             String message = String.format("No sample mappings for request: %s", request.getId());
-            notifyObserversOfError(message, GenerationError.INSTANCE);
+            observerManager.notifyObserversOfError(request, ManifestFile.MAPPING, message, GenerationError.INSTANCE);
             throw new NoSampleMappingExistException(message);
         }
     }
 
-    private String getMappingFilePath(KickoffRequest request) {
+    @Override
+    public String getFilePath(KickoffRequest request) {
         String mappingFileName = shouldOutputErrorFile(request) ? ERROR_MAPPING_FILE_NAME : NORMAL_MAPPING_FILE_NAME;
         return String.format("%s/%s_%s", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId())
                 , mappingFileName);
@@ -372,14 +374,6 @@ public class MappingFilePrinter implements FilePrinter {
         DEV_LOGGER.warn(message);
     }
 
-    public void register(org.mskcc.kickoff.notify.Observer observer) {
-        observers.add(observer);
-    }
-
-    public void unregister(org.mskcc.kickoff.notify.Observer observer) {
-        observers.remove(observer);
-    }
-
     @Override
     public boolean shouldPrint(KickoffRequest request) {
         return ((request.getRequestType() == RequestType.RNASEQ || request.getRequestType() == RequestType.OTHER)
@@ -387,6 +381,10 @@ public class MappingFilePrinter implements FilePrinter {
                 && !request.isManualDemux()
         )
                 || !request.isForced();
+    }
+
+    public void register(ManifestFileObserver manifestFileObserver) {
+        observerManager.register(manifestFileObserver);
     }
 
     class SampleRun {

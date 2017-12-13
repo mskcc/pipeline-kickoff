@@ -2,11 +2,13 @@ package org.mskcc.kickoff.resolver;
 
 import org.mskcc.domain.Pairedness;
 import org.mskcc.util.Constants;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+@Component
 public class PairednessResolver {
     public Pairedness resolve(String path) throws IOException {
         if (isPaired(path))

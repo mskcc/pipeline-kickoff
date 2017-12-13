@@ -159,7 +159,6 @@ projects=(
 "04298_D" # !manual Demux
 "04495" # manual Demux
 "04657_D" # ChIPSeq recipe
-"04919_G" # Exemplar Sample status Failed-Complete
 "05257_AX" # investigator patient IDs are problematic
 "05372_B" # Request name *PACT*
 "05500_AZ"  # !BicAutorunnable && "NOT_AUTORUNNABLE" in Readme
