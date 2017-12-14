@@ -44,6 +44,7 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
 
+import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -70,10 +71,14 @@ public class JiraUploadFilesTest {
     private String jiraPassword;
     @Value("${jira.roslin.project.name}")
     private String jiraRoslinProjectName;
+
     private Issue issue;
 
     @Autowired
     private MappingFilePrinter mappingFilePrinter;
+
+    @Autowired
+    private JiraTestConfiguration.MockJiraFileUploader fileUploader;
 
     @Before
     public void setUp() throws Exception {
@@ -83,6 +88,17 @@ public class JiraUploadFilesTest {
         issue = getIssue(projectId, restClient);
 
         assertNoAttachmentAttached();
+
+        clearFileGeneratedStatus();
+
+        fileUploader.setThrowExceptionOnDelete(false);
+        ManifestFile.MAPPING.setFilePrinter(mappingFilePrinter);
+    }
+
+    private void clearFileGeneratedStatus() {
+        for (ManifestFile manifestFile : ManifestFile.values()) {
+            manifestFile.setFileGenerated(false);
+        }
     }
 
     private void assertNoAttachmentAttached() {
@@ -146,6 +162,8 @@ public class JiraUploadFilesTest {
         fileManifestGenerator.generate(projectId);
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
                 .PAIRING, ManifestFile.REQUEST));
+        List<Attachment> allAttachmentsRun1 = getAllAttachments();
+        clearFileGeneratedStatus();
 
         //when
         ManifestFile.MAPPING.setFilePrinter(getNotPrintingMappingFilePrinter());
@@ -154,6 +172,44 @@ public class JiraUploadFilesTest {
         //then
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.GROUPING, ManifestFile.PAIRING, ManifestFile
                 .REQUEST));
+        assertAttachmentsAreDifferent(allAttachmentsRun1);
+    }
+
+    @Test
+    public void whenFilesFailToDelete_shouldNotUploadAnyNewFiles() throws Exception {
+        //given
+        fileManifestGenerator.generate(projectId);
+        assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
+                .PAIRING, ManifestFile.REQUEST));
+        List<Attachment> allAttachmentsRun1 = getAllAttachments();
+        clearFileGeneratedStatus();
+
+        //when
+        ManifestFile.MAPPING.setFilePrinter(getNotPrintingMappingFilePrinter());
+        fileUploader.setThrowExceptionOnDelete(true);
+        fileManifestGenerator.generate(projectId);
+
+        //then
+        assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
+                .PAIRING, ManifestFile
+                .REQUEST));
+        assertAttachmentsAreNotChanged(allAttachmentsRun1);
+    }
+
+    private void assertAttachmentsAreNotChanged(List<Attachment> allAttachmentsRun1) {
+        List<Attachment> allAttachmentsRun2 = getAllAttachments();
+
+        for (Attachment attachment : allAttachmentsRun2) {
+            assertTrue(allAttachmentsRun1.contains(attachment));
+        }
+    }
+
+    private void assertAttachmentsAreDifferent(List<Attachment> allAttachmentsRun1) {
+        List<Attachment> allAttachmentsRun2 = getAllAttachments();
+
+        for (Attachment attachment : allAttachmentsRun2) {
+            assertFalse(allAttachmentsRun1.contains(attachment));
+        }
     }
 
     private FilePrinter getNotPrintingMappingFilePrinter() {

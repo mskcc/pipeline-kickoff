@@ -119,16 +119,9 @@ public enum ManifestFile {
         }
 
         private void initObservers() {
-            groupingFilePrinter.register(fileUploadingManifestFileObserver);
             groupingFilePrinter.register(fileGenerationStatusObserver);
-
-            mappingFilePrinter.register(fileUploadingManifestFileObserver);
             mappingFilePrinter.register(fileGenerationStatusObserver);
-
-            pairingFilePrinter.register(fileUploadingManifestFileObserver);
             pairingFilePrinter.register(fileGenerationStatusObserver);
-
-            requestFilePrinter.register(fileUploadingManifestFileObserver);
             requestFilePrinter.register(fileGenerationStatusObserver);
         }
     }

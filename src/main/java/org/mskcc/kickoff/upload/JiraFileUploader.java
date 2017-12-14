@@ -12,6 +12,7 @@ import org.apache.log4j.Logger;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.util.Constants;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -34,6 +35,7 @@ public class JiraFileUploader implements FileUploader {
     private final String password;
     private final String projectName;
 
+    @Autowired
     public JiraFileUploader(String jiraUrl, String username, String password, String projectName) {
         this.jiraUrl = jiraUrl;
         this.username = username;
@@ -42,7 +44,7 @@ public class JiraFileUploader implements FileUploader {
     }
 
     @Override
-    public void deleteExistingFiles(KickoffRequest request) {
+    public void deleteExistingFiles(KickoffRequest request) throws FileDeletionException {
         String summary = request.getId();
 
         LOGGER.info(String.format("Starting to delete existing manifest files for request: %s from issue: %s in " +
@@ -53,9 +55,18 @@ public class JiraFileUploader implements FileUploader {
             restClient = getJiraRestClient();
             Issue issue = getIssue(request.getId(), restClient);
             deleteExistingManifestAttachments(request, issue);
+
+            int numberOfManifestAttachments = getExistingManifestAttachments(request, issue).size();
+
+            if (numberOfManifestAttachments > 0) {
+                String error = String.format("%d attached manifest file (s) was/were not deleted from jira " +
+                        "instance: %s for issue: %s", numberOfManifestAttachments, jiraUrl, summary);
+                throw new FileDeletionException(error);
+            }
         } catch (Exception e) {
-            LOGGER.error(String.format("Error while trying to delete existing manifest attachments from jira " +
-                    "instance: %s for issue: %s", jiraUrl, summary), e);
+            String error = String.format("Error while trying to delete existing manifest attachments from jira " +
+                    "instance: %s for issue: %s", jiraUrl, summary);
+            throw new FileDeletionException(error, e);
         } finally {
             closeJiraConnection(restClient);
         }

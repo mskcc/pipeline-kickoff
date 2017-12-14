@@ -70,13 +70,22 @@ public class FileManifestGenerator implements ManifestGenerator {
             requestValidator.validate(kickoffRequest);
             resolveExomeRequestType(kickoffRequest);
 
-            fileUploader.deleteExistingFiles(kickoffRequest);
             saveFiles(kickoffRequest);
+
+            fileUploader.deleteExistingFiles(kickoffRequest);
+            uploadFiles(kickoffRequest);
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
         } finally {
             setFilePermissions(kickoffRequest);
             sendEmailIfFileNotCreated(projectId);
+        }
+    }
+
+    private void uploadFiles(KickoffRequest kickoffRequest) {
+        for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
+            if (manifestFile.isFileGenerated())
+                fileUploader.upload(kickoffRequest, manifestFile);
         }
     }
 
