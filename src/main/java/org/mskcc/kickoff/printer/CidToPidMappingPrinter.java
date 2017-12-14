@@ -17,6 +17,8 @@ public class CidToPidMappingPrinter implements FilePrinter {
 
     @Override
     public void print(KickoffRequest request) {
+        DEV_LOGGER.info(String.format("Starting to create file: %s", getFilePath(request)));
+
         try {
             String mappingFileContents = "";
 
@@ -27,7 +29,7 @@ public class CidToPidMappingPrinter implements FilePrinter {
                 mappingFileContents += String.format("%s\t%s\n", cmoSampleId, correctedCmoId);
             }
 
-            File mappingFile = new File(String.format("%s/%s_%s", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId()), mappingFileName));
+            File mappingFile = new File(getFilePath(request));
 
             PrintWriter pW = new PrintWriter(new FileWriter(mappingFile, false), false);
             pW.write(mappingFileContents);
@@ -35,6 +37,12 @@ public class CidToPidMappingPrinter implements FilePrinter {
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Exception thrown while creating mapping file: %s", mappingFileName), e);
         }
+    }
+
+    @Override
+    public String getFilePath(KickoffRequest request) {
+        return String.format("%s/%s_%s", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId())
+                , mappingFileName);
     }
 
     @Override

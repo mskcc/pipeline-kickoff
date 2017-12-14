@@ -17,6 +17,9 @@ buildscript {
 repositories {
     mavenCentral()
     mavenLocal()
+    maven {
+        url "https://maven.atlassian.com/maven-external/"
+    }
 }
 
 dependencies {
@@ -27,16 +30,21 @@ dependencies {
 
     compile group: 'javax.mail', name: 'mail', version: '1.4.1'
 
-    compile group: 'org.springframework', name: 'spring-context', version: '4.3.7.RELEASE'
-    compile group: 'org.springframework', name: 'spring-core', version: '4.3.7.RELEASE'
-    compile group: 'org.springframework', name: 'spring-beans', version: '4.3.7.RELEASE'
+    compile group: 'org.springframework', name: 'spring-context', version: '5.0.2.RELEASE'
+    compile group: 'org.springframework', name: 'spring-core', version: '5.0.2.RELEASE'
+    compile group: 'org.springframework', name: 'spring-beans', version: '5.0.2.RELEASE'
+    compile group: 'org.springframework', name: 'spring-web', version: '5.0.2.RELEASE'
 
     compile group: 'log4j', name: 'log4j', version: '1.2.16'
 
     compile group: 'com.google.guava', name: 'guava', version: '11.0.2'
     compile group: 'com.github.spullara.cli-parser', name:'cli-parser', version: '1.1'
 
-    compile group: 'org.mskcc.common', name:'common-domain', version: '1.2-SNAPSHOT'
+    compile group: 'org.mskcc.common', name:'common-domain', version: '2.0.0-SNAPSHOT'
+
+    compile group: 'com.atlassian.jira', name: 'jira-rest-java-client-core', version: '2.0.0-m25'
+    compile 'com.atlassian.httpclient:atlassian-httpclient-spi:0.17.0-m01'
+    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.0.1'
 
     //SAPIO
     compile group: 'com.velox.internalproducts', name: 'veloxapi', version: '9.5.1-b633'
@@ -51,6 +59,8 @@ dependencies {
     compile ('org.mockito:mockito-all:1.10.19') {
         exclude group: 'org.hamcrest'
     }
+
+    compile group: 'org.springframework', name: 'spring-test', version: '5.0.2.RELEASE'
 }
 
 tasks.withType(Test) {
@@ -112,7 +122,7 @@ configurations {
 
 task integrationTest(type: Test) {
     filter {
-        includeTestsMatching "org.mskcc.kickoff.sampleset.*"
+        includeTestsMatching "org.mskcc.kickoff.fast.*"
     }
 
     if (System.getProperty('DEBUG', 'false') == 'true')

@@ -30,7 +30,8 @@ class PairingXlsxPrinter implements FilePrinter  {
 
     @Override
     public void print(KickoffRequest request) {
-        File pairingExcel = new File(pairing_filename.substring(0, pairing_filename.lastIndexOf('.')) + ".xlsx");
+        File pairingExcel = new File(getFilePath(request));
+        DEV_LOGGER.info(String.format("Starting to create file: %s", getFilePath(request)));
 
         XSSFWorkbook wb = new XSSFWorkbook();
         XSSFSheet pairingInfo = wb.createSheet(Constants.PAIRING_INFO);
@@ -61,6 +62,11 @@ class PairingXlsxPrinter implements FilePrinter  {
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Exception thrown while writing to file: %s", pairingExcel), e);
         }
+    }
+
+    @Override
+    public String getFilePath(KickoffRequest request) {
+        return pairing_filename.substring(0, pairing_filename.lastIndexOf('.')) + ".xlsx";
     }
 
     @Override

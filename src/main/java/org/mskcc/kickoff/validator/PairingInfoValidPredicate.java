@@ -26,7 +26,7 @@ public class PairingInfoValidPredicate implements BiPredicate<Sample, Sample> {
             DEV_LOGGER.warn(String.format("Different instruments type in pairing [normal sample %s: %s - tumor sample" +
                     " %s: %s]", normal.getIgoId(), normalInstrumentType, tumor.getIgoId(), tumorInstrumentType));
         else
-            DEV_LOGGER.trace(String.format("Instruments type in pairing [normal sample %s: %s - tumor sample %s: " +
+            DEV_LOGGER.info(String.format("Instruments type in pairing [normal sample %s: %s - tumor sample %s: " +
                     "%s]", normal.getIgoId(), normalInstrumentType, tumor.getIgoId(), tumorInstrumentType));
 
         return isCompatible;

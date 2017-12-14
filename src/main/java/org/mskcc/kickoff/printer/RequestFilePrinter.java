@@ -7,8 +7,12 @@ import org.mskcc.domain.Recipe;
 import org.mskcc.domain.RequestType;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
+import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -24,6 +28,7 @@ import static org.mskcc.kickoff.config.Arguments.*;
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
 import static org.mskcc.kickoff.util.Utils.getJoinedCollection;
 
+@Component
 public class RequestFilePrinter implements FilePrinter {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
@@ -31,7 +36,11 @@ public class RequestFilePrinter implements FilePrinter {
     private final String manualMappingPinfoToRequestFile = "Alternate_E-mails:DeliverTo,Lab_Head:PI_Name,Lab_Head_E-mail:PI,Requestor:Investigator_Name,Requestor_E-mail:Investigator,CMO_Project_ID:ProjectName,Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
     private final String manualMappingConfigMap = "name:ProjectTitle,desc:ProjectDesc,invest:PI,invest_name:PI_Name,tumor_type:TumorType,date_of_last_update:DateOfLastUpdate,assay_type:Assay";
 
+    private final ObserverManager observerManager = new ObserverManager();
+
     public void print(KickoffRequest request) {
+        DEV_LOGGER.info(String.format("Starting to create file: %s", getFilePath(request)));
+
         // This will change the fields of the pInfo array, and print out the correct field
         // It will also pr/int all the ampType and libTypes, and species.
         StringBuilder requestFileContents = new StringBuilder();
@@ -160,10 +169,11 @@ public class RequestFilePrinter implements FilePrinter {
         // adding projectFolder back
         String projDir = request.getOutputPath();
         if (request.getRequestType() == RequestType.IMPACT || request.getRequestType() == RequestType.EXOME) {
-            requestFileContents.append("ProjectFolder: ").append(String.valueOf(projDir).replaceAll("BIC/drafts",
+            // @TODO generify path manifests
+            requestFileContents.append("ProjectFolder: ").append(String.valueOf(projDir).replaceAll("BIC/manifests",
                     "CMO")).append("\n");
         } else {
-            requestFileContents.append("ProjectFolder: ").append(String.valueOf(projDir).replaceAll("drafts", request
+            requestFileContents.append("ProjectFolder: ").append(String.valueOf(projDir).replaceAll("manifests", request
                     .getRequestType().getName())).append("\n");
         }
 
@@ -182,16 +192,19 @@ public class RequestFilePrinter implements FilePrinter {
 
         try {
             requestFileContents = new StringBuilder(filterToAscii(requestFileContents.toString()));
-            File requestFile = new File(getFileName(request));
+            File requestFile = new File(getFilePath(request));
             PrintWriter pW = new PrintWriter(new FileWriter(requestFile, false), false);
             pW.write(requestFileContents.toString());
             pW.close();
+
+            observerManager.notifyObserversOfFileCreated(request, ManifestFile.REQUEST);
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while creating request file: %s", getFileName(request)), e);
+            DEV_LOGGER.warn(String.format("Exception thrown while creating request file: %s", getFilePath(request)), e);
         }
     }
 
-    private String getFileName(KickoffRequest request) {
+    @Override
+    public String getFilePath(KickoffRequest request) {
         return String.format("%s/%s_request.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request
                 .getId()));
     }
@@ -242,9 +255,9 @@ public class RequestFilePrinter implements FilePrinter {
 
             // Change path depending on where it should be going
             if (request.getRequestType() == RequestType.IMPACT || request.getRequestType() == RequestType.EXOME) {
-                dataClinicalPath = String.valueOf(request.getOutputPath()).replaceAll("BIC/drafts", "CMO") + "\n";
+                dataClinicalPath = String.valueOf(request.getOutputPath()).replaceAll("BIC/manifests", "CMO") + "\n";
             } else {
-                dataClinicalPath = String.valueOf(request.getOutputPath()).replaceAll("drafts", replaceText) + "\n";
+                dataClinicalPath = String.valueOf(request.getOutputPath()).replaceAll("manifests", replaceText) + "\n";
             }
         }
         // Now add all the fields that can't be grabbed from the request file
@@ -285,5 +298,9 @@ public class RequestFilePrinter implements FilePrinter {
         Utils.setExitLater(true);
         PM_LOGGER.log(pmLogLevel, message);
         DEV_LOGGER.log(devLogLevel, message);
+    }
+
+    public void register(ManifestFileObserver manifestFileObserver) {
+        observerManager.register(manifestFileObserver);
     }
 }

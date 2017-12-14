@@ -52,10 +52,12 @@ public class PairingInfoRetriever {
             }
 
             if (pairings.keySet().contains(tumorIgoId)) {
-                String message = String.format("Multiple pairing records for %s! This is not supposed to happen.", tumorIgoId);
+                String message = String.format("Multiple pairing records for %s! This is not supposed to happen.",
+                        tumorIgoId);
                 PM_LOGGER.log(PmLogPriority.WARNING, message);
                 DEV_LOGGER.warn(message);
-                String message1 = String.format("Tumor is matched with two different normals. I have no idea how this happened! Tumor: %s Normal: %s", sample.getCmoSampleId(), normalCmoId);
+                String message1 = String.format("Tumor is matched with two different normals. I have no idea how this" +
+                        " happened! Tumor: %s Normal: %s", sample.getCmoSampleId(), normalCmoId);
                 Utils.setExitLater(true);
                 PM_LOGGER.error(message1);
                 DEV_LOGGER.error(message1);
@@ -78,7 +80,8 @@ public class PairingInfoRetriever {
             Set<String> temp2 = new HashSet<>(pairings.keySet());
             temp1.removeAll(temp2);
             if (temp1.size() > 0) {
-                String message = String.format("one or more pairing records was not found! %s", Arrays.toString(temp1.toArray()));
+                String message = String.format("one or more pairing records was not found! %s", Arrays.toString
+                        (temp1.toArray()));
                 PM_LOGGER.log(PmLogPriority.WARNING, message);
                 DEV_LOGGER.warn(message);
             }
@@ -104,13 +107,7 @@ public class PairingInfoRetriever {
     }
 
     private String getNormalCmoId(KickoffRequest request, Sample pairingSample) {
-        if (isPairingInfo(request))
-            return request.getSample(pairingSample.getIgoId()).get(Constants.CORRECTED_CMO_ID);
-
-        Optional<Sample> sample = request.getSampleByCorrectedCmoId(pairingSample.getCmoSampleId());
-        if (sample.isPresent())
-            return pairingSample.getCmoSampleId();
-        return "";
+        return request.getSample(pairingSample.getIgoId()).get(Constants.CORRECTED_CMO_ID);
     }
 
     private boolean isPairingInfo(KickoffRequest request) {

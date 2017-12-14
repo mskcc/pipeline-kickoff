@@ -5,8 +5,13 @@ import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.PairingsResolver;
+import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -18,17 +23,22 @@ import java.util.Set;
 import static org.mskcc.kickoff.config.Arguments.shiny;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
+@Component
 public class PairingFilePrinter implements FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private final PairingsResolver pairingsResolver;
+    private final ObserverManager observerManager = new ObserverManager();
 
+    @Autowired
     public PairingFilePrinter(PairingsResolver pairingsResolver) {
         this.pairingsResolver = pairingsResolver;
     }
 
     @Override
     public void print(KickoffRequest request) {
-        String filename = String.format("%s/%s_sample_pairing.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId()));
+        String filename = getFilePath(request);
+        DEV_LOGGER.info(String.format("Starting to create file: %s", filename));
+
         Map<String, String> pairingInfo = getPairingInfo(request);
 
         Set<String> normalCMOids = new HashSet<>();
@@ -59,6 +69,8 @@ public class PairingFilePrinter implements FilePrinter {
 
                 pW.close();
 
+                observerManager.notifyObserversOfFileCreated(request, ManifestFile.PAIRING);
+
                 if (shiny) {
                     printPairingExcel(request, filename, pairingInfo, missingNormalsToBeAdded);
                 }
@@ -66,6 +78,12 @@ public class PairingFilePrinter implements FilePrinter {
         } catch (Exception e) {
             DEV_LOGGER.warn("Exception thrown: ", e);
         }
+    }
+
+    @Override
+    public String getFilePath(KickoffRequest request) {
+        return String.format("%s/%s_sample_pairing.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix
+                (request.getId()));
     }
 
     @Override
@@ -83,5 +101,9 @@ public class PairingFilePrinter implements FilePrinter {
     private void printPairingExcel(KickoffRequest request, String pairing_filename, Map<String, String> pair_Info,
                                    Set<String> missingNormalsToBeAdded) {
         new PairingXlsxPrinter(pairing_filename, pair_Info, missingNormalsToBeAdded).print(request);
+    }
+
+    public void register(ManifestFileObserver manifestFileObserver) {
+        observerManager.register(manifestFileObserver);
     }
 }

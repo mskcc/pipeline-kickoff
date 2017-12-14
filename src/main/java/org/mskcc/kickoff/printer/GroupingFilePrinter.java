@@ -6,8 +6,13 @@ import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
+import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -21,14 +26,21 @@ import java.util.stream.Collectors;
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
+@Component
 public class GroupingFilePrinter implements FilePrinter {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private final DecimalFormat groupNumberFormat = new DecimalFormat("000");
+    private final ObserverManager observerManager;
+
+    @Autowired
+    public GroupingFilePrinter(ObserverManager observerManager) {
+        this.observerManager = observerManager;
+    }
 
     public void print(KickoffRequest kickoffRequest) {
-        String filename = String.format("%s/%s_sample_grouping.txt", kickoffRequest.getOutputPath(), Utils
-                .getFullProjectNameWithPrefix(kickoffRequest.getId()));
+        String filename = getFilePath(kickoffRequest);
+        DEV_LOGGER.info(String.format("Starting to create file: %s", filename));
 
         StringBuilder outputText = new StringBuilder();
 
@@ -45,10 +57,17 @@ public class GroupingFilePrinter implements FilePrinter {
                 PrintWriter pW = new PrintWriter(new FileWriter(outputFile, false), false);
                 pW.write(outputText.toString());
                 pW.close();
+                observerManager.notifyObserversOfFileCreated(kickoffRequest, ManifestFile.GROUPING);
             } catch (Exception e) {
                 DEV_LOGGER.warn(String.format("Exception thrown while creating grouping file: %s", filename), e);
             }
         }
+    }
+
+    @Override
+    public String getFilePath(KickoffRequest request) {
+        return String.format("%s/%s_sample_grouping.txt", request.getOutputPath(), Utils
+                .getFullProjectNameWithPrefix(request.getId()));
     }
 
     private List<Patient> getPatientsListSortedByGroup(KickoffRequest kickoffRequest) {
@@ -77,5 +96,9 @@ public class GroupingFilePrinter implements FilePrinter {
                 && !(Utils.isExitLater() && !request.isInnovation() && request.getRequestType() != RequestType.OTHER
                 && request.getRequestType() != RequestType.RNASEQ)
                 && (request.getRequestType() != RequestType.RNASEQ && request.getRequestType() != RequestType.OTHER);
+    }
+
+    public void register(ManifestFileObserver manifestFileObserver) {
+        observerManager.register(manifestFileObserver);
     }
 }

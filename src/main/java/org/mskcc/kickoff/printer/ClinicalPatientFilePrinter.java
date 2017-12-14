@@ -25,6 +25,8 @@ public abstract class ClinicalPatientFilePrinter implements FilePrinter {
 
     @Override
     public void print(KickoffRequest kickoffRequest) {
+        DEV_LOGGER.info(String.format("Starting to create file: %s", getFilePath(kickoffRequest)));
+
         LinkedHashMap<String, String> fieldMapping = new LinkedHashMap<>();
         ArrayList<String> fieldList = new ArrayList<>(Arrays.asList(getManualHeader().split(",")));
         for (String fields : fieldList) {
@@ -63,8 +65,7 @@ public abstract class ClinicalPatientFilePrinter implements FilePrinter {
             try {
                 outputText = filterToAscii(outputText);
 
-                String filename = String.format("%s/%s%s", kickoffRequest.getOutputPath(), Utils
-                        .getFullProjectNameWithPrefix(kickoffRequest.getId()), getOutputFilenameEnding());
+                String filename = getFilePath(kickoffRequest);
                 File outputFile = new File(filename);
                 PrintWriter pW = new PrintWriter(new FileWriter(outputFile, false), false);
                 pW.write(outputText);
@@ -73,6 +74,12 @@ public abstract class ClinicalPatientFilePrinter implements FilePrinter {
                 DEV_LOGGER.warn(String.format("Exception thrown while creating file: %s", getOutputFilenameEnding()), e);
             }
         }
+    }
+
+    @Override
+    public String getFilePath(KickoffRequest request) {
+        return String.format("%s/%s%s", request.getOutputPath(), Utils
+                .getFullProjectNameWithPrefix(request.getId()), getOutputFilenameEnding());
     }
 
     @Override

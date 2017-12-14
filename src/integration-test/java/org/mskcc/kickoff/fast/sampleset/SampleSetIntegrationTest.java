@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.sampleset;
+package org.mskcc.kickoff.fast.sampleset;
 
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;

@@ -9,8 +9,8 @@ import java.util.Optional;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 
-public class SequencerRunFolderRetrieverTest {
-    private SequencerRunFolderRetriever sequencerRunFolderRetriever = new SequencerRunFolderRetriever();
+public class SequencerIdentifierRetrieverTest {
+    private SequencerIdentifierRetriever sequencerIdentifierRetriever = new SequencerIdentifierRetriever();
 
     @Test
     public void whenSeqRunFolderIsValid_shouldReturnSequencerName() throws Exception {
@@ -32,18 +32,18 @@ public class SequencerRunFolderRetrieverTest {
 
     private void assertExceptionThrown(String invalidRunFolder) {
         Optional<Exception> exception = TestUtils.assertThrown(() -> {
-            sequencerRunFolderRetriever.retrieve(invalidRunFolder);
+            sequencerIdentifierRetriever.retrieve(invalidRunFolder);
         });
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SequencerRunFolderRetriever
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SequencerIdentifierRetriever
                 .InvalidSequencerRunFolderException.class));
     }
 
     private void assertSequencerName(String seqName, String runFolderSuffix) {
         String runFolder = seqName + runFolderSuffix;
 
-        String actualSeqName = sequencerRunFolderRetriever.retrieve(runFolder);
+        String actualSeqName = sequencerIdentifierRetriever.retrieve(runFolder);
 
         assertThat(actualSeqName, is(seqName));
     }
