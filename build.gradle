@@ -44,7 +44,7 @@ dependencies {
 
     compile group: 'com.atlassian.jira', name: 'jira-rest-java-client-core', version: '2.0.0-m25'
     compile 'com.atlassian.httpclient:atlassian-httpclient-spi:0.17.0-m01'
-    compile("com.fasterxml.jackson.core:jackson-databind")
+    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.0.1'
 
     //SAPIO
     compile group: 'com.velox.internalproducts', name: 'veloxapi', version: '9.5.1-b633'
