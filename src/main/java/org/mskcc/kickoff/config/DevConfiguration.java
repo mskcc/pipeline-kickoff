@@ -6,6 +6,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
+
+import java.io.File;
 
 @Profile(Constants.DEV_PROFILE)
 @Configuration
@@ -13,7 +16,12 @@ public class DevConfiguration {
     @Bean
     public static PropertySourcesPlaceholderConfigurer propertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
-        propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/application-dev.properties"));
+
+        String propertiesPath = "application-dev.properties";
+        if (new File(propertiesPath).exists())
+            propertySourcesPlaceholderConfigurer.setLocation(new FileSystemResource(propertiesPath));
+        else
+            propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource(propertiesPath));
 
         AppConfiguration.configureLogger("/log4j-dev.properties");
 

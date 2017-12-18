@@ -78,6 +78,9 @@ public class AppConfiguration {
     @Value("${jira.roslin.project.name}")
     private String jiraRoslinProjectName;
 
+    @Value("${jira.roslin.generated.status}")
+    private String generatedStatus;
+
     static void configureLogger(String loggerPropertiesPath) {
         LogManager.resetConfiguration();
         try {
@@ -211,7 +214,7 @@ public class AppConfiguration {
 
     @Bean
     public FileUploader fileUploader() {
-        return new JiraFileUploader(jiraUrl, jiraUsername, jiraPassword, jiraRoslinProjectName);
+        return new JiraFileUploader(jiraUrl, jiraUsername, jiraPassword, jiraRoslinProjectName, generatedStatus);
     }
 
     @Bean

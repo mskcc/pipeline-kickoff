@@ -4,6 +4,8 @@ import com.atlassian.jira.rest.client.api.JiraRestClient;
 import com.atlassian.jira.rest.client.api.SearchRestClient;
 import com.atlassian.jira.rest.client.api.domain.Issue;
 import com.atlassian.jira.rest.client.api.domain.SearchResult;
+import com.atlassian.jira.rest.client.api.domain.Transition;
+import com.atlassian.jira.rest.client.api.domain.input.TransitionInput;
 import com.atlassian.jira.rest.client.internal.async.AsynchronousJiraRestClientFactory;
 import com.atlassian.util.concurrent.Promise;
 import com.google.common.collect.Iterables;
@@ -34,13 +36,16 @@ public class JiraFileUploader implements FileUploader {
     private final String username;
     private final String password;
     private final String projectName;
+    private final String generatedStatus;
 
     @Autowired
-    public JiraFileUploader(String jiraUrl, String username, String password, String projectName) {
+    public JiraFileUploader(String jiraUrl, String username, String password, String projectName, String
+            generatedStatus) {
         this.jiraUrl = jiraUrl;
         this.username = username;
         this.password = password;
         this.projectName = projectName;
+        this.generatedStatus = generatedStatus;
     }
 
     @Override
@@ -85,11 +90,31 @@ public class JiraFileUploader implements FileUploader {
             restClient = getJiraRestClient();
             Issue issue = getIssue(request.getId(), restClient);
             addAttachment(request, manifestFile, restClient, issue);
+            changeStatus(restClient, issue);
         } catch (Exception e) {
             LOGGER.error(String.format("Error while trying to attach file: %s to jira instance: %s for issue: %s",
                     manifestFile.getFilePath(request), jiraUrl, summary), e);
         } finally {
             closeJiraConnection(restClient);
+        }
+    }
+
+    private void changeStatus(JiraRestClient restClient, Issue issue) {
+        Promise<Iterable<Transition>> transitionsPromise = restClient.getIssueClient().getTransitions(issue);
+
+        Iterable<Transition> transitions = transitionsPromise.claim();
+
+        for (Transition transition : transitions) {
+            String name = transition.getName();
+            if (generatedStatus.equalsIgnoreCase(name)) {
+                Promise<Void> setGeneratedStatus = restClient.getIssueClient().transition(issue, new TransitionInput
+                        (transition.getId()));
+                setGeneratedStatus.claim();
+
+                LOGGER.info(String.format("Status for issue: %s changed to: %s", issue.getSummary(), name));
+
+                break;
+            }
         }
     }
 

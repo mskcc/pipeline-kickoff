@@ -44,6 +44,10 @@ public class JiraTestConfiguration {
 
     @Value("${jira.roslin.project.name}")
     private String jiraRoslinProjectName;
+
+    @Value("${jira.roslin.generated.status}")
+    private String jiraGeneratedStatus;
+
     @Autowired
     private PairingsResolver pairingsResolver;
     @Autowired
@@ -53,7 +57,8 @@ public class JiraTestConfiguration {
 
     @Bean
     public MockJiraFileUploader fileUploader() {
-        return new MockJiraFileUploader(jiraUrl, jiraUsername, jiraPassword, jiraRoslinProjectName);
+        return new MockJiraFileUploader(jiraUrl, jiraUsername, jiraPassword, jiraRoslinProjectName,
+                jiraGeneratedStatus);
     }
 
     @Bean
@@ -135,8 +140,9 @@ public class JiraTestConfiguration {
     class MockJiraFileUploader extends JiraFileUploader {
         private boolean throwExceptionOnDelete;
 
-        public MockJiraFileUploader(String jiraUrl, String username, String password, String projectName) {
-            super(jiraUrl, username, password, projectName);
+        public MockJiraFileUploader(String jiraUrl, String username, String password, String projectName, String
+                generatedStatus) {
+            super(jiraUrl, username, password, projectName, generatedStatus);
         }
 
         public void setThrowExceptionOnDelete(boolean throwException) {
