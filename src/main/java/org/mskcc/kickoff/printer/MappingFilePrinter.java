@@ -267,7 +267,8 @@ public class MappingFilePrinter implements FilePrinter {
         File samp_sheet = new File(path + "/SampleSheet.csv");
         if (!samp_sheet.isFile() && request.getRequestType() == RequestType.IMPACT) {
             String message = String.format("Sample %s from run %s does not have a sample sheet in the sample " +
-                    "directory. This will not pass the validator.", sample, runIDFull);
+                    "directory: %s. This will not pass the validator.", sample, runIDFull, samp_sheet.getAbsolutePath
+                    ());
             if (shiny) {
                 PM_LOGGER.error(message);
             } else {

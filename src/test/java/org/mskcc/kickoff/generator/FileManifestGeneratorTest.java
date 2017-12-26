@@ -20,8 +20,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -62,7 +60,7 @@ public class FileManifestGeneratorTest {
     private SpyFileUploader fileUploader;
 
     @Test
-    public void when_should() throws Exception {
+    public void whenInvokeGenerateFiles_shouldValidatePrintArchiveAndUploadFiles() throws Exception {
         String projectId = "12345_T";
         KickoffRequest request = new KickoffRequest(projectId, mock(ProcessingType.class));
         when(requestProxy.getRequest(projectId)).thenReturn(request);
@@ -72,7 +70,6 @@ public class FileManifestGeneratorTest {
 
         fileManifestGenerator.generate(projectId);
 
-        assertThat(fileUploader.getRequestsWithDeletedFiles().size(), is(1));
         verify(projectNameValidator, times(1)).validate(projectId);
         verify(outputDirRetriever, times(1)).retrieve(projectId, Arguments.outdir);
         verify(logConfigurator, times(1)).configureProjectLog(outputDir);

@@ -17,7 +17,7 @@ import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.upload.FileUploader;
-import org.mskcc.kickoff.upload.JiraFileUploader;
+import org.mskcc.kickoff.upload.jira.*;
 import org.mskcc.kickoff.validator.*;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
 import org.mskcc.kickoff.velox.SampleSetProjectPredicate;
@@ -78,7 +78,19 @@ public class AppConfiguration {
     @Value("${jira.roslin.project.name}")
     private String jiraRoslinProjectName;
 
-    @Value("${jira.roslin.generated.status}")
+    @Value("${jira.roslin.generated.transition}")
+    private String generatedTransition;
+
+    @Value("${jira.roslin.regenerated.transition}")
+    private String regeneratedTransition;
+
+    @Value("${jira.roslin.fastqs.available.status}")
+    private String fastqsAvailableStatus;
+
+    @Value("${jira.roslin.input.regeneration.status}")
+    private String regenerateStatus;
+
+    @Value("${jira.roslin.input.generated.status}")
     private String generatedStatus;
 
     static void configureLogger(String loggerPropertiesPath) {
@@ -214,7 +226,32 @@ public class AppConfiguration {
 
     @Bean
     public FileUploader fileUploader() {
-        return new JiraFileUploader(jiraUrl, jiraUsername, jiraPassword, jiraRoslinProjectName, generatedStatus);
+        return new JiraFileUploader(jiraUrl, jiraUsername, jiraPassword, jiraRoslinProjectName, jiraStateFactory());
+    }
+
+    @Bean
+    public JiraStateFactory jiraStateFactory() {
+        return new JiraStateFactory(generateFilesState(), regenerateFilesState(), filesGeneratedState());
+    }
+
+    @Bean
+    public GenerateFilesState generateFilesState() {
+        return new GenerateFilesState(fastqsAvailableStatus, generatedTransition, filesGeneratedState());
+    }
+
+    @Bean
+    public RegenerateFilesState regenerateFilesState() {
+        return new RegenerateFilesState(regenerateStatus, regeneratedTransition, filesGeneratedState());
+    }
+
+    @Bean
+    public FilesGeneratedState filesGeneratedState() {
+        return new FilesGeneratedState(generatedStatus);
+    }
+
+    @Bean
+    public JiraTransitions jiraTransitions() {
+        return new JiraTransitions(fastqsAvailableStatus, generatedTransition, regenerateStatus, regeneratedTransition);
     }
 
     @Bean

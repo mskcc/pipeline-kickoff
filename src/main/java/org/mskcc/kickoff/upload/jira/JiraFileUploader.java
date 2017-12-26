@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.upload;
+package org.mskcc.kickoff.upload.jira;
 
 import com.atlassian.jira.rest.client.api.JiraRestClient;
 import com.atlassian.jira.rest.client.api.SearchRestClient;
@@ -13,6 +13,8 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.upload.FileDeletionException;
+import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -36,82 +38,117 @@ public class JiraFileUploader implements FileUploader {
     private final String username;
     private final String password;
     private final String projectName;
-    private final String generatedStatus;
+    private final JiraStateFactory jiraStateFactory;
+    private JiraIssueState jiraIssueState;
+    private JiraRestClient restClient;
+    private String summary = "";
 
     @Autowired
-    public JiraFileUploader(String jiraUrl, String username, String password, String projectName, String
-            generatedStatus) {
+    public JiraFileUploader(String jiraUrl, String username, String password, String projectName, JiraStateFactory
+            jiraStateFactory) {
         this.jiraUrl = jiraUrl;
         this.username = username;
         this.password = password;
         this.projectName = projectName;
-        this.generatedStatus = generatedStatus;
+        this.jiraStateFactory = jiraStateFactory;
     }
 
     @Override
     public void deleteExistingFiles(KickoffRequest request) throws FileDeletionException {
         String summary = request.getId();
+        Issue issue = getIssue(request.getId());
 
         LOGGER.info(String.format("Starting to delete existing manifest files for request: %s from issue: %s in " +
                 "project: %s", request.getId(), summary, projectName));
 
-        JiraRestClient restClient = null;
         try {
-            restClient = getJiraRestClient();
-            Issue issue = getIssue(request.getId(), restClient);
             deleteExistingManifestAttachments(request, issue);
-
-            int numberOfManifestAttachments = getExistingManifestAttachments(request, issue).size();
-
-            if (numberOfManifestAttachments > 0) {
-                String error = String.format("%d attached manifest file (s) was/were not deleted from jira " +
-                        "instance: %s for issue: %s", numberOfManifestAttachments, jiraUrl, summary);
-                throw new FileDeletionException(error);
-            }
+            validateNoAttachmentExist(request, issue);
         } catch (Exception e) {
             String error = String.format("Error while trying to delete existing manifest attachments from jira " +
                     "instance: %s for issue: %s", jiraUrl, summary);
             throw new FileDeletionException(error, e);
-        } finally {
-            closeJiraConnection(restClient);
+        }
+    }
+
+    private void validateNoAttachmentExist(KickoffRequest request, Issue issue) throws FileDeletionException {
+        int numberOfManifestAttachments = getExistingManifestAttachments(request).size();
+
+        if (numberOfManifestAttachments > 0) {
+            String summary = request.getId();
+            String error = String.format("%d attached manifest file (s) was/were not deleted from jira " +
+                    "instance: %s for issue: %s", numberOfManifestAttachments, jiraUrl, summary);
+            throw new FileDeletionException(error);
         }
     }
 
     @Override
-    public void upload(KickoffRequest request, ManifestFile manifestFile) {
+    public void uploadSingleFile(KickoffRequest request, ManifestFile manifestFile) {
         String summary = request.getId();
+        Issue issue = getIssue(request.getId());
 
         LOGGER.info(String.format("Starting to attach file: %s for request: %s to issue: %s in project: %s",
                 manifestFile
                         .getFilePath(request), request.getId(), summary, projectName));
 
-        JiraRestClient restClient = null;
         try {
-            restClient = getJiraRestClient();
-            Issue issue = getIssue(request.getId(), restClient);
             addAttachment(request, manifestFile, restClient, issue);
-            changeStatus(restClient, issue);
         } catch (Exception e) {
             LOGGER.error(String.format("Error while trying to attach file: %s to jira instance: %s for issue: %s",
                     manifestFile.getFilePath(request), jiraUrl, summary), e);
+        }
+    }
+
+    @Override
+    public void upload(KickoffRequest kickoffRequest) {
+        try {
+            restClient = getJiraRestClient();
+            summary = kickoffRequest.getId();
+
+            jiraIssueState = retrieveJiraIssueState(kickoffRequest);
+            jiraIssueState.uploadFiles(kickoffRequest, this);
+        } catch (Exception e) {
+            LOGGER.error(String.format("Error while trying to attach files: to jira instance: %s for issue: %s",
+                    jiraUrl, summary), e);
         } finally {
             closeJiraConnection(restClient);
         }
     }
 
-    private void changeStatus(JiraRestClient restClient, Issue issue) {
+    private JiraIssueState retrieveJiraIssueState(KickoffRequest kickoffRequest) {
+        Issue issue = getIssue(kickoffRequest.getId());
+
+        String currentState = issue.getStatus().getName();
+        return jiraStateFactory.getJiraState(currentState);
+    }
+
+    void uploadFiles(KickoffRequest kickoffRequest) {
+        for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
+            if (manifestFile.isFileGenerated())
+                uploadSingleFile(kickoffRequest, manifestFile);
+        }
+    }
+
+    void changeStatus(String transitionName, KickoffRequest kickoffRequest) {
+        Issue issue = getIssue(kickoffRequest.getId());
+        String previousStatus = issue.getStatus().getName();
+
         Promise<Iterable<Transition>> transitionsPromise = restClient.getIssueClient().getTransitions(issue);
 
         Iterable<Transition> transitions = transitionsPromise.claim();
 
         for (Transition transition : transitions) {
             String name = transition.getName();
-            if (generatedStatus.equalsIgnoreCase(name)) {
+            if (transitionName.equalsIgnoreCase(name)) {
                 Promise<Void> setGeneratedStatus = restClient.getIssueClient().transition(issue, new TransitionInput
                         (transition.getId()));
                 setGeneratedStatus.claim();
 
-                LOGGER.info(String.format("Status for issue: %s changed to: %s", issue.getSummary(), name));
+                issue = getIssue(kickoffRequest.getId());
+                String newStatus = issue.getStatus().getName();
+
+                LOGGER.info(String.format("Status for issue: %s changed from: %s to: %s using transition: %s", issue
+                        .getSummary(), previousStatus, newStatus, name));
 
                 break;
             }
@@ -141,12 +178,12 @@ public class JiraFileUploader implements FileUploader {
     }
 
     private void deleteExistingManifestAttachments(KickoffRequest request, Issue issue) {
-        List<Attachment> existingManifestAttachments = getExistingManifestAttachments(request, issue);
-        for (Attachment existingAttachment : existingManifestAttachments)
+        List<JiraIssue.Fields.Attachment> existingManifestAttachments = getExistingManifestAttachments(request);
+        for (JiraIssue.Fields.Attachment existingAttachment : existingManifestAttachments)
             deleteAttachment(issue, existingAttachment);
     }
 
-    private void deleteAttachment(Issue issue, Attachment existingAttachment) {
+    private void deleteAttachment(Issue issue, JiraIssue.Fields.Attachment existingAttachment) {
         LOGGER.info(String.format("Deleting attachment: %s from issue: %s", existingAttachment.getFileName(),
                 issue.getSummary()));
         HttpEntity<String> request = getHttpHeaders();
@@ -156,9 +193,10 @@ public class JiraFileUploader implements FileUploader {
                 issue.getSummary()));
     }
 
-    private List<Attachment> getExistingManifestAttachments(KickoffRequest request, Issue issue) {
+    List<JiraIssue.Fields.Attachment> getExistingManifestAttachments(KickoffRequest request) {
+        Issue issue = getIssue(request.getId());
         JiraIssue jiraIssue = getJiraIssue(issue);
-        List<Attachment> attachments = jiraIssue.getFields().getAttachments();
+        List<JiraIssue.Fields.Attachment> attachments = jiraIssue.getFields().getAttachments();
         List<String> requiredFiles = getRequiredFilesNames(request);
 
         return attachments.stream()
@@ -166,7 +204,7 @@ public class JiraFileUploader implements FileUploader {
                 .collect(Collectors.toList());
     }
 
-    private Predicate<Attachment> isRequiredManifestFile(List<String> requiredFiles) {
+    private Predicate<JiraIssue.Fields.Attachment> isRequiredManifestFile(List<String> requiredFiles) {
         return f -> requiredFiles.contains(f.getFileName());
     }
 
@@ -208,22 +246,26 @@ public class JiraFileUploader implements FileUploader {
                 (jiraServerUri, username, password);
     }
 
-    private Issue getIssue(String summary, JiraRestClient restClient) {
+    private Issue getIssue(String summary) {
         Iterable<Issue> issues = getIssues(summary, restClient);
         validateIssueExists(summary, issues);
-        return Iterables.getFirst(issues, null);
+
+        Issue foundIssue = Iterables.getFirst(issues, null);
+        Promise<Issue> issuePromise = restClient.getIssueClient().getIssue(foundIssue.getKey());
+        Issue issue = issuePromise.claim();
+
+        return issue;
     }
 
     private Iterable<Issue> getIssues(String summary, JiraRestClient restClient) {
         SearchRestClient searchClient = restClient.getSearchClient();
         String jql = String.format("project" +
-                " = \"%s\" AND summary ~ %s", projectName, summary);
+                " = \"%s\" AND summary ~ \"%s\"", projectName, summary);
         Promise<SearchResult> searchResultPromise = searchClient.searchJql(jql);
 
         SearchResult searchResult = searchResultPromise.claim();
 
         Iterable<Issue> issues = searchResult.getIssues();
-        LOGGER.info(String.format("Found issue with summary: %s in project: %s", summary, projectName));
 
         return issues;
     }
@@ -235,5 +277,15 @@ public class JiraFileUploader implements FileUploader {
         if (Iterables.size(issues) > 1)
             throw new RuntimeException(String.format("Multiple jira issues found for project: %s and summary: %s." +
                     " No files will be uploaded.", projectName, summary));
+
+        LOGGER.info(String.format("Found issue with summary: %s in project: %s", summary, projectName));
+    }
+
+    public JiraIssueState getJiraIssueState() {
+        return jiraIssueState;
+    }
+
+    public void setJiraIssueState(JiraIssueState jiraIssueState) {
+        this.jiraIssueState = jiraIssueState;
     }
 }

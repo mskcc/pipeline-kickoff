@@ -4,7 +4,9 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.manifest.ManifestFile;
 
 public interface FileUploader {
-    void deleteExistingFiles(KickoffRequest request) throws FileDeletionException;
+    void deleteExistingFiles(KickoffRequest request);
 
-    void upload(KickoffRequest request, ManifestFile manifestFile);
+    void uploadSingleFile(KickoffRequest request, ManifestFile manifestFile);
+
+    void upload(KickoffRequest kickoffRequest);
 }

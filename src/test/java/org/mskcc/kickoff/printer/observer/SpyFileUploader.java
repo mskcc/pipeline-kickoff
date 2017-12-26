@@ -19,8 +19,15 @@ public class SpyFileUploader implements FileUploader {
     }
 
     @Override
-    public void upload(KickoffRequest request, ManifestFile manifestFile) {
+    public void uploadSingleFile(KickoffRequest request, ManifestFile manifestFile) {
         uploadedFiles.put(request, manifestFile);
+    }
+
+    @Override
+    public void upload(KickoffRequest kickoffRequest) {
+        for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
+            uploadSingleFile(kickoffRequest, manifestFile);
+        }
     }
 
     public Multimap<KickoffRequest, ManifestFile> getUploadedFiles() {

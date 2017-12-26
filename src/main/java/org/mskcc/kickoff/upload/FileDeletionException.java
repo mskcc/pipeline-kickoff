@@ -1,6 +1,6 @@
 package org.mskcc.kickoff.upload;
 
-public class FileDeletionException extends Exception {
+public class FileDeletionException extends RuntimeException {
     public FileDeletionException(String message) {
         super(message);
     }

@@ -19,7 +19,7 @@ public class FileUploadingManifestFileObserver implements ManifestFileObserver {
 
     @Override
     public void update(KickoffRequest request, ManifestFile manifestFile, FileGenerated event) {
-        fileUploader.upload(request, manifestFile);
+        fileUploader.uploadSingleFile(request, manifestFile);
     }
 
     @Override
