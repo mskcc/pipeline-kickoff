@@ -116,12 +116,14 @@ public class MappingFilePrinter implements FilePrinter {
                     } else if (files.length > 1) {
                         Arrays.sort(files, Comparator.comparingLong(File::lastModified));
                         String foundFiles = StringUtils.join(files, ", ");
+                        RunIDFull = files[files.length - 1].getAbsoluteFile().getName().toString();
+
                         if (!runsWithMultipleFolders.contains(runId)) {
-                            String message = String.format("More than one sequencing run folder found for Run ID %s: %s I will be picking the newest folder.", runId, foundFiles);
+                            String message = String.format("More than one sequencing run folder found for Run ID %s: " +
+                                    "%s I will be picking the newest folder: %s", runId, foundFiles, RunIDFull);
                             logWarning(message);
                             runsWithMultipleFolders.add(runId);
                         }
-                        RunIDFull = files[files.length - 1].getAbsoluteFile().getName().toString();
                     } else {
                         RunIDFull = files[0].getAbsoluteFile().getName();
                     }
