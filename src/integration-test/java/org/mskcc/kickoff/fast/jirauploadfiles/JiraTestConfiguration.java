@@ -14,7 +14,9 @@ import org.mskcc.kickoff.printer.observer.FileUploadingManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.upload.FileDeletionException;
-import org.mskcc.kickoff.upload.JiraFileUploader;
+import org.mskcc.kickoff.upload.jira.JiraFileUploader;
+import org.mskcc.kickoff.upload.jira.JiraStateFactory;
+import org.mskcc.kickoff.upload.jira.JiraTransitions;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,8 +47,8 @@ public class JiraTestConfiguration {
     @Value("${jira.roslin.project.name}")
     private String jiraRoslinProjectName;
 
-    @Value("${jira.roslin.generated.status}")
-    private String jiraGeneratedStatus;
+    @Autowired
+    private JiraTransitions jiraTransitions;
 
     @Autowired
     private PairingsResolver pairingsResolver;
@@ -55,10 +57,13 @@ public class JiraTestConfiguration {
     @Autowired
     private PairednessResolver pairednessResolver;
 
+    @Autowired
+    private JiraStateFactory jiraStateFactory;
+
     @Bean
     public MockJiraFileUploader fileUploader() {
         return new MockJiraFileUploader(jiraUrl, jiraUsername, jiraPassword, jiraRoslinProjectName,
-                jiraGeneratedStatus);
+                jiraStateFactory);
     }
 
     @Bean
@@ -140,9 +145,10 @@ public class JiraTestConfiguration {
     class MockJiraFileUploader extends JiraFileUploader {
         private boolean throwExceptionOnDelete;
 
-        public MockJiraFileUploader(String jiraUrl, String username, String password, String projectName, String
-                generatedStatus) {
-            super(jiraUrl, username, password, projectName, generatedStatus);
+        public MockJiraFileUploader(String jiraUrl, String username, String password, String projectName,
+                                    JiraStateFactory
+                                            jiraStateFactory) {
+            super(jiraUrl, username, password, projectName, jiraStateFactory);
         }
 
         public void setThrowExceptionOnDelete(boolean throwException) {

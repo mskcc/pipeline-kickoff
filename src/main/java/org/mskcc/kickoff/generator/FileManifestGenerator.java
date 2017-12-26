@@ -71,8 +71,6 @@ public class FileManifestGenerator implements ManifestGenerator {
             resolveExomeRequestType(kickoffRequest);
 
             saveFiles(kickoffRequest);
-
-            fileUploader.deleteExistingFiles(kickoffRequest);
             uploadFiles(kickoffRequest);
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
@@ -83,10 +81,7 @@ public class FileManifestGenerator implements ManifestGenerator {
     }
 
     private void uploadFiles(KickoffRequest kickoffRequest) {
-        for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
-            if (manifestFile.isFileGenerated())
-                fileUploader.upload(kickoffRequest, manifestFile);
-        }
+        fileUploader.upload(kickoffRequest);
     }
 
     private void sendEmailIfFileNotCreated(String projectId) {

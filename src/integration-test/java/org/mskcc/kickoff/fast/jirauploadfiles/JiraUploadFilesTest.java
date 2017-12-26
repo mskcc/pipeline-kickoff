@@ -4,6 +4,8 @@ import com.atlassian.jira.rest.client.api.JiraRestClient;
 import com.atlassian.jira.rest.client.api.SearchRestClient;
 import com.atlassian.jira.rest.client.api.domain.Issue;
 import com.atlassian.jira.rest.client.api.domain.SearchResult;
+import com.atlassian.jira.rest.client.api.domain.Transition;
+import com.atlassian.jira.rest.client.api.domain.input.TransitionInput;
 import com.atlassian.jira.rest.client.internal.async.AsynchronousJiraRestClientFactory;
 import com.atlassian.util.concurrent.Promise;
 import com.google.common.collect.Iterables;
@@ -21,8 +23,7 @@ import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.printer.FilePrinter;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.process.ProcessingType;
-import org.mskcc.kickoff.upload.Attachment;
-import org.mskcc.kickoff.upload.JiraIssue;
+import org.mskcc.kickoff.upload.jira.JiraIssue;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -72,20 +73,35 @@ public class JiraUploadFilesTest {
     @Value("${jira.roslin.project.name}")
     private String jiraRoslinProjectName;
 
-    private Issue issue;
+    @Value("${jira.roslin.generated.transition}")
+    private String generatedTransition;
+
+    @Value("${jira.roslin.regenerated.transition}")
+    private String regeneratedTransition;
+
+    @Value("${jira.roslin.fastqs.available.status}")
+    private String fastqsAvailableStatus;
+
+    @Value("${jira.roslin.input.regeneration.status}")
+    private String regenerateStatus;
+
+    @Value("${jira.roslin.input.generated.status}")
+    private String filesGeneratedStatus;
 
     @Autowired
     private MappingFilePrinter mappingFilePrinter;
 
     @Autowired
     private JiraTestConfiguration.MockJiraFileUploader fileUploader;
+    private String initialTransitionName = "To Do";
+    private String holdTransition = "Hold";
+    private String regenerateTransition = "Regeneration Requested";
 
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
 
         restClient = getJiraRestClient();
-        issue = getIssue(projectId, restClient);
 
         assertNoAttachmentAttached();
 
@@ -108,7 +124,28 @@ public class JiraUploadFilesTest {
     @After
     public void tearDown() throws Exception {
         deleteAttachments();
+        setJiraStatus(initialTransitionName);
         closeJiraConnection(restClient);
+    }
+
+    private void setJiraStatus(String status) {
+        Issue issue = getIssue(projectId, restClient);
+        Promise<Iterable<Transition>> transitionsPromise = restClient.getIssueClient().getTransitions(issue);
+
+        Iterable<Transition> transitions = transitionsPromise.claim();
+
+        for (Transition transition : transitions) {
+            String name = transition.getName();
+            if (status.equalsIgnoreCase(name)) {
+                Promise<Void> setGeneratedStatus = restClient.getIssueClient().transition(issue, new TransitionInput
+                        (transition.getId()));
+                setGeneratedStatus.claim();
+
+                LOGGER.info(String.format("Status for issue: %s changed to: %s", issue.getSummary(), name));
+
+                break;
+            }
+        }
     }
 
     private Issue getIssue(String summary, JiraRestClient restClient) {
@@ -132,12 +169,12 @@ public class JiraUploadFilesTest {
     private void deleteAttachments() {
         LOGGER.info("Deleting created attachments.");
 
-        for (Attachment attachment : getAllAttachments()) {
+        for (JiraIssue.Fields.Attachment attachment : getAllAttachments()) {
             deleteAttachment(attachment);
         }
     }
 
-    private void deleteAttachment(Attachment existingAttachment) {
+    private void deleteAttachment(JiraIssue.Fields.Attachment existingAttachment) {
         LOGGER.info(String.format("Deleting attachment: %s", existingAttachment.getUri()));
 
         HttpEntity<String> request = getHttpHeaders();
@@ -154,16 +191,13 @@ public class JiraUploadFilesTest {
         //then
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
                 .PAIRING, ManifestFile.REQUEST));
+        assertJiraStatus(filesGeneratedStatus);
     }
 
     @Test
     public void whenFilesAreRegenerated_shouldDeleteOldOnesAndUploadAllNewToJira() throws Exception {
         //given
-        fileManifestGenerator.generate(projectId);
-        assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
-                .PAIRING, ManifestFile.REQUEST));
-        List<Attachment> allAttachmentsRun1 = getAllAttachments();
-        clearFileGeneratedStatus();
+        List<JiraIssue.Fields.Attachment> allAttachmentsRun1 = uploadFiles();
 
         //when
         ManifestFile.MAPPING.setFilePrinter(getNotPrintingMappingFilePrinter());
@@ -172,17 +206,32 @@ public class JiraUploadFilesTest {
         //then
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.GROUPING, ManifestFile.PAIRING, ManifestFile
                 .REQUEST));
+        assertJiraStatus(filesGeneratedStatus);
+
         assertAttachmentsAreDifferent(allAttachmentsRun1);
+    }
+
+    private List<JiraIssue.Fields.Attachment> uploadFiles() throws Exception {
+        fileManifestGenerator.generate(projectId);
+        assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
+                .PAIRING, ManifestFile.REQUEST));
+        assertJiraStatus(filesGeneratedStatus);
+
+        List<JiraIssue.Fields.Attachment> allAttachmentsRun1 = getAllAttachments();
+        clearFileGeneratedStatus();
+        setRegenerateStatus();
+        return allAttachmentsRun1;
+    }
+
+    private void setRegenerateStatus() {
+        setJiraStatus(holdTransition);
+        setJiraStatus(regenerateTransition);
     }
 
     @Test
     public void whenFilesFailToDelete_shouldNotUploadAnyNewFiles() throws Exception {
         //given
-        fileManifestGenerator.generate(projectId);
-        assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
-                .PAIRING, ManifestFile.REQUEST));
-        List<Attachment> allAttachmentsRun1 = getAllAttachments();
-        clearFileGeneratedStatus();
+        List<JiraIssue.Fields.Attachment> allAttachmentsRun1 = uploadFiles();
 
         //when
         ManifestFile.MAPPING.setFilePrinter(getNotPrintingMappingFilePrinter());
@@ -193,21 +242,24 @@ public class JiraUploadFilesTest {
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
                 .PAIRING, ManifestFile
                 .REQUEST));
+
+        assertJiraStatus(regenerateStatus);
+
         assertAttachmentsAreNotChanged(allAttachmentsRun1);
     }
 
-    private void assertAttachmentsAreNotChanged(List<Attachment> allAttachmentsRun1) {
-        List<Attachment> allAttachmentsRun2 = getAllAttachments();
+    private void assertAttachmentsAreNotChanged(List<JiraIssue.Fields.Attachment> allAttachmentsRun1) {
+        List<JiraIssue.Fields.Attachment> allAttachmentsRun2 = getAllAttachments();
 
-        for (Attachment attachment : allAttachmentsRun2) {
+        for (JiraIssue.Fields.Attachment attachment : allAttachmentsRun2) {
             assertTrue(allAttachmentsRun1.contains(attachment));
         }
     }
 
-    private void assertAttachmentsAreDifferent(List<Attachment> allAttachmentsRun1) {
-        List<Attachment> allAttachmentsRun2 = getAllAttachments();
+    private void assertAttachmentsAreDifferent(List<JiraIssue.Fields.Attachment> allAttachmentsRun1) {
+        List<JiraIssue.Fields.Attachment> allAttachmentsRun2 = getAllAttachments();
 
-        for (Attachment attachment : allAttachmentsRun2) {
+        for (JiraIssue.Fields.Attachment attachment : allAttachmentsRun2) {
             assertFalse(allAttachmentsRun1.contains(attachment));
         }
     }
@@ -221,7 +273,7 @@ public class JiraUploadFilesTest {
     }
 
     private void assertFilesUploadedToJira(String projectId, List<ManifestFile> expectedFiles) throws Exception {
-        List<Attachment> allAttachments = getAllAttachments();
+        List<JiraIssue.Fields.Attachment> allAttachments = getAllAttachments();
         assertThat(allAttachments.size(), is(expectedFiles.size()));
         KickoffRequest request = new KickoffRequest(projectId, mock(ProcessingType.class));
         for (ManifestFile generatedFile : expectedFiles) {
@@ -232,6 +284,11 @@ public class JiraUploadFilesTest {
         }
     }
 
+    private void assertJiraStatus(String status) {
+        Issue issue = getIssue(projectId, restClient);
+        assertThat(issue.getStatus().getName(), is(status));
+    }
+
     private JiraRestClient getJiraRestClient() throws URISyntaxException {
         URI jiraServerUri = new URI(jiraUrl);
 
@@ -239,7 +296,8 @@ public class JiraUploadFilesTest {
                 (jiraServerUri, jiraUsername, jiraPassword);
     }
 
-    private List<Attachment> getAllAttachments() {
+    private List<JiraIssue.Fields.Attachment> getAllAttachments() {
+        Issue issue = getIssue(projectId, restClient);
         JiraIssue jiraIssue = getJiraIssue(issue);
         return jiraIssue.getFields().getAttachments();
     }
