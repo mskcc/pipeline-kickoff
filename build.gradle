@@ -100,6 +100,7 @@ task fatJar(type: Jar) {
     }
     baseName = project.name
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    destinationDir = file("$rootDir/build/fatJar")
     with jar
 }
 
