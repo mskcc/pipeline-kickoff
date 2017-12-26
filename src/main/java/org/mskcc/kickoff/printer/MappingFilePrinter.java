@@ -4,8 +4,8 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.mskcc.kickoff.domain.Request;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.Request;
 import org.mskcc.kickoff.lims.SampleInfo;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.util.Constants;
@@ -114,8 +114,7 @@ public class MappingFilePrinter implements FilePrinter {
                         request.setMappingIssue(true);
                         return;
                     } else if (files.length > 1) {
-                        //@TODO check if the newest folder in taken into consideration
-                        Arrays.sort(files);
+                        Arrays.sort(files, Comparator.comparingLong(File::lastModified));
                         String foundFiles = StringUtils.join(files, ", ");
                         if (!runsWithMultipleFolders.contains(runId)) {
                             String message = String.format("More than one sequencing run folder found for Run ID %s: %s I will be picking the newest folder.", runId, foundFiles);
