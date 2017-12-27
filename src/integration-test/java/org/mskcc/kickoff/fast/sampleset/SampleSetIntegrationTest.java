@@ -21,14 +21,18 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
+import org.mskcc.kickoff.velox.VeloxConnectionData;
 import org.mskcc.kickoff.velox.VeloxProjectProxy;
 import org.mskcc.util.TestUtils;
 import org.mskcc.util.VeloxConstants;
 
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.rmi.RemoteException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -62,9 +66,16 @@ public class SampleSetIntegrationTest {
 
     @Before
     public void setUp() throws Exception {
-        veloxProjectProxy = new VeloxProjectProxy(getResourceFile(connectionFile), archiverMock,
+        veloxProjectProxy = new VeloxProjectProxy(getVeloxConnectionData(connectionFile), archiverMock,
                 requestsRetrieverFactory);
-        connection = new VeloxConnection(getResourceFile(connectionFileTest));
+        VeloxConnectionData veloxConnectionData = getVeloxConnectionData(connectionFileTest);
+        connection = new VeloxConnection(
+                veloxConnectionData.getHost(),
+                veloxConnectionData.getPort(),
+                veloxConnectionData.getGuid(),
+                veloxConnectionData.getUsername(),
+                veloxConnectionData.getPassword()
+        );
         openConnection();
     }
 
@@ -77,8 +88,20 @@ public class SampleSetIntegrationTest {
         closeConnection();
     }
 
-    private String getResourceFile(String connectionFile) throws Exception {
-        return SampleSetIntegrationTest.class.getResource(connectionFile).getPath();
+    private VeloxConnectionData getVeloxConnectionData(String connectionFile) throws Exception {
+        Properties properties = new Properties();
+        InputStream input = new FileInputStream(SampleSetIntegrationTest.class.getResource(connectionFile).getPath());
+        properties.load(input);
+
+        VeloxConnectionData veloxConnectionData = new VeloxConnectionData(
+                (String) properties.get("lims.host"),
+                Integer.parseInt((String) properties.get("lims.port")),
+                (String) properties.get("lims.username"),
+                (String) properties.get("lims.password"),
+                (String) properties.get("lims.guid")
+        );
+
+        return veloxConnectionData;
     }
 
     @Test

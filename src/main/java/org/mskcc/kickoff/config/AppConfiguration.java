@@ -21,6 +21,7 @@ import org.mskcc.kickoff.upload.jira.*;
 import org.mskcc.kickoff.validator.*;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
 import org.mskcc.kickoff.velox.SampleSetProjectPredicate;
+import org.mskcc.kickoff.velox.VeloxConnectionData;
 import org.mskcc.kickoff.velox.VeloxProjectProxy;
 import org.mskcc.util.Constants;
 import org.mskcc.util.email.EmailConfiguration;
@@ -53,9 +54,6 @@ public class AppConfiguration {
 
     @Value("${manifestOutputFilePath}")
     private String manifestOutputFilePath;
-
-    @Value("${limsConnectionFilePath}")
-    private String limsConnectionFilePath;
 
     @Value("${file.generation.failure.notification.from}")
     private String from;
@@ -92,6 +90,21 @@ public class AppConfiguration {
 
     @Value("${jira.roslin.input.generated.status}")
     private String generatedStatus;
+
+    @Value("${lims.host}")
+    private String limsHost;
+
+    @Value("${lims.port}")
+    private int limsPort;
+
+    @Value("${lims.username}")
+    private String limsUsername;
+
+    @Value("${lims.password}")
+    private String limsPassword;
+
+    @Value("${lims.guid}")
+    private String limsGuid;
 
     static void configureLogger(String loggerPropertiesPath) {
         LogManager.resetConfiguration();
@@ -132,7 +145,12 @@ public class AppConfiguration {
 
     @Bean
     public RequestProxy requestProxy() {
-        return new VeloxProjectProxy(limsConnectionFilePath, projectFilesArchiver(), requestsRetrieverFactory());
+        return new VeloxProjectProxy(veloxConnectionData(), projectFilesArchiver(), requestsRetrieverFactory());
+    }
+
+    @Bean
+    public VeloxConnectionData veloxConnectionData() {
+        return new VeloxConnectionData(limsHost, limsPort, limsUsername, limsPassword, limsGuid);
     }
 
     @Bean

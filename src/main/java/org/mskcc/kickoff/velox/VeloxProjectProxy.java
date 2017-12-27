@@ -27,16 +27,16 @@ import java.util.List;
 public class VeloxProjectProxy implements RequestProxy {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
-    private final String limsConnectionFilePath;
     private final ProjectFilesArchiver projectFilesArchiver;
     private final RequestsRetrieverFactory requestsRetrieverFactory;
+    private final VeloxConnectionData veloxConnectionData;
     private DataRecordManager dataRecordManager;
     private User user;
     private RequestsRetriever requestsRetriever;
 
-    public VeloxProjectProxy(String limsConnectionFilePath, ProjectFilesArchiver projectFilesArchiver,
+    public VeloxProjectProxy(VeloxConnectionData veloxConnectionData, ProjectFilesArchiver projectFilesArchiver,
                              RequestsRetrieverFactory requestsRetrieverFactory) {
-        this.limsConnectionFilePath = limsConnectionFilePath;
+        this.veloxConnectionData = veloxConnectionData;
         this.projectFilesArchiver = projectFilesArchiver;
         this.requestsRetrieverFactory = requestsRetrieverFactory;
     }
@@ -72,7 +72,7 @@ public class VeloxProjectProxy implements RequestProxy {
     }
 
     private VeloxConnection initVeloxConnection() throws Exception {
-        VeloxConnection connection = VeloxUtils.getVeloxConnection(limsConnectionFilePath);
+        VeloxConnection connection = VeloxUtils.getVeloxConnection(veloxConnectionData);
         addShutdownHook(connection);
         connection.open();
 

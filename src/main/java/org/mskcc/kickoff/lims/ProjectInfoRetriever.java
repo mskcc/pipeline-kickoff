@@ -14,7 +14,6 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.mskcc.util.VeloxConstants;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.util.*;
 import java.util.regex.Pattern;
@@ -30,9 +29,6 @@ public class ProjectInfoRetriever {
     @Argument(alias = "p", description = "Project to get samples for")
     private final HashSet<String> platforms = new HashSet<>();
     private Map<String, String> projectInfo = new LinkedHashMap<>();
-
-    @Value("${limsConnectionFilePath}")
-    private String limsConnectionFilePath;
 
     public static void main(String[] args) throws ServerException {
         ProjectInfoRetriever qe = new ProjectInfoRetriever();
