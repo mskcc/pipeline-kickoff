@@ -90,7 +90,8 @@ public class SampleSetIntegrationTest {
 
     private VeloxConnectionData getVeloxConnectionData(String connectionFile) throws Exception {
         Properties properties = new Properties();
-        InputStream input = new FileInputStream(SampleSetIntegrationTest.class.getResource(connectionFile).getPath());
+        InputStream input = new FileInputStream(SampleSetIntegrationTest.class.getResource(connectionFile).getPath()
+                .toString());
         properties.load(input);
 
         VeloxConnectionData veloxConnectionData = new VeloxConnectionData(
