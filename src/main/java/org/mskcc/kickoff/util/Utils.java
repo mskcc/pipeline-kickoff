@@ -5,6 +5,9 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.*;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.config.Arguments;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
 
 import java.io.File;
 import java.io.IOException;
@@ -168,5 +171,13 @@ public class Utils {
         }
 
         return samples;
+    }
+
+    public static void setPropertiesLocation(PropertySourcesPlaceholderConfigurer
+                                                     propertySourcesPlaceholderConfigurer, String propertiesPath) {
+        if (new File(propertiesPath).exists())
+            propertySourcesPlaceholderConfigurer.setLocation(new FileSystemResource(propertiesPath));
+        else
+            propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource(propertiesPath));
     }
 }

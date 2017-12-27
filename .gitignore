@@ -30,7 +30,9 @@ build/*
 
 logs/
 
-Connection*.txt
+lims*.properties
+application*.properties
+Connection*
 
 libs/veloxapi.jar
 libs/veloxclientutil.jar
