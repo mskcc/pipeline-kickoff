@@ -35,6 +35,7 @@ public class RequestDataPropagator implements DataPropagator {
             if (request.getRequestType() == RequestType.IMPACT && runAsExome)
                 request.setRequestType(RequestType.EXOME);
 
+            // @TODO refactor to use Project Info object instead of map
             Map<String, String> projectInfo = request.getProjectInfo();
             projectInfo.put(Constants.ProjectInfo.NUMBER_OF_SAMPLES, String.valueOf(request
                     .getValidUniqueCmoIdSamples(s -> !s.isPooledNormal()).size()));
@@ -102,14 +103,12 @@ public class RequestDataPropagator implements DataPropagator {
 
     @Override
     public void setAssay(KickoffRequest kickoffRequest, Map<String, String> projectInfo) {
-        if (!Objects.equals(kickoffRequest.getBaitVersion(), Constants.EMPTY)) {
-            if (kickoffRequest.getRequestType() == RequestType.EXOME) {
-                projectInfo.put(Constants.ASSAY, kickoffRequest.getBaitVersion());
-            } else {
-                projectInfo.put(Constants.ASSAY, "");
-            }
-        } else {
+        if (StringUtils.isEmpty(kickoffRequest.getBaitVersion())) {
+            projectInfo.put(Constants.ASSAY, "");
+        } else if (Objects.equals(kickoffRequest.getBaitVersion(), Constants.EMPTY)) {
             projectInfo.put(Constants.ASSAY, Constants.NA);
+        } else {
+            projectInfo.put(Constants.ASSAY, kickoffRequest.getBaitVersion());
         }
     }
 
