@@ -1,11 +1,14 @@
 package org.mskcc.kickoff.generator;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mskcc.kickoff.archive.FilesArchiver;
 import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.kickoff.config.LogConfigurator;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.NotificationFormatter;
 import org.mskcc.kickoff.printer.OutputFilesPrinter;
 import org.mskcc.kickoff.printer.observer.SpyFileUploader;
 import org.mskcc.kickoff.process.ProcessingType;
@@ -20,6 +23,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+import java.util.Arrays;
+
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -29,47 +34,54 @@ import static org.mockito.Mockito.*;
 @ActiveProfiles("test")
 @PropertySource("classpath:application-dev.properties")
 public class FileManifestGeneratorTest {
+    private final String projectId = "12345_T";
+    private final String outputDir = "";
     @Autowired
     private FileManifestGenerator fileManifestGenerator;
-
     @Autowired
     private OutputFilesPrinter outputFilesPrinter;
-
     @Autowired
     private FilesArchiver filesArchiver;
-
     @Autowired
     private RequestValidator requestValidator;
-
     @Autowired
     private LogConfigurator logConfigurator;
-
     @Autowired
     private OutputDirRetriever outputDirRetriever;
-
     @Autowired
     private RequestProxy requestProxy;
-
     @Autowired
     private ProjectNameValidator projectNameValidator;
-
     @Autowired
     private EmailNotificator emailNotificator;
-
+    @Autowired
+    private NotificationFormatter notificationFormatter;
     @Autowired
     private SpyFileUploader fileUploader;
+    private KickoffRequest request;
+
+    @Before
+    public void setUp() throws Exception {
+        reset(emailNotificator);
+        reset(projectNameValidator);
+        reset(outputDirRetriever);
+        reset(logConfigurator);
+        reset(requestProxy);
+        reset(requestValidator);
+        reset(outputFilesPrinter);
+        reset(filesArchiver);
+        request = new KickoffRequest(projectId, mock(ProcessingType.class));
+        when(requestProxy.getRequest(projectId)).thenReturn(request);
+        when(outputDirRetriever.retrieve(any(), any())).thenReturn(outputDir);
+        Arguments.outdir = "outdir";
+    }
 
     @Test
     public void whenInvokeGenerateFiles_shouldValidatePrintArchiveAndUploadFiles() throws Exception {
-        String projectId = "12345_T";
-        KickoffRequest request = new KickoffRequest(projectId, mock(ProcessingType.class));
-        when(requestProxy.getRequest(projectId)).thenReturn(request);
-        String outputDir = "";
-        when(outputDirRetriever.retrieve(any(), any())).thenReturn(outputDir);
-        Arguments.outdir = "outdir";
-
+        //when
         fileManifestGenerator.generate(projectId);
 
+        //then
         verify(projectNameValidator, times(1)).validate(projectId);
         verify(outputDirRetriever, times(1)).retrieve(projectId, Arguments.outdir);
         verify(logConfigurator, times(1)).configureProjectLog(outputDir);
@@ -77,5 +89,55 @@ public class FileManifestGeneratorTest {
         verify(requestValidator, times(1)).validate(request);
         verify(outputFilesPrinter, times(1)).print(request);
         verify(filesArchiver, times(1)).archive(request);
+    }
+
+    @Test
+    public void whenAllRequiredFilesGenerated_shouldNotSendNotification() throws Exception {
+        //given
+        ManifestFile.setRequiredFiles(Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
+                .REQUEST, ManifestFile.PAIRING));
+        ManifestFile.MAPPING.setFileGenerated(true);
+        ManifestFile.GROUPING.setFileGenerated(true);
+        ManifestFile.REQUEST.setFileGenerated(true);
+        ManifestFile.PAIRING.setFileGenerated(true);
+
+        //when
+        fileManifestGenerator.generate(projectId);
+
+        //then
+        verify(emailNotificator, never()).notifyMessage(eq(projectId), any());
+    }
+
+    @Test
+    public void whenOneRequiredFileNotGenerated_shouldSendNotification() throws Exception {
+
+        //given
+        ManifestFile.setRequiredFiles(Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
+                .REQUEST, ManifestFile.PAIRING));
+        ManifestFile.MAPPING.setFileGenerated(false);
+        ManifestFile.GROUPING.setFileGenerated(true);
+        ManifestFile.REQUEST.setFileGenerated(true);
+        ManifestFile.PAIRING.setFileGenerated(true);
+
+        //when
+        fileManifestGenerator.generate(projectId);
+
+        //then
+        verify(emailNotificator, times(1)).notifyMessage(projectId, notificationFormatter.format(Arrays.asList
+                (ManifestFile.MAPPING)));
+    }
+
+    @Test
+    public void whenAllRequiredFilesNotGenerated_shouldSendNotification() throws Exception {
+        //given
+        ManifestFile.setRequiredFiles(Arrays.asList(ManifestFile.MAPPING, ManifestFile.REQUEST));
+        ManifestFile.MAPPING.setFileGenerated(false);
+        ManifestFile.REQUEST.setFileGenerated(false);
+
+        //when
+        fileManifestGenerator.generate(projectId);
+
+        //then
+        verify(emailNotificator, times(1)).notifyMessage(eq(projectId), any());
     }
 }
