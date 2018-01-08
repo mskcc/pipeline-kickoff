@@ -13,6 +13,8 @@ import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
 import org.mskcc.kickoff.generator.*;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.NewLineNotificationFormatter;
+import org.mskcc.kickoff.notify.NotificationFormatter;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
@@ -285,5 +287,10 @@ public class AppConfiguration {
     @Bean
     public PairednessResolver pairednessResolver() {
         return new PairednessResolver();
+    }
+
+    @Bean
+    public NotificationFormatter notificationFormatter() {
+        return new NewLineNotificationFormatter();
     }
 }

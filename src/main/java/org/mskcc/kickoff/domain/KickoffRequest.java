@@ -1,6 +1,7 @@
 package org.mskcc.kickoff.domain;
 
 import org.mskcc.domain.PairingInfo;
+import org.mskcc.domain.RequestType;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.process.ProcessingType;
@@ -23,10 +24,20 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     private List<PairingInfo> pairingInfos = new ArrayList<>();
     private boolean pairingError;
     private String rerunReason;
+    private RequestTypeStrategy requestTypeStrategy;
+    private RequestTypeStrategyFactory requestTypeStrategyFactory = new RequestTypeStrategyFactory();
 
     public KickoffRequest(String id, ProcessingType processingType) {
         super(id);
         this.processingType = processingType;
+    }
+
+    public RequestTypeStrategy getRequestTypeStrategy() {
+        return requestTypeStrategy;
+    }
+
+    public void setRequestTypeStrategy(RequestTypeStrategy requestTypeStrategy) {
+        this.requestTypeStrategy = requestTypeStrategy;
     }
 
     public String getOutputPath() {
@@ -188,5 +199,11 @@ public class KickoffRequest extends org.mskcc.domain.Request {
 
     public void setRerunReason(String rerunReason) {
         this.rerunReason = rerunReason;
+    }
+
+    @Override
+    public void setRequestType(RequestType requestType) {
+        this.requestTypeStrategy = requestTypeStrategyFactory.getRequestTypeStrategy(requestType);
+        super.setRequestType(requestType);
     }
 }

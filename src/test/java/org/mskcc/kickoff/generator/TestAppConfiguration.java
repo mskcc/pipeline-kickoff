@@ -1,9 +1,11 @@
 package org.mskcc.kickoff.generator;
 
+import org.apache.commons.lang3.StringUtils;
 import org.mskcc.kickoff.archive.FilesArchiver;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.archive.RunPipelineLogger;
 import org.mskcc.kickoff.config.LogConfigurator;
+import org.mskcc.kickoff.notify.NotificationFormatter;
 import org.mskcc.kickoff.printer.OutputFilesPrinter;
 import org.mskcc.kickoff.printer.observer.SpyFileUploader;
 import org.mskcc.kickoff.proxy.RequestProxy;
@@ -25,37 +27,36 @@ public class TestAppConfiguration {
     @Bean
     public FilesArchiver filesArchiver() {
         return mock(FilesArchiver.class);
-
     }
 
     @Bean
     public RequestValidator requestValidator() {
         return mock(RequestValidator.class);
-
     }
 
     @Bean
     public LogConfigurator logConfigurator() {
         return mock(LogConfigurator.class);
-
     }
 
     @Bean
     public OutputDirRetriever outputDirRetriever() {
         return mock(OutputDirRetriever.class);
-
     }
 
     @Bean
     public RequestProxy requestProxy() {
         return mock(RequestProxy.class);
-
     }
 
     @Bean
     public ProjectNameValidator projectNameValidator() {
         return mock(ProjectNameValidator.class);
+    }
 
+    @Bean
+    public NotificationFormatter notificationFormatter() {
+        return notGenerated -> StringUtils.join(notGenerated);
     }
 
     @Bean
