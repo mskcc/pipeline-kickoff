@@ -23,7 +23,7 @@ import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.printer.FilePrinter;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.process.ProcessingType;
-import org.mskcc.kickoff.upload.jira.JiraIssue;
+import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

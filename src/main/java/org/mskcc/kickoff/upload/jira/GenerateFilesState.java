@@ -1,6 +1,7 @@
 package org.mskcc.kickoff.upload.jira;
 
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
 
 import java.util.List;
 
@@ -21,6 +22,7 @@ public class GenerateFilesState implements JiraIssueState {
 
         jiraFileUploader.uploadFiles(kickoffRequest);
         jiraFileUploader.setJiraIssueState(nextState);
+        jiraFileUploader.assignUser(kickoffRequest);
         jiraFileUploader.changeStatus(transitionName, kickoffRequest);
     }
 
