@@ -24,14 +24,8 @@ public enum ManifestFile {
 
     private static List<ManifestFile> requiredFiles = new ArrayList<>();
 
-    static {
-        requiredFiles.add(MAPPING);
-        requiredFiles.add(GROUPING);
-        requiredFiles.add(PAIRING);
-        requiredFiles.add(REQUEST);
-    }
-
     private final String name;
+
     private FilePrinter filePrinter;
     private boolean fileGenerated;
     private List<String> generationErrors = new ArrayList<>();
@@ -47,6 +41,10 @@ public enum ManifestFile {
 
     public static List<ManifestFile> getRequiredFiles() {
         return requiredFiles;
+    }
+
+    public static void setRequiredFiles(List<ManifestFile> requiredFiles) {
+        ManifestFile.requiredFiles = requiredFiles;
     }
 
     public FilePrinter getFilePrinter() {

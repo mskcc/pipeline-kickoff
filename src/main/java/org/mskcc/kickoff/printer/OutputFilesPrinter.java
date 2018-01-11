@@ -15,6 +15,7 @@ public class OutputFilesPrinter {
 
     public void print(KickoffRequest kickoffRequest) {
         DEV_LOGGER.info("Starting to create output files");
+        setRequiredFiles(kickoffRequest);
 
         Set<FilePrinter> filePrinters = getFilePrinters();
         for (FilePrinter filePrinter : filePrinters) {
@@ -25,6 +26,11 @@ public class OutputFilesPrinter {
                 DEV_LOGGER.warn(String.format("Unable to save file: %s", filePrinter.getFilePath(kickoffRequest)));
             }
         }
+    }
+
+    private void setRequiredFiles(KickoffRequest kickoffRequest) {
+        kickoffRequest.getRequestTypeStrategy().setRequiredFiles();
+        DEV_LOGGER.info(String.format("Required files set: %s", ManifestFile.getRequiredFiles()));
     }
 
     private Set<FilePrinter> getFilePrinters() {

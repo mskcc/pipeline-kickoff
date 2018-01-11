@@ -1,6 +1,5 @@
 package org.mskcc.kickoff.generator;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.RequestType;
 import org.mskcc.kickoff.archive.FilesArchiver;
@@ -10,6 +9,7 @@ import org.mskcc.kickoff.config.LogConfigurator;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.NotificationFormatter;
 import org.mskcc.kickoff.printer.OutputFilesPrinter;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.upload.FileUploader;
@@ -21,6 +21,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.mskcc.kickoff.config.Arguments.runAsExome;
 
@@ -56,6 +58,9 @@ public class FileManifestGenerator implements ManifestGenerator {
     @Autowired
     private FileUploader fileUploader;
 
+    @Autowired
+    private NotificationFormatter notificationFormatter;
+
     @Override
     public void generate(String projectId) throws Exception {
         KickoffRequest kickoffRequest = null;
@@ -85,19 +90,17 @@ public class FileManifestGenerator implements ManifestGenerator {
     }
 
     private void sendEmailIfFileNotCreated(String projectId) {
-        StringBuilder stringBuilder = new StringBuilder();
-        for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
-            if (!manifestFile.isFileGenerated())
-                stringBuilder.append(String.format("%s\n", manifestFile.getName()));
-        }
+        List<ManifestFile> notGenerated = ManifestFile.getRequiredFiles().stream()
+                .filter(f -> !f.isFileGenerated())
+                .collect(Collectors.toList());
 
-        String errors = stringBuilder.toString();
-        if (!StringUtils.isEmpty(errors)) {
+        if (notGenerated.size() > 0) {
             try {
                 DEV_LOGGER.info(String.format("Sending email notification about manifest files not generated for " +
                         "request: %s", projectId));
 
-                emailNotificator.notifyMessage(projectId, errors);
+                String errorMessage = notificationFormatter.format(notGenerated);
+                emailNotificator.notifyMessage(projectId, errorMessage);
             } catch (Exception e) {
                 DEV_LOGGER.warn(String.format("Unable to send email notification about not generated manifest files " +
                                 "for request: %s.",
