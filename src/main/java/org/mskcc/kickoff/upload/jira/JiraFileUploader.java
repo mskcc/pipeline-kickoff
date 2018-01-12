@@ -35,8 +35,7 @@ import java.util.stream.Collectors;
 @Component
 public class JiraFileUploader implements FileUploader {
     private static final Logger LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
-    @Autowired
-    public JiraTransitioner jiraTransitioner;
+
     @Value("${jira.url}")
     private String jiraUrl;
     @Value("${jira.username}")
@@ -111,7 +110,6 @@ public class JiraFileUploader implements FileUploader {
             jiraIssueState = retrieveJiraIssueState(kickoffRequest);
             jiraIssueState.uploadFiles(kickoffRequest, this);
             addFilesCreatedComment(getIssue(summary));
-            jiraTransitioner.transition(kickoffRequest, this);
         } catch (Exception e) {
             LOGGER.error(String.format("Error while trying to attach files: to jira instance: %s for issue: %s",
                     jiraUrl, summary), e);

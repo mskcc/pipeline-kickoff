@@ -4,7 +4,6 @@ import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.*;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.config.Arguments;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
@@ -29,9 +28,6 @@ public class Utils {
     public static final String DEFAULT_DELIMITER = ",";
 
     private static boolean exitLater;
-
-    private static String devLogFileName = "pipeline_kickoff";
-    private static String shinyDevLogFileName = String.format("%s_%s", devLogFileName, SHINY);
 
     public static String getRunInfoPath(Path dir) {
         return String.format("%s/%s", dir, Constants.RUN_INFO_PATH);
@@ -80,10 +76,6 @@ public class Utils {
 
     public static String getPmLogFileName() {
         return String.format("%s%s.txt", Constants.LOG_FILE_PREFIX, LOG_DATE_FORMAT.format(new Date()));
-    }
-
-    public static String getDevLogFileName() {
-        return String.format("logs/%s.log", Arguments.shiny ? shinyDevLogFileName : devLogFileName);
     }
 
     public static String sampleNormalization(String sample) {

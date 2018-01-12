@@ -323,6 +323,7 @@ public class AppConfiguration {
         return restTemplate;
     }
 
+    @Bean
     public NotificationFormatter notificationFormatter() {
         return new NewLineNotificationFormatter();
     }
