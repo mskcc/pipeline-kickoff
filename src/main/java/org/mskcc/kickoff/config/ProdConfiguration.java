@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.core.io.AbstractResource;
 
 @Profile(Constants.PROD_PROFILE)
 @Configuration
@@ -14,9 +15,7 @@ public class ProdConfiguration {
     public static PropertySourcesPlaceholderConfigurer propertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
 
-        Utils.setPropertiesLocation(propertySourcesPlaceholderConfigurer, "application.properties");
-
-        AppConfiguration.configureLogger("/log4j.properties");
+        propertySourcesPlaceholderConfigurer.setLocation(Utils.getPropertiesLocation("application.properties"));
 
         propertySourcesPlaceholderConfigurer.setOrder(0);
         propertySourcesPlaceholderConfigurer.setIgnoreUnresolvablePlaceholders(true);
@@ -28,7 +27,9 @@ public class ProdConfiguration {
     @Profile(Constants.IGO_PROFILE)
     public static PropertySourcesPlaceholderConfigurer igoPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
-        Utils.setPropertiesLocation(propertySourcesPlaceholderConfigurer, "lims-igo-prod.properties");
+        AbstractResource propertiesLocation = Utils.getPropertiesLocation("lims-igo-prod.properties");
+        propertySourcesPlaceholderConfigurer.setLocation(propertiesLocation);
+
         propertySourcesPlaceholderConfigurer.setOrder(1);
 
         return propertySourcesPlaceholderConfigurer;
@@ -39,7 +40,9 @@ public class ProdConfiguration {
     public static PropertySourcesPlaceholderConfigurer tangoPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new
                 PropertySourcesPlaceholderConfigurer();
-        Utils.setPropertiesLocation(propertySourcesPlaceholderConfigurer, "lims-tango-prod.properties");
+        AbstractResource propertiesLocation = Utils.getPropertiesLocation("lims-tango-prod.properties");
+        propertySourcesPlaceholderConfigurer.setLocation(propertiesLocation);
+
         propertySourcesPlaceholderConfigurer.setOrder(1);
 
         return propertySourcesPlaceholderConfigurer;

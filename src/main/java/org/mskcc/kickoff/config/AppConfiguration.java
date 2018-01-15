@@ -36,10 +36,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.InterceptingClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -124,12 +126,18 @@ public class AppConfiguration {
     @Autowired
     private HoldJiraIssueState holdJiraIssueState;
 
-    static void configureLogger(String loggerPropertiesPath) {
+    public static void configureLogger(String loggerPropertiesName) {
         LogManager.resetConfiguration();
-        try {
-            PropertyConfigurator.configure(new ClassPathResource(loggerPropertiesPath).getURL());
-        } catch (IOException e) {
-            PropertyConfigurator.configure(Loader.getResource(loggerPropertiesPath));
+
+        if (new File(loggerPropertiesName).exists())
+            PropertyConfigurator.configure(new FileSystemResource(loggerPropertiesName).getFile().getAbsoluteFile()
+                    .toString());
+        else {
+            try {
+                PropertyConfigurator.configure(new ClassPathResource(loggerPropertiesName).getURL());
+            } catch (IOException e) {
+                PropertyConfigurator.configure(Loader.getResource(loggerPropertiesName));
+            }
         }
 
         Logger.getRootLogger().setLevel(Level.OFF);
