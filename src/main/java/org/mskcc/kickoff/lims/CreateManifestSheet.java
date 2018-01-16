@@ -71,9 +71,9 @@ class CreateManifestSheet {
     private static void initLogger(AnnotationConfigApplicationContext context) {
         String[] activeProfiles = getActiveProfiles(context);
 
-        String log4jPropertiesFileName = "log4j-dev.properties";
+        String log4jPropertiesFileName = "log4j2-dev.properties";
         if (!isActive(activeProfiles, org.mskcc.kickoff.util.Constants.DEV_PROFILE)) {
-            log4jPropertiesFileName = "log4j.properties";
+            log4jPropertiesFileName = "log4j2.properties";
         }
 
         AppConfiguration.configureLogger(log4jPropertiesFileName);
