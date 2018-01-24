@@ -55,7 +55,7 @@ import static org.mockito.Mockito.mock;
 @ComponentScan(basePackages = "org.mskcc.kickoff")
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = JiraTestConfiguration.class)
-@ActiveProfiles({"test", "igo"})
+@ActiveProfiles({"test", "tango"})
 @PropertySource("classpath:application-dev.properties")
 public class JiraUploadFilesTest {
     private static final Logger LOGGER = Logger.getLogger(Constants.DEV_LOGGER);

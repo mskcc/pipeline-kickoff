@@ -6,8 +6,6 @@ import java.util.List;
 
 @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class JiraGroup {
-    private int total;
-
     @JsonProperty("values")
     private List<JiraUser> values;
 
@@ -20,13 +18,5 @@ public class JiraGroup {
 
     public void setValues(List<JiraUser> values) {
         this.values = values;
-    }
-
-    public int getTotal() {
-        return total;
-    }
-
-    public void setTotal(int total) {
-        this.total = total;
     }
 }
