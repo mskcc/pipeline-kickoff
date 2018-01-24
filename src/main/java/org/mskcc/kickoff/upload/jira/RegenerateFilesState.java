@@ -18,6 +18,7 @@ public class RegenerateFilesState implements JiraIssueState {
         jiraFileUploader.deleteExistingFiles(kickoffRequest);
         jiraFileUploader.uploadFiles(kickoffRequest);
         jiraFileUploader.setJiraIssueState(nextState);
+        jiraFileUploader.assignUser(kickoffRequest);
         jiraFileUploader.changeStatus(transitionName, kickoffRequest);
     }
 

@@ -14,9 +14,7 @@ import org.mskcc.kickoff.printer.observer.FileUploadingManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.upload.FileDeletionException;
-import org.mskcc.kickoff.upload.jira.JiraFileUploader;
-import org.mskcc.kickoff.upload.jira.JiraStateFactory;
-import org.mskcc.kickoff.upload.jira.JiraTransitions;
+import org.mskcc.kickoff.upload.jira.*;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +24,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Scope;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 
 import java.util.Set;
 import java.util.function.Predicate;
@@ -48,12 +47,11 @@ public class JiraTestConfiguration {
     private String jiraRoslinProjectName;
 
     @Autowired
-    private JiraTransitions jiraTransitions;
+    private PairingsResolver pairingsResolver;
 
     @Autowired
-    private PairingsResolver pairingsResolver;
-    @Autowired
     private Predicate<Set<Pairedness>> pairednessValidPredicate;
+
     @Autowired
     private PairednessResolver pairednessResolver;
 
@@ -61,9 +59,18 @@ public class JiraTestConfiguration {
     private JiraStateFactory jiraStateFactory;
 
     @Bean
-    public MockJiraFileUploader fileUploader() {
-        return new MockJiraFileUploader(jiraUrl, jiraUsername, jiraPassword, jiraRoslinProjectName,
-                jiraStateFactory);
+    public HoldJiraIssueState holdJiraIssueState() {
+        return new HoldJiraIssueState();
+    }
+
+    @Bean
+    public JiraTransitioner jiraTransitioner() {
+        return new DummyJiraTransitioner();
+    }
+
+    @Bean
+    public JiraFileUploader fileUploader() {
+        return new MockJiraFileUploader();
     }
 
     @Bean
@@ -142,14 +149,18 @@ public class JiraTestConfiguration {
         return new SampleKeyPrinter();
     }
 
+    @Bean
+    public PmJiraUserRetriever pmJiraUserRetriever() {
+        return new DummyPmJiraUserRetriever();
+    }
+
+    @Bean
+    public ClientHttpRequestInterceptor clientHttpRequestInterceptor() {
+        return new LoggingClientHttpRequestInterceptor();
+    }
+
     class MockJiraFileUploader extends JiraFileUploader {
         private boolean throwExceptionOnDelete;
-
-        public MockJiraFileUploader(String jiraUrl, String username, String password, String projectName,
-                                    JiraStateFactory
-                                            jiraStateFactory) {
-            super(jiraUrl, username, password, projectName, jiraStateFactory);
-        }
 
         public void setThrowExceptionOnDelete(boolean throwException) {
             this.throwExceptionOnDelete = throwException;

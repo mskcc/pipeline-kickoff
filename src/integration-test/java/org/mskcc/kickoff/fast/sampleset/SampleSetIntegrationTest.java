@@ -40,8 +40,8 @@ import static org.mockito.Mockito.mock;
 
 public class SampleSetIntegrationTest {
     private static final Log LOG = LogFactory.getLog(SampleSetIntegrationTest.class);
-    private static String connectionFile = "/Connection-dev.txt";
-    private static String connectionFileTest = "/Connection-test.txt";
+    private static String connectionFile = "/lims-tango-dev.properties";
+    private static String connectionFileTest = "/lims-tango-test.properties";
     private final int recordId_03498_D = 278959;
     private final String reqId_03498_D = "03498_D";
     private final String reqId_04252_J = "04252_J";

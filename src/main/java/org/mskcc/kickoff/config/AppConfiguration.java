@@ -18,7 +18,6 @@ import org.mskcc.kickoff.notify.NotificationFormatter;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
-import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.upload.jira.*;
 import org.mskcc.kickoff.validator.*;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
@@ -30,14 +29,22 @@ import org.mskcc.util.email.EmailConfiguration;
 import org.mskcc.util.email.EmailSender;
 import org.mskcc.util.email.EmailToMimeMessageConverter;
 import org.mskcc.util.email.JavaxEmailSender;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
+import org.springframework.http.client.InterceptingClientHttpRequestFactory;
+import org.springframework.http.client.support.BasicAuthorizationInterceptor;
+import org.springframework.web.client.RestTemplate;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -108,12 +115,30 @@ public class AppConfiguration {
     @Value("${lims.guid}")
     private String limsGuid;
 
-    static void configureLogger(String loggerPropertiesPath) {
+    @Value("${jira.pm.group.name}")
+    private String pmGroupName;
+
+    @Value("${jira.igo.formatted.name.property}")
+    private String igoFormattedNameProperty;
+
+    @Autowired
+    private ClientHttpRequestInterceptor loggingClientHttpRequestInterceptor;
+
+    @Autowired
+    private HoldJiraIssueState holdJiraIssueState;
+
+    public static void configureLogger(String loggerPropertiesName) {
         LogManager.resetConfiguration();
-        try {
-            PropertyConfigurator.configure(new ClassPathResource(loggerPropertiesPath).getURL());
-        } catch (IOException e) {
-            PropertyConfigurator.configure(Loader.getResource(loggerPropertiesPath));
+
+        if (new File(loggerPropertiesName).exists())
+            PropertyConfigurator.configure(new FileSystemResource(loggerPropertiesName).getFile().getAbsoluteFile()
+                    .toString());
+        else {
+            try {
+                PropertyConfigurator.configure(new ClassPathResource(loggerPropertiesName).getURL());
+            } catch (IOException e) {
+                PropertyConfigurator.configure(Loader.getResource(loggerPropertiesName));
+            }
         }
 
         Logger.getRootLogger().setLevel(Level.OFF);
@@ -244,14 +269,11 @@ public class AppConfiguration {
         return new FileExistenceOutputDirValidator();
     }
 
-    @Bean
-    public FileUploader fileUploader() {
-        return new JiraFileUploader(jiraUrl, jiraUsername, jiraPassword, jiraRoslinProjectName, jiraStateFactory());
-    }
 
     @Bean
     public JiraStateFactory jiraStateFactory() {
-        return new JiraStateFactory(generateFilesState(), regenerateFilesState(), filesGeneratedState());
+        return new JiraStateFactory(generateFilesState(), regenerateFilesState(), filesGeneratedState(),
+                holdJiraIssueState);
     }
 
     @Bean
@@ -270,11 +292,6 @@ public class AppConfiguration {
     }
 
     @Bean
-    public JiraTransitions jiraTransitions() {
-        return new JiraTransitions(fastqsAvailableStatus, generatedTransition, regenerateStatus, regeneratedTransition);
-    }
-
-    @Bean
     public ManifestFile.FilePrinterInjector filePrinterInjector() {
         return new ManifestFile.FilePrinterInjector();
     }
@@ -287,6 +304,32 @@ public class AppConfiguration {
     @Bean
     public PairednessResolver pairednessResolver() {
         return new PairednessResolver();
+    }
+
+    @Bean
+    @Profile(Constants.PROD_PROFILE)
+    public RestTemplate restTemplate() {
+        RestTemplate restTemplate = new RestTemplate();
+        addBasicAuth(restTemplate);
+
+        return restTemplate;
+    }
+
+    private void addBasicAuth(RestTemplate restTemplate) {
+        List<ClientHttpRequestInterceptor> interceptors = Collections.singletonList(new BasicAuthorizationInterceptor
+                (jiraUsername, jiraPassword));
+        restTemplate.setRequestFactory(new InterceptingClientHttpRequestFactory(restTemplate.getRequestFactory(),
+                interceptors));
+    }
+
+    @Bean
+    @Profile({Constants.DEV_PROFILE, Constants.TEST_PROFILE})
+    public RestTemplate logginRestTemplate() {
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.getInterceptors().add(loggingClientHttpRequestInterceptor);
+        addBasicAuth(restTemplate);
+
+        return restTemplate;
     }
 
     @Bean

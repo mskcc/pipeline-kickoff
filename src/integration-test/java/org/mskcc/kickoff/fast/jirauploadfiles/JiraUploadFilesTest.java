@@ -23,7 +23,7 @@ import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.printer.FilePrinter;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.process.ProcessingType;
-import org.mskcc.kickoff.upload.jira.JiraIssue;
+import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -55,7 +55,7 @@ import static org.mockito.Mockito.mock;
 @ComponentScan(basePackages = "org.mskcc.kickoff")
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = JiraTestConfiguration.class)
-@ActiveProfiles({"test", "igo"})
+@ActiveProfiles({"test", "tango"})
 @PropertySource("classpath:application-dev.properties")
 public class JiraUploadFilesTest {
     private static final Logger LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
@@ -156,7 +156,7 @@ public class JiraUploadFilesTest {
     private Iterable<Issue> getIssues(String summary, JiraRestClient restClient) {
         SearchRestClient searchClient = restClient.getSearchClient();
         String jql = String.format("project" +
-                " = \"%s\" AND summary ~ %s", jiraRoslinProjectName, summary);
+                " = \"%s\" AND summary ~ \"%s\"", jiraRoslinProjectName, summary);
         Promise<SearchResult> searchResultPromise = searchClient.searchJql(jql);
 
         SearchResult searchResult = searchResultPromise.claim();

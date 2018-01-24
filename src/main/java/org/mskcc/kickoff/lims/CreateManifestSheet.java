@@ -11,6 +11,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 
+import java.util.Objects;
+
 import static org.mskcc.kickoff.config.Arguments.parseArguments;
 import static org.mskcc.kickoff.config.Arguments.toPrintable;
 
@@ -26,11 +28,12 @@ class CreateManifestSheet {
 
     public static void main(String[] args) {
         try {
+            ConfigurableApplicationContext context = configureSpringContext();
+            CreateManifestSheet createManifestSheet = context.getBean(CreateManifestSheet.class);
+
             parseArguments(args);
             DEV_LOGGER.info(String.format("Received program arguments: %s", toPrintable()));
 
-            ConfigurableApplicationContext context = configureSpringContext();
-            CreateManifestSheet createManifestSheet = context.getBean(CreateManifestSheet.class);
             createManifestSheet.generate(Arguments.project);
         } catch (Exception e) {
             DEV_LOGGER.error(String.format("Error while generating manifest files for project: %s", Arguments
@@ -40,6 +43,8 @@ class CreateManifestSheet {
 
     private static ConfigurableApplicationContext configureSpringContext() {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+
+        initLogger(context);
 
         configureSpringProfiles(context);
         context.register(AppConfiguration.class);
@@ -51,14 +56,36 @@ class CreateManifestSheet {
     }
 
     private static void configureSpringProfiles(AnnotationConfigApplicationContext context) {
-        if (getActiveProfiles(context).length == 0) {
+        String[] activeProfiles = getActiveProfiles(context);
+
+        if (activeProfiles.length == 0) {
             DEV_LOGGER.info(String.format("No spring profiles set. Setting default spring profiles: %s, %s",
                     Constants.PROD_PROFILE, Constants.IGO_PROFILE));
             context.getEnvironment().setActiveProfiles(Constants.PROD_PROFILE, Constants.IGO_PROFILE);
         } else {
-            DEV_LOGGER.info(String.format("Spring profiles set: %s", StringUtils.join(getActiveProfiles(context), "," +
+            DEV_LOGGER.info(String.format("Spring profiles set: %s", StringUtils.join(activeProfiles, "," +
                     "")));
         }
+    }
+
+    private static void initLogger(AnnotationConfigApplicationContext context) {
+        String[] activeProfiles = getActiveProfiles(context);
+
+        String log4jPropertiesFileName = "log4j2-dev.properties";
+        if (!isActive(activeProfiles, org.mskcc.kickoff.util.Constants.DEV_PROFILE)) {
+            log4jPropertiesFileName = "log4j2.properties";
+        }
+
+        AppConfiguration.configureLogger(log4jPropertiesFileName);
+    }
+
+    private static boolean isActive(String[] activeProfiles, String profileName) {
+        for (String activeProfile : activeProfiles) {
+            if (Objects.equals(activeProfile, profileName))
+                return true;
+        }
+
+        return false;
     }
 
     private static String[] getActiveProfiles(AnnotationConfigApplicationContext context) {

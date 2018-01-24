@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.upload.jira;
+package org.mskcc.kickoff.upload.jira.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -20,10 +20,24 @@ public class JiraIssue {
         this.fields = fields;
     }
 
+    public void setAssignee(JiraUser assigneeName) {
+        fields.setAssignee(assigneeName);
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Fields {
+        @JsonProperty("assignee")
+        private JiraUser assignee;
         @JsonProperty("attachment")
         private List<Attachment> attachments;
+
+        public JiraUser getAssignee() {
+            return assignee;
+        }
+
+        public void setAssignee(JiraUser assignee) {
+            this.assignee = assignee;
+        }
 
         public List<Attachment> getAttachments() {
             return attachments;
