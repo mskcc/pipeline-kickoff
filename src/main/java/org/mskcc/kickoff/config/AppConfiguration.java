@@ -39,6 +39,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.InterceptingClientHttpRequestFactory;
+import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
@@ -315,7 +316,7 @@ public class AppConfiguration {
     }
 
     private void addBasicAuth(RestTemplate restTemplate) {
-        List<ClientHttpRequestInterceptor> interceptors = Collections.singletonList(new BasicAuthInterceptor
+        List<ClientHttpRequestInterceptor> interceptors = Collections.singletonList(new BasicAuthorizationInterceptor
                 (jiraUsername, jiraPassword));
         restTemplate.setRequestFactory(new InterceptingClientHttpRequestFactory(restTemplate.getRequestFactory(),
                 interceptors));
