@@ -63,20 +63,14 @@ public class RequestDataPropagator implements DataPropagator {
             //@TODO think about better way of indicating field not to include in request file
             projectInfo.put(Constants.ProjectInfo.DESIGN_FILE, "");
             projectInfo.put(Constants.ProjectInfo.SPIKEIN_DESIGN_FILE, "");
-            projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, "");
             DEV_LOGGER.info(String.format("There are more than 1 designs (bait versions) for request: %s [%s]. Design" +
                     " file, Spikein design file and Assay Path will be empty", kickoffRequest.getId(), kickoffRequest
                     .getBaitVersion()));
         } else if (kickoffRequest.getRequestType() == RequestType.IMPACT) {
             projectInfo.put(Constants.ProjectInfo.DESIGN_FILE, "");
             projectInfo.put(Constants.ProjectInfo.SPIKEIN_DESIGN_FILE, "");
-            projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, findDesignFile(kickoffRequest, kickoffRequest
-                    .getBaitVersion()));
             DEV_LOGGER.info(String.format("Request: %s is of type IMPACT. Design file, Spikein design file and Assay " +
                     "Path will be empty", kickoffRequest.getId()));
-        } else {
-            projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, findDesignFile(kickoffRequest, kickoffRequest
-                    .getBaitVersion()));
         }
     }
 

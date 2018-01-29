@@ -112,7 +112,6 @@ public class Constants {
         public static final String NUMBER_OF_SAMPLES = "NumberOfSamples";
         public static final String DESIGN_FILE = "DesignFile";
         public static final String SPIKEIN_DESIGN_FILE = "SpikeinDesignFile";
-        public static final String ASSAY_PATH = "AssayPath";
         public static final String TUMOR_TYPE = "TumorType";
         public static final String PLATFORM = "Platform";
         public static final String SAMPLE_TYPE = "Sample_Type";
