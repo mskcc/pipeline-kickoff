@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Profile("!" + Constants.HOLD_PROFILE)
 @Component
-public class DummyJiraTransitioner implements JiraTransitioner {
+public class DummyJiraTransitioner extends ToHoldJiraTransitioner {
     @Override
     public void transition(KickoffRequest kickoffRequest, JiraFileUploader jiraFileUploader) {
         // do not do any transition in NOT "hold" profile

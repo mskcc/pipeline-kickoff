@@ -18,7 +18,7 @@ import org.mskcc.kickoff.notify.NotificationFormatter;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
-import org.mskcc.kickoff.upload.jira.*;
+import org.mskcc.kickoff.upload.jira.state.*;
 import org.mskcc.kickoff.validator.*;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
 import org.mskcc.kickoff.velox.SampleSetProjectPredicate;

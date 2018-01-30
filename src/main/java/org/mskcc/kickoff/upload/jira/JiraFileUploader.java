@@ -9,6 +9,7 @@ import com.atlassian.jira.rest.client.api.domain.input.TransitionInput;
 import com.atlassian.jira.rest.client.internal.async.AsynchronousJiraRestClientFactory;
 import com.atlassian.util.concurrent.Promise;
 import com.google.common.collect.Iterables;
+import org.apache.commons.lang.text.StrBuilder;
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.manifest.ManifestFile;
@@ -16,6 +17,8 @@ import org.mskcc.kickoff.upload.FileDeletionException;
 import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
 import org.mskcc.kickoff.upload.jira.domain.JiraUser;
+import org.mskcc.kickoff.upload.jira.state.JiraIssueState;
+import org.mskcc.kickoff.upload.jira.state.JiraStateFactory;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,6 +55,10 @@ public class JiraFileUploader implements FileUploader {
     private PmJiraUserRetriever pmJiraUserRetriever;
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private ToBadInputsJiraTransitioner toBadInputsJiraTransitioner;
+
     private JiraIssueState jiraIssueState;
     private JiraRestClient restClient;
 
@@ -109,7 +116,8 @@ public class JiraFileUploader implements FileUploader {
             restClient = getJiraRestClient();
             jiraIssueState = retrieveJiraIssueState(kickoffRequest);
             jiraIssueState.uploadFiles(kickoffRequest, this);
-            addFilesCreatedComment(getIssue(summary));
+            validateGeneratedFiles(kickoffRequest);
+            addInfoComment(summary);
         } catch (Exception e) {
             LOGGER.error(String.format("Error while trying to attach files: to jira instance: %s for issue: %s",
                     jiraUrl, summary), e);
@@ -118,7 +126,53 @@ public class JiraFileUploader implements FileUploader {
         }
     }
 
-    void assignUser(KickoffRequest kickoffRequest) {
+    private void addInfoComment(String summary) {
+        String fileCreationTimeComment = String.format("Manifest files time creation: %s",
+                LocalDateTime.now());
+
+        String errorComment = getErrorComment();
+
+        String comment = getFormattedComment(String.format("%s\\n\\n%s", fileCreationTimeComment, errorComment));
+
+        addComment(getIssue(summary), comment);
+    }
+
+    private void validateGeneratedFiles(KickoffRequest request) {
+        if (!allRequiredFilesGenerated() || anyRequiredFileHasErrors()) {
+            toBadInputsJiraTransitioner.transition(request, this);
+        }
+    }
+
+    private String getErrorComment() {
+        StrBuilder errorComment = new StrBuilder();
+
+        for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
+            if (!manifestFile.isFileGenerated()) {
+                errorComment.append(String.format("Required file not created: %s", manifestFile.getName()));
+                errorComment.append("\\n");
+            }
+
+            if (manifestFile.getGenerationErrors().size() > 0) {
+                errorComment.append(String.format("%s errors: \\n", manifestFile.getName()));
+                manifestFile.getGenerationErrors().forEach(e -> errorComment.append(String.format("    -%s\\n", e)));
+                errorComment.append("\\n");
+            }
+        }
+
+        return errorComment.toString();
+    }
+
+    private boolean allRequiredFilesGenerated() {
+        return ManifestFile.getRequiredFiles().stream()
+                .allMatch(ManifestFile::isFileGenerated);
+    }
+
+    private boolean anyRequiredFileHasErrors() {
+        return ManifestFile.getRequiredFiles().stream()
+                .anyMatch(r -> r.getGenerationErrors().size() > 0);
+    }
+
+    public void assignUser(KickoffRequest kickoffRequest) {
         JiraUser pmJiraUser = getPmJiraUser(kickoffRequest.getProjectInfo().get(Constants.ProjectInfo.PROJECT_MANAGER));
         Issue issue = getIssue(kickoffRequest.getId());
 
@@ -174,14 +228,14 @@ public class JiraFileUploader implements FileUploader {
         return jiraStateFactory.getJiraState(currentState);
     }
 
-    void uploadFiles(KickoffRequest kickoffRequest) {
+    public void uploadFiles(KickoffRequest kickoffRequest) {
         for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
             if (manifestFile.isFileGenerated())
                 uploadSingleFile(kickoffRequest, manifestFile);
         }
     }
 
-    void changeStatus(String transitionName, KickoffRequest kickoffRequest) {
+    public void changeStatus(String transitionName, KickoffRequest kickoffRequest) {
         Issue issue = getIssue(kickoffRequest.getId());
         String previousStatus = issue.getStatus().getName();
 
@@ -198,33 +252,35 @@ public class JiraFileUploader implements FileUploader {
                 issue = getIssue(kickoffRequest.getId());
                 String newStatus = issue.getStatus().getName();
 
-                LOGGER.info(String.format("Status for issue: %s changed from: %s to: %s using transition: %s", issue
+                LOGGER.info(String.format("Status for issue: %s changed from: \"%s\" to: \"%s\" using transition: " +
+                        "%s", issue
                         .getSummary(), previousStatus, newStatus, name));
 
                 return;
             }
         }
 
-        throw new NoTransitionFoundException(String.format("No transition found with name %s for issue %s",
-                transitionName, issue.getSummary()));
+        throw new NoTransitionFoundException(String.format("No transition found with name %s for issue %s for current" +
+                        " status: %s",
+                transitionName, issue.getSummary(), previousStatus));
     }
 
-    private void addFilesCreatedComment(Issue issue) {
+    private void addComment(Issue issue, String comment) {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
 
-        HttpEntity<String> entity = new HttpEntity<>(getComment(), headers);
+        HttpEntity<String> entity = new HttpEntity<>(comment, headers);
 
         ResponseEntity<String> addCommentResponse = restTemplate.postForEntity(issue.getCommentsUri(), entity,
                 String.class);
 
         if (addCommentResponse.getStatusCode() != HttpStatus.CREATED)
-            LOGGER.warn(String.format("Manifest files time creation comment not created. Response code: %s",
+            LOGGER.warn(String.format("Comment not added. Response code: %s",
                     addCommentResponse.getStatusCode()));
     }
 
-    private String getComment() {
-        return String.format("{\"body\": \"Manifest files time creation: %s\"}", LocalDateTime.now());
+    private String getFormattedComment(String comment) {
+        return String.format("{\"body\": \"%s\"}", comment);
     }
 
     private void closeJiraConnection(JiraRestClient restClient) {
@@ -264,7 +320,7 @@ public class JiraFileUploader implements FileUploader {
                 issue.getSummary()));
     }
 
-    List<JiraIssue.Fields.Attachment> getExistingManifestAttachments(KickoffRequest request) {
+    public List<JiraIssue.Fields.Attachment> getExistingManifestAttachments(KickoffRequest request) {
         Issue issue = getIssue(request.getId());
         JiraIssue jiraIssue = getJiraIssue(issue);
         List<JiraIssue.Fields.Attachment> attachments = jiraIssue.getFields().getAttachments();

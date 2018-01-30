@@ -8,10 +8,12 @@ import org.mskcc.domain.RequestType;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -19,12 +21,10 @@ import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
-import static org.mskcc.kickoff.config.Arguments.*;
+import static org.mskcc.kickoff.config.Arguments.noPortal;
+import static org.mskcc.kickoff.config.Arguments.rerunReason;
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
 import static org.mskcc.kickoff.util.Utils.getJoinedCollection;
 
@@ -33,16 +33,30 @@ public class RequestFilePrinter implements FilePrinter {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
-    private final String manualMappingPinfoToRequestFile = "Alternate_E-mails:DeliverTo,Lab_Head:PI_Name,Lab_Head_E-mail:PI,Requestor:Investigator_Name,Requestor_E-mail:Investigator,CMO_Project_ID:ProjectName,Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
-    private final String manualMappingConfigMap = "name:ProjectTitle,desc:ProjectDesc,invest:PI,invest_name:PI_Name,tumor_type:TumorType,date_of_last_update:DateOfLastUpdate,assay_type:Assay";
+    private final String manualMappingPinfoToRequestFile = "Alternate_E-mails:DeliverTo,Lab_Head:PI_Name," +
+            "Lab_Head_E-mail:PI,Requestor:Investigator_Name,Requestor_E-mail:Investigator,CMO_Project_ID:ProjectName," +
+            "Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
+    private final String manualMappingConfigMap = "name:ProjectTitle,desc:ProjectDesc,invest:PI,invest_name:PI_Name," +
+            "tumor_type:TumorType,date_of_last_update:DateOfLastUpdate,assay_type:Assay";
 
-    private final ObserverManager observerManager = new ObserverManager();
+    private final ObserverManager observerManager;
+
+    private final Set<String> requiredProjectInfoFields = new HashSet<>();
+
+    {
+        requiredProjectInfoFields.add(Constants.ASSAY);
+    }
+
+    @Autowired
+    public RequestFilePrinter(ObserverManager observerManager) {
+        this.observerManager = observerManager;
+    }
 
     public void print(KickoffRequest request) {
         DEV_LOGGER.info(String.format("Starting to create file: %s", getFilePath(request)));
 
-        // This will change the fields of the pInfo array, and print out the correct field
-        // It will also pr/int all the ampType and libTypes, and species.
+        validateProjectInfo(request);
+
         StringBuilder requestFileContents = new StringBuilder();
 
         if (request.getRequestType() == RequestType.EXOME) {
@@ -59,81 +73,23 @@ public class RequestFilePrinter implements FilePrinter {
             requestFileContents.append("Run_Pipeline: other\n");
         }
 
-        // This is quickly generating a map from old name to new name (validator takes old name)
         Map<String, String> convertFieldNames = new LinkedHashMap<>();
         for (String conv : manualMappingPinfoToRequestFile.split(",")) {
             String[] parts = conv.split(":", 2);
             convertFieldNames.put(parts[0], parts[1]);
         }
-        // Now go through pInfo, and swap out the old name for the new name, and print
-        for (Map.Entry<String, String> property : request.getProjectInfo().entrySet()) {
-            String propertyName = property.getKey();
-            String value = property.getValue();
 
-            if (value == null)
-                continue;
-            if (value.isEmpty() || Objects.equals(value, Constants.EMPTY))
-                value = Constants.NA;
-
-            if (convertFieldNames.containsKey(propertyName)) {
-                if (propertyName.endsWith("_E-mail")) {
-                    if (propertyName.equals("Requestor_E-mail")) {
-                        requestFileContents.append("Investigator_E-mail: ").append(value).append("\n");
-                    }
-                    if (propertyName.equals("Lab_Head_E-mail")) {
-                        requestFileContents.append("PI_E-mail: ").append(value).append("\n");
-                    }
-                    String[] temp = value.split("@");
-                    value = temp[0];
-                }
-                requestFileContents.append(convertFieldNames.get(propertyName)).append(": ").append(value).append("\n");
-            } else if (propertyName.contains("IGO_Project_ID") || propertyName.equals(Constants.PROJECT_ID)) {
-                requestFileContents.append("ProjectID: Proj_").append(value).append("\n");
-            } else if (propertyName.contains("Platform") || propertyName.equals("Readme_Info") || propertyName.equals("Sample_Type") || propertyName.equals("Bioinformatic_Request")) {
-                continue;
-            } else if (propertyName.equals("Project_Manager")) {
-                String[] tempName = value.split(", ");
-                if (tempName.length > 1) {
-                    requestFileContents.append(propertyName).append(": ").append(tempName[1]).append(" ").append
-                            (tempName[0]).append("\n");
-                } else {
-                    requestFileContents.append(propertyName).append(": ").append(value).append("\n");
-                }
-            } else {
-                requestFileContents.append(String.format("%s: %s\n", property.getKey(), property.getValue()));
-            }
-            if (propertyName.equals("Requestor_E-mail")) {
-                request.setInvest(value);
-            }
-            if (propertyName.equals("Lab_Head_E-mail")) {
-                request.setPi(value);
-            }
-        }
+        addProjectInfoContent(request, requestFileContents, convertFieldNames);
 
         if (request.getInvest().isEmpty() || request.getPi().isEmpty()) {
-            logError(String.format("Cannot create run number because PI and/or Investigator is missing. %s %s", request.getPi(), request.getInvest()), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
+            logError(String.format("Cannot create run number because PI and/or Investigator is missing. %s %s",
+                    request.getPi(), request.getInvest()), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
         } else {
             if (!Objects.equals(request.getRunNumbers(), "0")) {
                 requestFileContents.append("RunNumber: ").append(request.getRunNumbers()).append("\n");
             }
         }
-        if (request.getRunNumber() > 1) {
-            String message = String.format("This project has been run before, rerun reason provided: %s", rerunReason);
-
-            if (StringUtils.isEmpty(rerunReason)) {
-                request.setRerunReason(Constants.DEFAULT_RERUN_REASON);
-                message = String.format("This project has been run before, no rerun reason was provided thus using default value: %s", Constants.DEFAULT_RERUN_REASON);
-            } else {
-                request.setRerunReason(rerunReason);
-            }
-
-            DEV_LOGGER.info(message);
-            if (!shiny)
-                PM_LOGGER.info(message);
-
-            requestFileContents.append("Reason_for_rerun: ").append(request.getRerunReason()).append("\n");
-
-        }
+        addRerunReason(request, requestFileContents);
         requestFileContents.append("RunID: ").append(getJoinedCollection(request.getRunIds(), ", ")).append("\n");
 
         requestFileContents.append("Institution: cmo\n");
@@ -203,6 +159,91 @@ public class RequestFilePrinter implements FilePrinter {
         }
     }
 
+    private void validateProjectInfo(KickoffRequest request) {
+        Map<String, String> projectInfo = request.getProjectInfo();
+
+        for (String requiredProjectInfoField : requiredProjectInfoFields) {
+            if (!projectInfo.containsKey(requiredProjectInfoField) || StringUtils.isEmpty(projectInfo.get
+                    (requiredProjectInfoField)) || projectInfo.get(requiredProjectInfoField).equals(Constants.NA)) {
+                String message = String.format("No %s available for request: %s. Pipeline won't be able to run " +
+                        "without this information.", requiredProjectInfoField, request.getId());
+
+                DEV_LOGGER.warn(message);
+
+                observerManager.notifyObserversOfError(request, ManifestFile.REQUEST, message, GenerationError
+                        .INSTANCE);
+            }
+        }
+    }
+
+    private void addRerunReason(KickoffRequest request, StringBuilder requestFileContents) {
+        if (request.getRunNumber() > 1) {
+            String message = String.format("This project has been run before, rerun reason provided: %s", rerunReason);
+
+            if (StringUtils.isEmpty(rerunReason)) {
+                request.setRerunReason(Constants.DEFAULT_RERUN_REASON);
+                message = String.format("This project has been run before, no rerun reason was provided thus using " +
+                        "default value: %s", Constants.DEFAULT_RERUN_REASON);
+            } else {
+                request.setRerunReason(rerunReason);
+            }
+
+            DEV_LOGGER.info(message);
+            PM_LOGGER.info(message);
+
+            requestFileContents.append("Reason_for_rerun: ").append(request.getRerunReason()).append("\n");
+
+        }
+    }
+
+    private void addProjectInfoContent(KickoffRequest request, StringBuilder requestFileContents, Map<String, String>
+            convertFieldNames) {
+        for (Map.Entry<String, String> property : request.getProjectInfo().entrySet()) {
+            String propertyName = property.getKey();
+            String value = property.getValue();
+
+            if (value == null)
+                continue;
+            if (value.isEmpty() || Objects.equals(value, Constants.EMPTY))
+                value = Constants.NA;
+
+            if (convertFieldNames.containsKey(propertyName)) {
+                if (propertyName.endsWith("_E-mail")) {
+                    if (propertyName.equals("Requestor_E-mail")) {
+                        requestFileContents.append("Investigator_E-mail: ").append(value).append("\n");
+                    }
+                    if (propertyName.equals("Lab_Head_E-mail")) {
+                        requestFileContents.append("PI_E-mail: ").append(value).append("\n");
+                    }
+                    String[] temp = value.split("@");
+                    value = temp[0];
+                }
+                requestFileContents.append(convertFieldNames.get(propertyName)).append(": ").append(value).append("\n");
+            } else if (propertyName.contains("IGO_Project_ID") || propertyName.equals(Constants.PROJECT_ID)) {
+                requestFileContents.append("ProjectID: Proj_").append(value).append("\n");
+            } else if (propertyName.contains("Platform") || propertyName.equals("Readme_Info") || propertyName.equals
+                    ("Sample_Type") || propertyName.equals("Bioinformatic_Request")) {
+                continue;
+            } else if (propertyName.equals("Project_Manager")) {
+                String[] tempName = value.split(", ");
+                if (tempName.length > 1) {
+                    requestFileContents.append(propertyName).append(": ").append(tempName[1]).append(" ").append
+                            (tempName[0]).append("\n");
+                } else {
+                    requestFileContents.append(propertyName).append(": ").append(value).append("\n");
+                }
+            } else {
+                requestFileContents.append(String.format("%s: %s\n", property.getKey(), property.getValue()));
+            }
+            if (propertyName.equals("Requestor_E-mail")) {
+                request.setInvest(value);
+            }
+            if (propertyName.equals("Lab_Head_E-mail")) {
+                request.setPi(value);
+            }
+        }
+    }
+
     @Override
     public String getFilePath(KickoffRequest request) {
         return String.format("%s/%s_request.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request
@@ -264,15 +305,18 @@ public class RequestFilePrinter implements FilePrinter {
         configFileContents += "project=\"" + request.getId() + "\"\n";
         configFileContents += "groups=\"" + groups + "\"\n";
         configFileContents += "cna_seg=\"\"\n";
-        configFileContents += "cna_seg_desc=\"Somatic CNA data (copy number ratio from tumor samples minus ratio from matched normals).\"\n";
+        configFileContents += "cna_seg_desc=\"Somatic CNA data (copy number ratio from tumor samples minus ratio from" +
+                " matched normals).\"\n";
         configFileContents += "cna=\"\"\n";
         configFileContents += "maf=\"\"\n";
         configFileContents += "inst=\"cmo\"\n";
         configFileContents += "maf_desc=\"" + assay + " sequencing of tumor/normal samples\"\n";
         if (!dataClinicalPath.isEmpty()) {
-            configFileContents += String.format("data_clinical=\"%s/%s_sample_data_clinical.txt\"\n", dataClinicalPath, Utils.getFullProjectNameWithPrefix(request.getId()));
+            configFileContents += String.format("data_clinical=\"%s/%s_sample_data_clinical.txt\"\n",
+                    dataClinicalPath, Utils.getFullProjectNameWithPrefix(request.getId()));
         } else {
-            String message = String.format("Cannot find path to data clinical file: %s. Not included in portal config", dataClinicalPath);
+            String message = String.format("Cannot find path to data clinical file: %s. Not included in portal " +
+                    "config", dataClinicalPath);
             logWarning(message);
             configFileContents += "data_clinical=\"\"\n";
         }
@@ -280,7 +324,8 @@ public class RequestFilePrinter implements FilePrinter {
 
         try {
             configFileContents = filterToAscii(configFileContents);
-            configFile = new File(String.format("%s/%s_portal_conf.txt", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(request.getId())));
+            configFile = new File(String.format("%s/%s_portal_conf.txt", request.getOutputPath(), Utils
+                    .getFullProjectNameWithPrefix(request.getId())));
             PrintWriter pW = new PrintWriter(new FileWriter(configFile, false), false);
             pW.write(configFileContents);
             pW.close();
