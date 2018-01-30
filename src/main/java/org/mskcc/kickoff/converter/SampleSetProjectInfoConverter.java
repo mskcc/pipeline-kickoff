@@ -35,27 +35,12 @@ public class SampleSetProjectInfoConverter {
         projectInfo.put(Constants.ProjectInfo.BIOINFORMATIC_REQUEST, getBioinformaticRequest(sampleSet));
 
         projectInfo.put(Constants.ProjectInfo.ASSAY, sampleSet.getBaitSet());
-        setAssayPath(projectInfo, sampleSet);
 
         setOptionalProjectProperty(projectInfo, sampleSet, Constants.ProjectInfo.DESIGN_FILE);
         setOptionalProjectProperty(projectInfo, sampleSet, Constants.ProjectInfo.SPIKEIN_DESIGN_FILE);
 //        setTumorType(projectInfo, sampleSet);
 
         return projectInfo;
-    }
-
-    private void setAssayPath(Map<String, String> projectInfo, SampleSet sampleSet) {
-        List<String> assayPathsForAssay = sampleSet.getRequests().stream()
-                .map(r -> r.getProjectInfo())
-                .filter(p -> Objects.equals(p.get(Constants.ProjectInfo.ASSAY), sampleSet.getBaitSet()))
-                .map(p -> p.get(Constants.ProjectInfo.ASSAY_PATH))
-                .collect(Collectors.toList());
-
-        if (assayPathsForAssay.size() > 0)
-            projectInfo.put(Constants.ProjectInfo.ASSAY_PATH, assayPathsForAssay.get(0));
-        else
-            DEV_LOGGER.warn(String.format("No Assay path found for assay: %s specified in sample set: %s", sampleSet
-                    .getBaitSet(), sampleSet.getName()));
     }
 
     private void setPropertyFromPrimaryRequest(SampleSet sampleSet, Map<String, String> projectInfo, String
