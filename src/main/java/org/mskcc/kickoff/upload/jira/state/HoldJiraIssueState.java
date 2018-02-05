@@ -1,13 +1,14 @@
-package org.mskcc.kickoff.upload.jira;
+package org.mskcc.kickoff.upload.jira.state;
 
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.upload.jira.JiraFileUploader;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-public class FilesGeneratedState implements JiraIssueState {
-    private final String name;
-
-    public FilesGeneratedState(String name) {
-        this.name = name;
-    }
+@Component
+public class HoldJiraIssueState implements JiraIssueState {
+    @Value("${jira.roslin.hold.status}")
+    private String name;
 
     @Override
     public void uploadFiles(KickoffRequest kickoffRequest, JiraFileUploader jiraFileUploader) {

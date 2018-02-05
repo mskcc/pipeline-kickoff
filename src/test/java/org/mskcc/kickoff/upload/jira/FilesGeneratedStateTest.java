@@ -3,6 +3,7 @@ package org.mskcc.kickoff.upload.jira;
 import org.hamcrest.object.IsCompatibleType;
 import org.junit.Test;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.upload.jira.state.FilesGeneratedState;
 import org.mskcc.util.TestUtils;
 
 import java.util.Optional;

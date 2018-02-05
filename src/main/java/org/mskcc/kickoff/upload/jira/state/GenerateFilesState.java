@@ -1,6 +1,8 @@
-package org.mskcc.kickoff.upload.jira;
+package org.mskcc.kickoff.upload.jira.state;
 
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.upload.jira.JiraFileUploader;
+import org.mskcc.kickoff.upload.jira.ToHoldJiraTransitioner;
 import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -12,7 +14,7 @@ public class GenerateFilesState implements JiraIssueState {
     private final JiraIssueState nextState;
 
     @Autowired
-    public JiraTransitioner jiraTransitioner;
+    public ToHoldJiraTransitioner toHoldJiraTransitioner;
 
     public GenerateFilesState(String name, String transitionName, JiraIssueState nextState) {
         this.name = name;
@@ -28,7 +30,7 @@ public class GenerateFilesState implements JiraIssueState {
         jiraFileUploader.setJiraIssueState(nextState);
         jiraFileUploader.assignUser(kickoffRequest);
         jiraFileUploader.changeStatus(transitionName, kickoffRequest);
-        jiraTransitioner.transition(kickoffRequest, jiraFileUploader);
+        toHoldJiraTransitioner.transition(kickoffRequest, jiraFileUploader);
     }
 
     private void validateNoManifestFilesExists(KickoffRequest kickoffRequest, JiraFileUploader

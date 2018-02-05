@@ -15,6 +15,9 @@ import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.upload.FileDeletionException;
 import org.mskcc.kickoff.upload.jira.*;
+import org.mskcc.kickoff.upload.jira.state.BadInputsJiraIssueState;
+import org.mskcc.kickoff.upload.jira.state.HoldJiraIssueState;
+import org.mskcc.kickoff.upload.jira.state.JiraStateFactory;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,8 +67,23 @@ public class JiraTestConfiguration {
     }
 
     @Bean
-    public JiraTransitioner jiraTransitioner() {
+    public ToBadInputsJiraTransitioner toBadInputsTransitioner() {
+        return new ToBadInputsJiraTransitioner();
+    }
+
+    @Bean
+    public ToHoldJiraTransitioner dummyToHoldTransitioner() {
         return new DummyJiraTransitioner();
+    }
+
+    @Bean
+    public BadInputsJiraIssueState badInputsJiraIssueState() {
+        return new BadInputsJiraIssueState();
+    }
+
+    @Bean
+    public RequestFilePrinter requestFilePrinter() {
+        return new RequestFilePrinter(observerManager());
     }
 
     @Bean
@@ -137,11 +155,6 @@ public class JiraTestConfiguration {
     @Bean
     public PairingFilePrinter pairingFilePrinter() {
         return new PairingFilePrinter(pairingsResolver);
-    }
-
-    @Bean
-    public RequestFilePrinter requestFilePrinter() {
-        return new RequestFilePrinter();
     }
 
     @Bean

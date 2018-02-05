@@ -108,7 +108,7 @@ public class MappingFilePrinter implements FilePrinter {
                 }
             }
 
-            validatePairedness(pairednesses, request.getId());
+            validatePairedness(pairednesses, request.getId(), request);
 
             return mappingFileContents.toString();
         } catch (Exception e) {
@@ -117,13 +117,15 @@ public class MappingFilePrinter implements FilePrinter {
         }
     }
 
-    private void validatePairedness(Set<Pairedness> pairednesses, String reqId) {
+    private void validatePairedness(Set<Pairedness> pairednesses, String reqId, KickoffRequest request) {
         if (!pairednessValidPredicate.test(pairednesses)) {
             String message = String.format("Ambiguous pairedness for request: %s [%s]", reqId, StringUtils.join
                     (pairednesses), ",");
             PM_LOGGER.error(message);
             DEV_LOGGER.error(message);
             Utils.setExitLater(true);
+
+            observerManager.notifyObserversOfError(request, ManifestFile.MAPPING, message, GenerationError.INSTANCE);
         }
     }
 
@@ -172,6 +174,10 @@ public class MappingFilePrinter implements FilePrinter {
                     Utils.setExitLater(true);
                     PM_LOGGER.log(Level.ERROR, message);
                     DEV_LOGGER.log(Level.ERROR, message);
+
+                    observerManager.notifyObserversOfError(request, ManifestFile.MAPPING, message, GenerationError
+                            .INSTANCE);
+
                     BufferedReader bufE = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
                     while (bufE.ready()) {
                         DEV_LOGGER.error(bufE.readLine());

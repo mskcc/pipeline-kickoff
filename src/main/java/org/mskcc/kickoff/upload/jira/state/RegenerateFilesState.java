@@ -1,6 +1,7 @@
-package org.mskcc.kickoff.upload.jira;
+package org.mskcc.kickoff.upload.jira.state;
 
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.upload.jira.JiraFileUploader;
 
 public class RegenerateFilesState implements JiraIssueState {
     private final String name;

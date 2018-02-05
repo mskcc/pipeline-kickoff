@@ -76,6 +76,9 @@ public class JiraUploadFilesTest {
     @Value("${jira.roslin.generated.transition}")
     private String generatedTransition;
 
+    @Value("${jira.roslin.hold.transition}")
+    private String holdTransition;
+
     @Value("${jira.roslin.regenerated.transition}")
     private String regeneratedTransition;
 
@@ -88,13 +91,15 @@ public class JiraUploadFilesTest {
     @Value("${jira.roslin.input.generated.status}")
     private String filesGeneratedStatus;
 
+    @Value("${jira.roslin.bad.inputs.status}")
+    private String badInputsStatus;
+
     @Autowired
     private MappingFilePrinter mappingFilePrinter;
 
     @Autowired
     private JiraTestConfiguration.MockJiraFileUploader fileUploader;
     private String initialTransitionName = "To Do";
-    private String holdTransition = "Hold";
     private String regenerateTransition = "Regeneration Requested";
 
     @Before
@@ -126,6 +131,10 @@ public class JiraUploadFilesTest {
         deleteAttachments();
         setJiraStatus(initialTransitionName);
         closeJiraConnection(restClient);
+
+        for (ManifestFile manifestFile : ManifestFile.values()) {
+            manifestFile.getGenerationErrors().clear();
+        }
     }
 
     private void setJiraStatus(String status) {
@@ -195,7 +204,26 @@ public class JiraUploadFilesTest {
     }
 
     @Test
-    public void whenFilesAreRegenerated_shouldDeleteOldOnesAndUploadAllNewToJira() throws Exception {
+    public void
+    whenFilesAreRegeneratedWithoutErrors_shouldDeleteOldOnesAndUploadAllNewToJiraAndSetInputsGeneratedStatus() throws
+            Exception {
+        //given
+        List<JiraIssue.Fields.Attachment> allAttachmentsRun1 = uploadFiles();
+
+        //when
+        fileManifestGenerator.generate(projectId);
+
+        //then
+        assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.GROUPING, ManifestFile.PAIRING, ManifestFile
+                .REQUEST, ManifestFile.MAPPING));
+        assertJiraStatus(filesGeneratedStatus);
+
+        assertAttachmentsAreDifferent(allAttachmentsRun1);
+    }
+
+    @Test
+    public void whenFilesAreRegeneratedWithErrors_shouldDeleteOldOnesAndUploadAllNewToJiraAndSetBadInputsStatus()
+            throws Exception {
         //given
         List<JiraIssue.Fields.Attachment> allAttachmentsRun1 = uploadFiles();
 
@@ -206,7 +234,7 @@ public class JiraUploadFilesTest {
         //then
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.GROUPING, ManifestFile.PAIRING, ManifestFile
                 .REQUEST));
-        assertJiraStatus(filesGeneratedStatus);
+        assertJiraStatus(badInputsStatus);
 
         assertAttachmentsAreDifferent(allAttachmentsRun1);
     }
@@ -240,12 +268,35 @@ public class JiraUploadFilesTest {
 
         //then
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
-                .PAIRING, ManifestFile
-                .REQUEST));
+                .PAIRING, ManifestFile.REQUEST));
 
         assertJiraStatus(regenerateStatus);
 
         assertAttachmentsAreNotChanged(allAttachmentsRun1);
+    }
+
+    @Test
+    public void whenNotAllRequiredFilesAreGenerated_shouldTransitionsToBadInputsStatus() throws Exception {
+        //given
+        ManifestFile.MAPPING.setFilePrinter(getNotPrintingMappingFilePrinter());
+
+        //when
+        fileManifestGenerator.generate(projectId);
+
+        //then
+        assertJiraStatus(badInputsStatus);
+    }
+
+    @Test
+    public void whenGeneratedFilesContainErrors_shouldTransitionsToBadInputsStatus() throws Exception {
+        //given
+        ManifestFile.REQUEST.addGenerationError("terrible error");
+
+        //when
+        fileManifestGenerator.generate(projectId);
+
+        //then
+        assertJiraStatus(badInputsStatus);
     }
 
     private void assertAttachmentsAreNotChanged(List<JiraIssue.Fields.Attachment> allAttachmentsRun1) {
