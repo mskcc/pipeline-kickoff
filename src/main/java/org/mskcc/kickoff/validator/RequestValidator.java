@@ -308,7 +308,7 @@ public class RequestValidator {
     private void validateReadCounts(KickoffRequest kickoffRequest) {
         // For each sample in readsForSample if the number of reads is less than 1M, print out a warning
         for (Sample sample : getSamplesWithSampleQc(kickoffRequest)) {
-            int numberOfReads = sample.getNumberOfReads();
+            long numberOfReads = sample.getNumberOfReads();
             if (numberOfReads < Constants.MINIMUM_NUMBER_OF_READS) {
                 // Print AND add to readme file
                 String extraReadmeInfo = String.format("\n[WARNING] sample %s has less than 1M total reads: %d\n", sample, numberOfReads);

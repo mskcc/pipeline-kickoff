@@ -499,7 +499,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     if (sampleLevelQcStatus != QcStatus.PASSED)
                         run.setBadRun(true);
 
-                    int totalReads = getTotalReads(sampleQc);
+                    long totalReads = getTotalReads(sampleQc);
                     run.setNumberOfReads(totalReads);
                     sample.setNumberOfReads(sample.getNumberOfReads() + totalReads);
 
@@ -524,13 +524,14 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         }
     }
 
-    private int getTotalReads(DataRecord sampleQc) throws NotFound, RemoteException {
-        int totalReads = 0;
+    private long getTotalReads(DataRecord sampleQc) throws NotFound, RemoteException {
+        long totalReads = 0;
         try {
-            totalReads = (int) (long) sampleQc.getLongVal(VeloxConstants.TOTAL_READS, user);
+            totalReads = sampleQc.getLongVal(VeloxConstants.TOTAL_READS, user);
         } catch (NullPointerException skipped) {
             DEV_LOGGER.warn(String.format("NPE thrown while retrieving Total Reads for record sample qc: %d", sampleQc.getRecordId()));
         }
+
         return totalReads;
     }
 
