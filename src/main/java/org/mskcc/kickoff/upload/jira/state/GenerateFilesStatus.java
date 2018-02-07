@@ -1,39 +1,39 @@
 package org.mskcc.kickoff.upload.jira.state;
 
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.upload.jira.JiraFileUploader;
-import org.mskcc.kickoff.upload.jira.ToHoldJiraTransitioner;
+import org.mskcc.kickoff.upload.FileUploader;
+import org.mskcc.kickoff.upload.jira.ToHoldTransitioner;
 import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
-public class GenerateFilesState implements JiraIssueState {
+public class GenerateFilesStatus implements IssueStatus {
     private final String name;
     private final String transitionName;
-    private final JiraIssueState nextState;
+    private final IssueStatus nextState;
 
     @Autowired
-    public ToHoldJiraTransitioner toHoldJiraTransitioner;
+    public ToHoldTransitioner toHoldJiraTransitioner;
 
-    public GenerateFilesState(String name, String transitionName, JiraIssueState nextState) {
+    public GenerateFilesStatus(String name, String transitionName, IssueStatus nextState) {
         this.name = name;
         this.transitionName = transitionName;
         this.nextState = nextState;
     }
 
     @Override
-    public void uploadFiles(KickoffRequest kickoffRequest, JiraFileUploader jiraFileUploader) {
+    public void uploadFiles(KickoffRequest kickoffRequest, FileUploader jiraFileUploader) {
         validateNoManifestFilesExists(kickoffRequest, jiraFileUploader);
 
         jiraFileUploader.uploadFiles(kickoffRequest);
-        jiraFileUploader.setJiraIssueState(nextState);
+        jiraFileUploader.setIssueStatus(nextState);
         jiraFileUploader.assignUser(kickoffRequest);
-        jiraFileUploader.changeStatus(transitionName, kickoffRequest);
-        toHoldJiraTransitioner.transition(kickoffRequest, jiraFileUploader);
+        jiraFileUploader.changeStatus(transitionName, issueId);
+        toHoldJiraTransitioner.transition(jiraFileUploader, issueId);
     }
 
-    private void validateNoManifestFilesExists(KickoffRequest kickoffRequest, JiraFileUploader
+    private void validateNoManifestFilesExists(KickoffRequest kickoffRequest, FileUploader
             jiraFileUploader) {
         List<JiraIssue.Fields.Attachment> existingManifestAttachments = jiraFileUploader
                 .getExistingManifestAttachments(kickoffRequest);

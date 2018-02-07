@@ -17,8 +17,8 @@ import org.mskcc.kickoff.upload.FileDeletionException;
 import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
 import org.mskcc.kickoff.upload.jira.domain.JiraUser;
-import org.mskcc.kickoff.upload.jira.state.JiraIssueState;
-import org.mskcc.kickoff.upload.jira.state.JiraStateFactory;
+import org.mskcc.kickoff.upload.jira.state.IssueStatus;
+import org.mskcc.kickoff.upload.jira.state.StatusFactory;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,16 +50,16 @@ public class JiraFileUploader implements FileUploader {
     @Value("${jira.rest.path}")
     private String jiraRestPath;
     @Autowired
-    private JiraStateFactory jiraStateFactory;
+    private StatusFactory statusFactory;
     @Autowired
     private PmJiraUserRetriever pmJiraUserRetriever;
     @Autowired
     private RestTemplate restTemplate;
 
     @Autowired
-    private ToBadInputsJiraTransitioner toBadInputsJiraTransitioner;
+    private ToBadInputsTransitioner toBadInputsJiraTransitioner;
 
-    private JiraIssueState jiraIssueState;
+    private IssueStatus issueStatus;
     private JiraRestClient restClient;
 
     @Override
@@ -114,9 +114,9 @@ public class JiraFileUploader implements FileUploader {
 
         try {
             restClient = getJiraRestClient();
-            jiraIssueState = retrieveJiraIssueState(kickoffRequest);
-            jiraIssueState.uploadFiles(kickoffRequest, this);
-            validateGeneratedFiles(kickoffRequest);
+            issueStatus = retrieveJiraIssueState(kickoffRequest);
+            issueStatus.uploadFiles(kickoffRequest, this);
+            validateGeneratedFiles(summary);
             addInfoComment(summary);
         } catch (Exception e) {
             LOGGER.error(String.format("Error while trying to attach files: to jira instance: %s for issue: %s",
@@ -137,9 +137,9 @@ public class JiraFileUploader implements FileUploader {
         addComment(getIssue(summary), comment);
     }
 
-    private void validateGeneratedFiles(KickoffRequest request) {
+    private void validateGeneratedFiles(String issueId) {
         if (!allRequiredFilesGenerated() || anyRequiredFileHasErrors()) {
-            toBadInputsJiraTransitioner.transition(request, this);
+            toBadInputsJiraTransitioner.transition(this, issueId);
         }
     }
 
@@ -172,6 +172,7 @@ public class JiraFileUploader implements FileUploader {
                 .anyMatch(r -> r.getGenerationErrors().size() > 0);
     }
 
+    @Override
     public void assignUser(KickoffRequest kickoffRequest) {
         JiraUser pmJiraUser = getPmJiraUser(kickoffRequest.getProjectInfo().get(Constants.ProjectInfo.PROJECT_MANAGER));
         Issue issue = getIssue(kickoffRequest.getId());
@@ -221,11 +222,11 @@ public class JiraFileUploader implements FileUploader {
         return pmJiraUserRetriever.retrieve(projectManagerIgoName);
     }
 
-    private JiraIssueState retrieveJiraIssueState(KickoffRequest kickoffRequest) {
+    private IssueStatus retrieveJiraIssueState(KickoffRequest kickoffRequest) {
         Issue issue = getIssue(kickoffRequest.getId());
 
         String currentState = issue.getStatus().getName();
-        return jiraStateFactory.getJiraState(currentState);
+        return statusFactory.getStatus(currentState);
     }
 
     public void uploadFiles(KickoffRequest kickoffRequest) {
@@ -235,8 +236,8 @@ public class JiraFileUploader implements FileUploader {
         }
     }
 
-    public void changeStatus(String transitionName, KickoffRequest kickoffRequest) {
-        Issue issue = getIssue(kickoffRequest.getId());
+    public void changeStatus(String transitionName, String issueId) {
+        Issue issue = getIssue(issueId);
         String previousStatus = issue.getStatus().getName();
 
         Promise<Iterable<Transition>> transitionsPromise = restClient.getIssueClient().getTransitions(issue);
@@ -249,7 +250,7 @@ public class JiraFileUploader implements FileUploader {
                         (transition.getId()));
                 setGeneratedStatus.claim();
 
-                issue = getIssue(kickoffRequest.getId());
+                issue = getIssue(issueId);
                 String newStatus = issue.getStatus().getName();
 
                 LOGGER.info(String.format("Status for issue: %s changed from: \"%s\" to: \"%s\" using transition: " +
@@ -395,12 +396,12 @@ public class JiraFileUploader implements FileUploader {
         LOGGER.info(String.format("Found issue with summary: %s in project: %s", summary, projectName));
     }
 
-    public JiraIssueState getJiraIssueState() {
-        return jiraIssueState;
+    public IssueStatus getIssueStatus() {
+        return issueStatus;
     }
 
-    public void setJiraIssueState(JiraIssueState jiraIssueState) {
-        this.jiraIssueState = jiraIssueState;
+    public void setIssueStatus(IssueStatus issueStatus) {
+        this.issueStatus = issueStatus;
     }
 
     private class JiraIssueAssignmentException extends RuntimeException {

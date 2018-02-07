@@ -5,8 +5,11 @@ import com.google.common.collect.Multimap;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.upload.FileUploader;
+import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
+import org.mskcc.kickoff.upload.jira.state.IssueStatus;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class SpyFileUploader implements FileUploader {
@@ -28,6 +31,31 @@ public class SpyFileUploader implements FileUploader {
         for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
             uploadSingleFile(kickoffRequest, manifestFile);
         }
+    }
+
+    @Override
+    public void uploadFiles(KickoffRequest kickoffRequest) {
+
+    }
+
+    @Override
+    public void setIssueStatus(IssueStatus nextState) {
+
+    }
+
+    @Override
+    public void assignUser(KickoffRequest kickoffRequest) {
+
+    }
+
+    @Override
+    public void changeStatus(String transitionName, String issueId) {
+
+    }
+
+    @Override
+    public List<JiraIssue.Fields.Attachment> getExistingManifestAttachments(KickoffRequest kickoffRequest) {
+        return Collections.emptyList();
     }
 
     public Multimap<KickoffRequest, ManifestFile> getUploadedFiles() {

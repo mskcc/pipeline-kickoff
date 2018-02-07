@@ -15,9 +15,9 @@ import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.upload.FileDeletionException;
 import org.mskcc.kickoff.upload.jira.*;
-import org.mskcc.kickoff.upload.jira.state.BadInputsJiraIssueState;
-import org.mskcc.kickoff.upload.jira.state.HoldJiraIssueState;
-import org.mskcc.kickoff.upload.jira.state.JiraStateFactory;
+import org.mskcc.kickoff.upload.jira.state.BadInputsIssueStatus;
+import org.mskcc.kickoff.upload.jira.state.HoldIssueStatus;
+import org.mskcc.kickoff.upload.jira.state.StatusFactory;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,26 +59,26 @@ public class JiraTestConfiguration {
     private PairednessResolver pairednessResolver;
 
     @Autowired
-    private JiraStateFactory jiraStateFactory;
+    private StatusFactory statusFactory;
 
     @Bean
-    public HoldJiraIssueState holdJiraIssueState() {
-        return new HoldJiraIssueState();
+    public HoldIssueStatus holdJiraIssueState() {
+        return new HoldIssueStatus();
     }
 
     @Bean
-    public ToBadInputsJiraTransitioner toBadInputsTransitioner() {
-        return new ToBadInputsJiraTransitioner();
+    public ToBadInputsTransitioner toBadInputsTransitioner() {
+        return new ToBadInputsTransitioner();
     }
 
     @Bean
-    public ToHoldJiraTransitioner dummyToHoldTransitioner() {
-        return new DummyJiraTransitioner();
+    public ToHoldTransitioner dummyToHoldTransitioner() {
+        return new DummyTransitioner();
     }
 
     @Bean
-    public BadInputsJiraIssueState badInputsJiraIssueState() {
-        return new BadInputsJiraIssueState();
+    public BadInputsIssueStatus badInputsJiraIssueState() {
+        return new BadInputsIssueStatus();
     }
 
     @Bean
