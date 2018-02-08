@@ -22,19 +22,19 @@ public class SpyFileUploader implements FileUploader {
     }
 
     @Override
-    public void uploadSingleFile(KickoffRequest request, ManifestFile manifestFile) {
+    public void uploadSingleFile(KickoffRequest request, ManifestFile manifestFile, String requestId) {
         uploadedFiles.put(request, manifestFile);
     }
 
     @Override
     public void upload(KickoffRequest kickoffRequest) {
         for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
-            uploadSingleFile(kickoffRequest, manifestFile);
+            uploadSingleFile(kickoffRequest, manifestFile, kickoffRequest.getId());
         }
     }
 
     @Override
-    public void uploadFiles(KickoffRequest kickoffRequest) {
+    public void uploadFiles(KickoffRequest kickoffRequest, String requestId) {
 
     }
 
@@ -44,7 +44,7 @@ public class SpyFileUploader implements FileUploader {
     }
 
     @Override
-    public void assignUser(KickoffRequest kickoffRequest) {
+    public void assignUser(KickoffRequest kickoffRequest, String requestId) {
 
     }
 
@@ -54,7 +54,8 @@ public class SpyFileUploader implements FileUploader {
     }
 
     @Override
-    public List<JiraIssue.Fields.Attachment> getExistingManifestAttachments(KickoffRequest kickoffRequest) {
+    public List<JiraIssue.Fields.Attachment> getExistingManifestAttachments(KickoffRequest kickoffRequest, String
+            requestId) {
         return Collections.emptyList();
     }
 

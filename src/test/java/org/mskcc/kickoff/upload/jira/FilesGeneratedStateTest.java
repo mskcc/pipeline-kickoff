@@ -18,7 +18,7 @@ public class FilesGeneratedStateTest {
         FilesGeneratedStatus filesGeneratedState = new FilesGeneratedStatus("something");
 
         Optional<Exception> exception = TestUtils.assertThrown(() -> filesGeneratedState.uploadFiles(mock
-                (KickoffRequest.class), mock(JiraFileUploader.class)));
+                (KickoffRequest.class), mock(JiraFileUploader.class), "12345_P"));
 
         assertThat(exception.isPresent(), is(true));
         assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(IllegalStateException.class));

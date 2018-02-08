@@ -10,10 +10,11 @@ import org.mskcc.kickoff.generator.FileManifestGenerator;
 import org.mskcc.kickoff.generator.PairingsResolver;
 import org.mskcc.kickoff.printer.*;
 import org.mskcc.kickoff.printer.observer.FileGenerationStatusManifestFileObserver;
-import org.mskcc.kickoff.printer.observer.FileUploadingManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.upload.FileDeletionException;
+import org.mskcc.kickoff.upload.FilesValidator;
+import org.mskcc.kickoff.upload.RequiredFilesValidator;
 import org.mskcc.kickoff.upload.jira.*;
 import org.mskcc.kickoff.upload.jira.state.BadInputsIssueStatus;
 import org.mskcc.kickoff.upload.jira.state.HoldIssueStatus;
@@ -60,6 +61,11 @@ public class JiraTestConfiguration {
 
     @Autowired
     private StatusFactory statusFactory;
+
+    @Bean
+    public FilesValidator filesValidator() {
+        return new RequiredFilesValidator();
+    }
 
     @Bean
     public HoldIssueStatus holdJiraIssueState() {
@@ -129,11 +135,6 @@ public class JiraTestConfiguration {
     @Bean
     public FileGenerationStatusManifestFileObserver fileGenerationStatusManifestFileObserver() {
         return new FileGenerationStatusManifestFileObserver();
-    }
-
-    @Bean
-    public FileUploadingManifestFileObserver fileUploadingManifestFileObserver() {
-        return new FileUploadingManifestFileObserver(fileUploader());
     }
 
     @Bean

@@ -2,9 +2,8 @@ package org.mskcc.kickoff.upload.jira.state;
 
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.upload.FileUploader;
-import org.mskcc.kickoff.upload.jira.ToHoldTransitioner;
+import org.mskcc.kickoff.upload.jira.JiraFileUploader;
 import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
@@ -13,9 +12,6 @@ public class GenerateFilesStatus implements IssueStatus {
     private final String transitionName;
     private final IssueStatus nextState;
 
-    @Autowired
-    public ToHoldTransitioner toHoldJiraTransitioner;
-
     public GenerateFilesStatus(String name, String transitionName, IssueStatus nextState) {
         this.name = name;
         this.transitionName = transitionName;
@@ -23,20 +19,25 @@ public class GenerateFilesStatus implements IssueStatus {
     }
 
     @Override
-    public void uploadFiles(KickoffRequest kickoffRequest, FileUploader jiraFileUploader) {
-        validateNoManifestFilesExists(kickoffRequest, jiraFileUploader);
+    public void uploadFiles(KickoffRequest kickoffRequest, FileUploader jiraFileUploader, String requestId) {
+        validateNoManifestFilesExists(kickoffRequest, jiraFileUploader, requestId);
 
-        jiraFileUploader.uploadFiles(kickoffRequest);
+        jiraFileUploader.uploadFiles(kickoffRequest, requestId);
         jiraFileUploader.setIssueStatus(nextState);
-        jiraFileUploader.assignUser(kickoffRequest);
-        jiraFileUploader.changeStatus(transitionName, issueId);
-        toHoldJiraTransitioner.transition(jiraFileUploader, issueId);
+        jiraFileUploader.assignUser(kickoffRequest, requestId);
+        jiraFileUploader.changeStatus(transitionName, kickoffRequest.getId());
+    }
+
+    @Override
+    public void validateInputs(String issueId, JiraFileUploader jiraFileUploader) {
+        throw new IllegalStateException(String.format("Files cannot be validated in state: %s. They haven't been " +
+                "generated yet.", getName()));
     }
 
     private void validateNoManifestFilesExists(KickoffRequest kickoffRequest, FileUploader
-            jiraFileUploader) {
+            jiraFileUploader, String requestId) {
         List<JiraIssue.Fields.Attachment> existingManifestAttachments = jiraFileUploader
-                .getExistingManifestAttachments(kickoffRequest);
+                .getExistingManifestAttachments(kickoffRequest, requestId);
 
         if (existingManifestAttachments.size() != 0)
             throw new RuntimeException(String.format("This is initial manifest files generation. No files should be " +
