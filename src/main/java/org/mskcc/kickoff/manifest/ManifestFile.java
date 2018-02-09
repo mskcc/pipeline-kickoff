@@ -3,7 +3,6 @@ package org.mskcc.kickoff.manifest;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.printer.*;
 import org.mskcc.kickoff.printer.observer.FileGenerationStatusManifestFileObserver;
-import org.mskcc.kickoff.printer.observer.FileUploadingManifestFileObserver;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.annotation.PostConstruct;
@@ -87,9 +86,6 @@ public enum ManifestFile {
     public static class FilePrinterInjector {
         @Autowired
         private FileGenerationStatusManifestFileObserver fileGenerationStatusObserver;
-
-        @Autowired
-        private FileUploadingManifestFileObserver fileUploadingManifestFileObserver;
 
         @Autowired
         private GroupingFilePrinter groupingFilePrinter;

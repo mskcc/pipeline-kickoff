@@ -30,12 +30,13 @@ build/*
 
 logs/
 
-lims*.properties
-application*.properties
-Connection*
+**lims*.properties
+**/application*.properties
+**Connection*
 
 libs/veloxapi.jar
 libs/veloxclientutil.jar
 libs/sapioutils.jar
 
-.DS_Store
+
+**.DS_Store

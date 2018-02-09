@@ -19,7 +19,7 @@ public class FileGenerationStatusManifestFileObserverTest {
             FileGenerationStatusManifestFileObserver();
 
     @Test
-    public void whenUpdateIfInvokeWithFileGeneratedEvent_shouldSetManifestFileIsGeneratedToTrue() throws Exception {
+    public void whenUpdateIfInvokeWithFileGeneratedEvent_shouldSetManifestFileIsGeneratedToTrue() {
         ManifestFile manifestFile = ManifestFile.GROUPING;
 
         fileGenerationStatusManifestFileObserver.update(request, manifestFile, FileGenerated.INSTANCE);

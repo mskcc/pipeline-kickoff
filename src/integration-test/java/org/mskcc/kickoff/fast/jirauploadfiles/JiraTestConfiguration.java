@@ -10,14 +10,15 @@ import org.mskcc.kickoff.generator.FileManifestGenerator;
 import org.mskcc.kickoff.generator.PairingsResolver;
 import org.mskcc.kickoff.printer.*;
 import org.mskcc.kickoff.printer.observer.FileGenerationStatusManifestFileObserver;
-import org.mskcc.kickoff.printer.observer.FileUploadingManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.upload.FileDeletionException;
+import org.mskcc.kickoff.upload.FilesValidator;
+import org.mskcc.kickoff.upload.RequiredFilesValidator;
 import org.mskcc.kickoff.upload.jira.*;
-import org.mskcc.kickoff.upload.jira.state.BadInputsJiraIssueState;
-import org.mskcc.kickoff.upload.jira.state.HoldJiraIssueState;
-import org.mskcc.kickoff.upload.jira.state.JiraStateFactory;
+import org.mskcc.kickoff.upload.jira.state.BadInputsIssueStatus;
+import org.mskcc.kickoff.upload.jira.state.HoldIssueStatus;
+import org.mskcc.kickoff.upload.jira.state.StatusFactory;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,26 +60,31 @@ public class JiraTestConfiguration {
     private PairednessResolver pairednessResolver;
 
     @Autowired
-    private JiraStateFactory jiraStateFactory;
+    private StatusFactory statusFactory;
 
     @Bean
-    public HoldJiraIssueState holdJiraIssueState() {
-        return new HoldJiraIssueState();
+    public FilesValidator filesValidator() {
+        return new RequiredFilesValidator();
     }
 
     @Bean
-    public ToBadInputsJiraTransitioner toBadInputsTransitioner() {
-        return new ToBadInputsJiraTransitioner();
+    public HoldIssueStatus holdJiraIssueState() {
+        return new HoldIssueStatus();
     }
 
     @Bean
-    public ToHoldJiraTransitioner dummyToHoldTransitioner() {
-        return new DummyJiraTransitioner();
+    public ToBadInputsTransitioner toBadInputsTransitioner() {
+        return new ToBadInputsTransitioner();
     }
 
     @Bean
-    public BadInputsJiraIssueState badInputsJiraIssueState() {
-        return new BadInputsJiraIssueState();
+    public ToHoldTransitioner dummyToHoldTransitioner() {
+        return new DummyTransitioner();
+    }
+
+    @Bean
+    public BadInputsIssueStatus badInputsJiraIssueState() {
+        return new BadInputsIssueStatus();
     }
 
     @Bean
@@ -129,11 +135,6 @@ public class JiraTestConfiguration {
     @Bean
     public FileGenerationStatusManifestFileObserver fileGenerationStatusManifestFileObserver() {
         return new FileGenerationStatusManifestFileObserver();
-    }
-
-    @Bean
-    public FileUploadingManifestFileObserver fileUploadingManifestFileObserver() {
-        return new FileUploadingManifestFileObserver(fileUploader());
     }
 
     @Bean

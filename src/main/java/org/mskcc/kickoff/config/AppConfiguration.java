@@ -125,7 +125,9 @@ public class AppConfiguration {
     private ClientHttpRequestInterceptor loggingClientHttpRequestInterceptor;
 
     @Autowired
-    private HoldJiraIssueState holdJiraIssueState;
+    private HoldIssueStatus holdJiraIssueState;
+
+    private String regeneratedStatus = "Files Regenerated";
 
     public static void configureLogger(String loggerPropertiesName) {
         LogManager.resetConfiguration();
@@ -271,24 +273,29 @@ public class AppConfiguration {
 
 
     @Bean
-    public JiraStateFactory jiraStateFactory() {
-        return new JiraStateFactory(generateFilesState(), regenerateFilesState(), filesGeneratedState(),
+    public StatusFactory jiraStateFactory() {
+        return new StatusFactory(generateFilesState(), regenerateFilesState(), filesGeneratedState(),
                 holdJiraIssueState);
     }
 
     @Bean
-    public GenerateFilesState generateFilesState() {
-        return new GenerateFilesState(fastqsAvailableStatus, generatedTransition, filesGeneratedState());
+    public GenerateFilesStatus generateFilesState() {
+        return new GenerateFilesStatus(fastqsAvailableStatus, generatedTransition, filesGeneratedState());
     }
 
     @Bean
-    public RegenerateFilesState regenerateFilesState() {
-        return new RegenerateFilesState(regenerateStatus, regeneratedTransition, filesGeneratedState());
+    public RegenerateFilesStatus regenerateFilesState() {
+        return new RegenerateFilesStatus(regenerateStatus, regeneratedTransition, filesRegeneratedState());
     }
 
     @Bean
-    public FilesGeneratedState filesGeneratedState() {
-        return new FilesGeneratedState(generatedStatus);
+    public FilesGeneratedStatus filesGeneratedState() {
+        return new FilesGeneratedStatus(generatedStatus);
+    }
+
+    @Bean
+    public FilesRegeneratedStatus filesRegeneratedState() {
+        return new FilesRegeneratedStatus(regeneratedStatus);
     }
 
     @Bean
