@@ -29,7 +29,7 @@ dependencies {
     compile group: 'com.velox.internalproducts', name: 'veloxapi', version: '9.5.1-b633'
     compile group: 'com.velox.internalproducts', name: 'sapioutils', version: '7.1.1-LIMS9.5.0'
 
-    compile group: 'org.mskcc.common', name:'common-domain', version: '1.0'
+    compile group: 'org.mskcc.common', name:'common-domain', version: '1.0.1-SNAPSHOT'
 
     compile group: 'com.github.spullara.cli-parser', name:'cli-parser', version: '1.1'
 
