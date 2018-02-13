@@ -953,23 +953,23 @@ public class SampleInfoImpact extends SampleInfo {
         }
     }
 
-    private void populatePoolNormals(DataRecord niblegenRecord, User apiUser) {
+    private void populatePoolNormals(DataRecord nimblegenRecord, User apiUser) {
         try {
-            DataRecord nymbParentSamples = niblegenRecord.getParentsOfType(VeloxConstants.SAMPLE, apiUser).get(0);
-            List<DataRecord> nymbSiblingSamples = Arrays.asList(nymbParentSamples.getChildrenOfType(VeloxConstants
+            DataRecord nimbParentSamples = nimblegenRecord.getParentsOfType(VeloxConstants.SAMPLE, apiUser).get(0);
+            List<DataRecord> nimbSiblingSamples = Arrays.asList(nimbParentSamples.getChildrenOfType(VeloxConstants
                     .SAMPLE, apiUser));
-            for (DataRecord nymbSiblingSample : nymbSiblingSamples) {
+            for (DataRecord nimbSiblingSample : nimbSiblingSamples) {
                 // HERE check tos ee if it was added ot a flowcell?
-                List<DataRecord> flowCellLanes = nymbSiblingSample.getDescendantsOfType(VeloxConstants
+                List<DataRecord> flowCellLanes = nimbSiblingSample.getDescendantsOfType(VeloxConstants
                         .FLOW_CELL_LANE, apiUser);
 
                 if (flowCellLanes == null || flowCellLanes.size() == 0)
                     continue;
 
-                List<DataRecord> parentSamples = nymbSiblingSample.getParentsOfType(VeloxConstants.SAMPLE, apiUser);
+                List<DataRecord> parentSamples = nimbSiblingSample.getParentsOfType(VeloxConstants.SAMPLE, apiUser);
                 for (DataRecord parentSample : parentSamples) {
                     if (isPooledNormal(apiUser, parentSample))
-                        addPooledNormal(apiUser, nymbSiblingSample, parentSample);
+                        addPooledNormal(apiUser, nimbSiblingSample, parentSample);
                 }
             }
         } catch (Exception e) {
@@ -977,9 +977,9 @@ public class SampleInfoImpact extends SampleInfo {
         }
     }
 
-    private void addPooledNormal(User apiUser, DataRecord nymbSiblingSample, DataRecord parentSample) throws
+    private void addPooledNormal(User apiUser, DataRecord nimbSiblingSample, DataRecord parentSample) throws
             NotFound, RemoteException {
-        String pooledNormalId = nymbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
+        String pooledNormalId = nimbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
 
         if (!pooledNormals.containsKey(parentSample))
             DEV_LOGGER.info(String.format("Adding pooled normal: %s", pooledNormalId));
