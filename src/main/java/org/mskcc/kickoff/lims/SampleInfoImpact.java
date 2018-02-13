@@ -894,6 +894,7 @@ public class SampleInfoImpact extends SampleInfo {
 
         sample.setHasNimbleGen(true);
 
+        populatePoolNormals(chosenRec, apiUser);
         populatePoolNormals(apiUser, drm, kickoffRequest);
 
         try {
@@ -950,6 +951,39 @@ public class SampleInfoImpact extends SampleInfo {
             ConsensusBaitSet = this.CAPTURE_BAIT_SET;
             ConsensusSpikeIn = this.SPIKE_IN_GENES;
         }
+    }
+
+    private void populatePoolNormals(DataRecord niblegenRecord, User apiUser) {
+        try {
+            DataRecord nymbParentSamples = niblegenRecord.getParentsOfType(VeloxConstants.SAMPLE, apiUser).get(0);
+            List<DataRecord> nymbSiblingSamples = Arrays.asList(nymbParentSamples.getChildrenOfType(VeloxConstants
+                    .SAMPLE, apiUser));
+            for (DataRecord nymbSiblingSample : nymbSiblingSamples) {
+                // HERE check tos ee if it was added ot a flowcell?
+                List<DataRecord> flowCellLanes = nymbSiblingSample.getDescendantsOfType(VeloxConstants
+                        .FLOW_CELL_LANE, apiUser);
+
+                if (flowCellLanes == null || flowCellLanes.size() == 0)
+                    continue;
+
+                List<DataRecord> parentSamples = nymbSiblingSample.getParentsOfType(VeloxConstants.SAMPLE, apiUser);
+                for (DataRecord parentSample : parentSamples) {
+                    if (isPooledNormal(apiUser, parentSample))
+                        addPooledNormal(apiUser, nymbSiblingSample, parentSample);
+                }
+            }
+        } catch (Exception e) {
+            DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
+        }
+    }
+
+    private void addPooledNormal(User apiUser, DataRecord nymbSiblingSample, DataRecord parentSample) throws
+            NotFound, RemoteException {
+        String pooledNormalId = nymbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
+
+        if (!pooledNormals.containsKey(parentSample))
+            DEV_LOGGER.info(String.format("Adding pooled normal: %s", pooledNormalId));
+        pooledNormals.put(parentSample, pooledNormalId);
     }
 
     private void populatePoolNormals(User apiUser, DataRecordManager dataRecordManager, KickoffRequest kickoffRequest) {

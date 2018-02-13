@@ -16,7 +16,7 @@ public class TestConfiguration {
 
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("application-dev.properties"));
 
-        AppConfiguration.configureLogger("/log4j-dev.properties");
+        AppConfiguration.configureLogger("/log4j2-dev.properties");
 
         propertySourcesPlaceholderConfigurer.setOrder(0);
         propertySourcesPlaceholderConfigurer.setIgnoreUnresolvablePlaceholders(true);
