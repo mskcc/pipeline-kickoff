@@ -3,6 +3,7 @@ version '1.9.0-SNAPSHOT'
 
 apply plugin: 'application'
 apply plugin: 'maven'
+apply plugin: 'idea'
 
 mainClassName = "org.mskcc.kickoff.lims.CreateManifestSheet"
 
@@ -64,6 +65,8 @@ dependencies {
     }
 
     compile group: 'org.springframework', name: 'spring-test', version: '5.0.2.RELEASE'
+
+    testCompile 'org.assertj:assertj-core:3.9.0'
 }
 
 tasks.withType(Test) {

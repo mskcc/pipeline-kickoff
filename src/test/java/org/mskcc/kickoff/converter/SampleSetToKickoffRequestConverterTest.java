@@ -15,6 +15,7 @@ import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.typeCompatibleWith;
 import static org.hamcrest.core.Is.is;
@@ -35,8 +36,6 @@ public class SampleSetToKickoffRequestConverterTest {
     private final NormalProcessingType normalProcessingType = new NormalProcessingType(projectFilesArchiver);
     private final SampleSetProjectInfoConverter sampleSetProjectInfoConverterMock = mock
             (SampleSetProjectInfoConverter.class);
-    private final Sample sample1 = new Sample("sample1");
-    private final Sample sample2 = new Sample("sample2");
     private SampleSetToRequestConverter sampleSetToRequestConverter = new SampleSetToRequestConverter
             (sampleSetProjectInfoConverterMock);
     private SampleSet sampleSet;
@@ -74,28 +73,41 @@ public class SampleSetToKickoffRequestConverterTest {
     }
 
     @Test
-    public void whenRequestsHasNoSamples_shouldProjectContainNoSamples() {
-        sampleSet.setRequests(getRequestWithEntities(Arrays.asList(0), (r, id) -> r.putSampleIfAbsent(id), "sample"));
-        KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
+    public void whenRequestsHasNoSamples_shouldThrowException() {
+        List<KickoffRequest> kickoffRequests = getRequestWithEntities(Arrays.asList(0), (r, id) -> r
+                        .putSampleIfAbsent(id),
+                "sample");
 
-        assertThat(request.getSamples().size(), is(0));
+        sampleSet.setRequests(kickoffRequests);
+
+        assertThatExceptionOfType(KickoffRequest.NoValidSamplesException.class).isThrownBy(() -> sampleSetToRequestConverter.convert(sampleSet));
     }
 
     @Test
     public void whenOneRequestsWithSamples_shouldProjectContainSameNumberOfSamples() {
         List<Integer> samplesCounts = Arrays.asList(3);
-        sampleSet.setRequests(getRequestWithEntities(samplesCounts, (r, id) -> r.putSampleIfAbsent(id),
-                SAMPLE_ENTITY_NAME));
+        List<KickoffRequest> kickoffRequests = getRequestWithEntities(samplesCounts, getPassedSampleFunction(),
+                SAMPLE_ENTITY_NAME);
+        sampleSet.setRequests(kickoffRequests);
 
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
         assertProjectHasAllEntities(request.getSamples(), samplesCounts, SAMPLE_ENTITY_NAME);
     }
 
+    private BiConsumer<KickoffRequest, String> getPassedSampleFunction() {
+        return (r, id) -> {
+            Sample sample = r.putSampleIfAbsent(id);
+            Run run1 = sample.putRunIfAbsent("run1");
+            run1.setSampleLevelQcStatus(QcStatus.PASSED);
+            run1.setPostQcStatus(QcStatus.PASSED);
+        };
+    }
+
     @Test
     public void whenTwoRequestsWithSamples_shouldProjectContainSamplesFromBoth() {
         List<Integer> samplesCounts = Arrays.asList(5, 7);
-        sampleSet.setRequests(getRequestWithEntities(samplesCounts, (r, id) -> r.putSampleIfAbsent(id),
+        sampleSet.setRequests(getRequestWithEntities(samplesCounts, getPassedSampleFunction(),
                 SAMPLE_ENTITY_NAME));
 
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
@@ -151,6 +163,7 @@ public class SampleSetToKickoffRequestConverterTest {
         List<Integer> poolsCounts = Arrays.asList(4, 3);
         List<KickoffRequest> kickoffRequests = getRequestWithEntities(poolsCounts, (r, id) -> r.putPoolIfAbsent(id),
                 POOL_ENTITY_NAME);
+        addPassedSample(kickoffRequests.get(0));
 
         sampleSet.setRequests(kickoffRequests);
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
@@ -651,6 +664,8 @@ public class SampleSetToKickoffRequestConverterTest {
     public void whenRequestsHasNoPatients_shouldProjectContainNoPatients() {
         List<KickoffRequest> kickoffRequests = getRequestWithEntities(Arrays.asList(0), (r, id) -> r
                 .putPatientIfAbsent(id), PATIENT_ENTITY_NAME);
+
+        addPassedSample(kickoffRequests.get(0));
         sampleSet.setRequests(kickoffRequests);
 
         //when
@@ -679,8 +694,10 @@ public class SampleSetToKickoffRequestConverterTest {
     @Test
     public void whenThereAreThreeRequestsWithMultiplePatients_shouldProjectContainPatientsFromAll() {
         List<Integer> patientsCounts = Arrays.asList(2, 9, 4);
-        List<KickoffRequest> kickoffRequests = getRequestWithEntities(patientsCounts, (r, id) -> r.putPatientIfAbsent
-                (id), PATIENT_ENTITY_NAME);
+        List<KickoffRequest> kickoffRequests = getRequestWithEntities(patientsCounts, (r, id) -> r
+                .putPatientIfAbsent(id), PATIENT_ENTITY_NAME);
+
+        addPassedSample(kickoffRequests.get(0));
 
         sampleSet.setRequests(kickoffRequests);
 
@@ -969,7 +986,7 @@ public class SampleSetToKickoffRequestConverterTest {
             String> action, String entityName) {
         List<KickoffRequest> kickoffRequests = new ArrayList<>();
         for (int i = 0; i < counts.size(); i++) {
-            KickoffRequest kickoffRequest = getNormalImpactHumanPiRequest();
+            KickoffRequest kickoffRequest = getNormalImpactHumanPiRequestNoSamples();
             for (int j = 0; j < counts.get(i); j++) {
                 action.accept(kickoffRequest, String.format(getEntityNameFormat(entityName), i, j));
             }
@@ -984,7 +1001,7 @@ public class SampleSetToKickoffRequestConverterTest {
     }
 
     private KickoffRequest getHumanPiRequest() {
-        KickoffRequest kickoffRequest = getEmptyRequest();
+        KickoffRequest kickoffRequest = getRequestWithPassedSample();
         kickoffRequest.setSpecies(RequestSpecies.HUMAN);
         kickoffRequest.setPi("King Julian");
 
@@ -1004,6 +1021,12 @@ public class SampleSetToKickoffRequestConverterTest {
         return kickoffRequest;
     }
 
+    private KickoffRequest getNormalImpactHumanPiRequestNoSamples() {
+        KickoffRequest normalImpactHumanPiRequest = getNormalImpactHumanPiRequest();
+        normalImpactHumanPiRequest.getSamples().clear();
+        return normalImpactHumanPiRequest;
+    }
+
     private KickoffRequest getNormalImpactHumanRequest() {
         KickoffRequest kickoffRequest = getNormalImpactRequest();
         kickoffRequest.setSpecies(RequestSpecies.HUMAN);
@@ -1011,13 +1034,29 @@ public class SampleSetToKickoffRequestConverterTest {
     }
 
     private KickoffRequest getNormalImpactRequest() {
-        KickoffRequest kickoffRequest = getEmptyRequest();
+        KickoffRequest kickoffRequest = getRequestWithPassedSample();
         kickoffRequest.setRequestType(RequestType.IMPACT);
         return kickoffRequest;
     }
 
     private KickoffRequest getEmptyRequest() {
         return new KickoffRequest(String.format("request_%d", id++), normalProcessingType);
+    }
+
+    private KickoffRequest addPassedSample(KickoffRequest kickoffRequest) {
+        Sample sample = new Sample("sample1");
+        Run run = new Run("run1");
+        run.setSampleLevelQcStatus(QcStatus.PASSED);
+        run.setPostQcStatus(QcStatus.PASSED);
+        sample.putRunIfAbsent(run);
+        kickoffRequest.putSampleIfAbsent(sample);
+
+        return kickoffRequest;
+    }
+
+    private KickoffRequest getRequestWithPassedSample() {
+        KickoffRequest kickoffRequest = getEmptyRequest();
+        return addPassedSample(kickoffRequest);
     }
 
     private KickoffRequest getForcedImpactRequest() {
