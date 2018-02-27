@@ -152,6 +152,8 @@ public class SampleSetToRequestConverter {
                 .getJoinedCollection(sampleSetSamples.keySet())));
 
         kickoffRequest.setSamples(sampleSetSamples);
+
+        kickoffRequest.validateHasSamples();
     }
 
     private void setProjectInfo(KickoffRequest kickoffRequest, SampleSet sampleSet) {

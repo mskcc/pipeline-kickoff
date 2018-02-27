@@ -1,10 +1,13 @@
 package org.mskcc.kickoff.domain;
 
+import org.apache.log4j.Logger;
 import org.mskcc.domain.PairingInfo;
 import org.mskcc.domain.RequestType;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.process.ProcessingType;
+import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.util.Utils;
 import org.mskcc.util.CommonUtils;
 
 import java.util.*;
@@ -15,6 +18,8 @@ import java.util.stream.Collectors;
 
 
 public class KickoffRequest extends org.mskcc.domain.Request {
+    private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+
     private final List<KickoffRequest> requests = new ArrayList<>();
     private ProcessingType processingType;
     private boolean mappingIssue;
@@ -26,6 +31,7 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     private String rerunReason;
     private RequestTypeStrategy requestTypeStrategy;
     private RequestTypeStrategyFactory requestTypeStrategyFactory = new RequestTypeStrategyFactory();
+    private Map<String, Sample> allValidSamples;
 
     public KickoffRequest(String id, ProcessingType processingType) {
         super(id);
@@ -34,10 +40,6 @@ public class KickoffRequest extends org.mskcc.domain.Request {
 
     public RequestTypeStrategy getRequestTypeStrategy() {
         return requestTypeStrategy;
-    }
-
-    public void setRequestTypeStrategy(RequestTypeStrategy requestTypeStrategy) {
-        this.requestTypeStrategy = requestTypeStrategy;
     }
 
     public String getOutputPath() {
@@ -57,7 +59,10 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     }
 
     public Map<String, Sample> getAllValidSamples() {
-        return getAllValidSamples(s -> true);
+        if (allValidSamples == null)
+            allValidSamples = getAllValidSamples(s -> true);
+
+        return allValidSamples;
     }
 
     public Map<String, Sample> getAllValidSamples(Predicate<Sample> samplePredicate) {
@@ -71,10 +76,6 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     private Map<String, Sample> getAllSamples(Predicate<Sample> samplePredicate) {
         return getSamples(samplePredicate).entrySet().stream()
                 .collect(CommonUtils.getLinkedHashMapCollector());
-    }
-
-    public boolean hasValidSamples() {
-        return getAllValidSamples().size() > 0;
     }
 
     public Map<String, Sample> getValidNonPooledNormalSamples() {
@@ -108,15 +109,6 @@ public class KickoffRequest extends org.mskcc.domain.Request {
 
     public void setNewMappingScheme(int newMappingScheme) {
         this.newMappingScheme = newMappingScheme;
-    }
-
-    public Collection<Sample> getValidUniqueSamples(Function<Sample, String> compareSamples) {
-        return getAllValidSamples().values().stream()
-                .collect(getUniqueCollector(compareSamples));
-    }
-
-    public Collection<Sample> getValidUniqueCmoIdSamples() {
-        return getValidUniqueCmoIdSamples(s -> true);
     }
 
     public Collection<Sample> getValidUniqueCmoIdSamples(Predicate<Sample> filter) {
@@ -205,5 +197,20 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     public void setRequestType(RequestType requestType) {
         this.requestTypeStrategy = requestTypeStrategyFactory.getRequestTypeStrategy(requestType);
         super.setRequestType(requestType);
+    }
+
+    public void validateHasSamples() {
+        if (getAllValidSamples().size() == 0)
+            throw new NoValidSamplesException(String.format("There are no samples in request: %s", getId()));
+
+        Set<String> validSampleIds = new TreeSet<>(getAllValidSamples().keySet());
+        DEV_LOGGER.info(String.format("Found %d valid samples: [%s]", getAllValidSamples().size(), Utils
+                .getJoinedCollection(validSampleIds, ",")));
+    }
+
+    public static class NoValidSamplesException extends RuntimeException {
+        public NoValidSamplesException(String message) {
+            super(message);
+        }
     }
 }
