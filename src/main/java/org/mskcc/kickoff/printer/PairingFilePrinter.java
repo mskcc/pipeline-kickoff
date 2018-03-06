@@ -2,7 +2,6 @@ package org.mskcc.kickoff.printer;
 
 import org.apache.log4j.Logger;
 import org.mskcc.domain.RequestType;
-import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.PairingsResolver;
 import org.mskcc.kickoff.manifest.ManifestFile;
@@ -19,8 +18,8 @@ import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import static org.mskcc.kickoff.config.Arguments.shiny;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
 @Component
@@ -41,42 +40,39 @@ public class PairingFilePrinter implements FilePrinter {
 
         Map<String, String> pairingInfo = getPairingInfo(request);
 
-        Set<String> normalCMOids = new HashSet<>();
-        for (Sample sample : request.getAllValidSamples().values()) {
-            if (sample.get(Constants.SAMPLE_CLASS).contains(Constants.NORMAL)) {
-                normalCMOids.add(sample.get(Constants.CORRECTED_CMO_ID));
-            }
-        }
+        Set<String> normalCMOids = request.getAllValidSamples(s -> !s.isTumor()).values().stream()
+                .map(s -> s.getCorrectedCmoSampleId())
+                .collect(Collectors.toSet());
 
-        Set<String> missingNormalsToBeAdded = new HashSet<>();
-        if (request.getRequestType() == RequestType.EXOME) {
-            HashSet<String> normalsPairedWithThings = new HashSet<>(pairingInfo.values());
-            missingNormalsToBeAdded = new HashSet<>(normalCMOids);
-            missingNormalsToBeAdded.removeAll(normalsPairedWithThings);
-        }
         try {
             if (pairingInfo != null && pairingInfo.size() > 0) {
                 File pairing_file = new File(filename);
                 PrintWriter pW = new PrintWriter(new FileWriter(pairing_file, false), false);
-                for (String tum : pairingInfo.keySet()) {
-                    String norm = pairingInfo.get(tum);
-                    pW.write(sampleNormalization(norm) + "\t" + sampleNormalization(tum) + "\n");
+                for (String tumorCorrectedCmoId : pairingInfo.keySet()) {
+                    String normalCorrectedCmoId = pairingInfo.get(tumorCorrectedCmoId);
+                    pW.write(sampleNormalization(normalCorrectedCmoId) + "\t" + sampleNormalization
+                            (tumorCorrectedCmoId) + "\n");
                 }
-                for (String unmatchedNorm : missingNormalsToBeAdded) {
-                    String tum = "na";
-                    pW.write(sampleNormalization(unmatchedNorm) + "\t" + sampleNormalization(tum) + "\n");
-                }
+                pairUnmatchedNormals(request, pairingInfo, normalCMOids, pW);
 
                 pW.close();
 
                 observerManager.notifyObserversOfFileCreated(request, ManifestFile.PAIRING);
-
-                if (shiny) {
-                    printPairingExcel(request, filename, pairingInfo, missingNormalsToBeAdded);
-                }
             }
         } catch (Exception e) {
             DEV_LOGGER.warn("Exception thrown: ", e);
+        }
+    }
+
+    private void pairUnmatchedNormals(KickoffRequest request, Map<String, String> pairingInfo, Set<String>
+            normalCMOids, PrintWriter pW) {
+        if (request.getRequestType() == RequestType.EXOME) {
+            Set<String> pairedNormals = new HashSet<>(pairingInfo.values());
+            Set<String> missingNormalsToBeAdded = new HashSet<>(normalCMOids);
+            missingNormalsToBeAdded.removeAll(pairedNormals);
+            for (String unmatchedNorm : missingNormalsToBeAdded) {
+                pW.write(String.format("%s\t%s\n", sampleNormalization(unmatchedNorm), Constants.NA_LOWER_CASE));
+            }
         }
     }
 

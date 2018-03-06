@@ -173,7 +173,7 @@ public class RequestValidator {
             Collection<Run> runs = sample.getRuns().values();
             for (Run run : runs) {
                 if (run.getSampleLevelQcStatus() != null && run.getSampleLevelQcStatus() != QcStatus.PASSED) {
-                    if (run.getSampleLevelQcStatus() == QcStatus.FAILED || run.getSampleLevelQcStatus() == QcStatus.FAILED_REPROCESS) {
+                    if (run.getSampleLevelQcStatus() == QcStatus.FAILED) {
                         String message = String.format("Not including Sample %s from Run ID %s because it did NOT pass Sequencing Analysis QC: %s", sample, run.getId(), run.getSampleLevelQcStatus());
                         PM_LOGGER.log(PmLogPriority.SAMPLE_INFO, message);
                         DEV_LOGGER.log(Level.INFO, message);
@@ -206,7 +206,7 @@ public class RequestValidator {
         for (Pool pool : kickoffRequest.getPools().values()) {
             for (Run run : pool.getRuns().values()) {
                 if (run.getPoolQcStatus() != QcStatus.PASSED) {
-                    if (run.getPoolQcStatus() == QcStatus.FAILED || run.getPoolQcStatus() == QcStatus.FAILED_REPROCESS) {
+                    if (run.getPoolQcStatus() == QcStatus.FAILED) {
                         String message = "Skipping Run ID " + run.getId() + " because it did NOT pass Sequencing " +
                                 "Analysis QC: " + run.getPoolQcStatus();
                         poolQCWarnings.add(new PriorityAwareLogMessage(PmLogPriority.POOL_INFO, message));
