@@ -19,6 +19,7 @@ import org.mskcc.kickoff.converter.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
+import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
 import org.mskcc.kickoff.velox.VeloxConnectionData;
@@ -55,7 +56,7 @@ public class SampleSetIntegrationTest {
     private SampleSetProjectInfoConverter projInfoConv = new SampleSetProjectInfoConverter();
     private SampleSetToRequestConverter sampleSetToReqConv = new SampleSetToRequestConverter(projInfoConv);
     private RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever,
-            reqDataPropagator, sampleSetToReqConv);
+            reqDataPropagator, sampleSetToReqConv, mock(ReadOnlyExternalSamplesRepository.class));
     private VeloxProjectProxy veloxProjectProxy;
     private DataRecord sampleSetRecord;
     private VeloxConnection connection;

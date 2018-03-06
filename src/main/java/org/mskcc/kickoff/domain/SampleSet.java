@@ -2,6 +2,7 @@ package org.mskcc.kickoff.domain;
 
 import org.mskcc.domain.PairingInfo;
 import org.mskcc.domain.Recipe;
+import org.mskcc.domain.external.ExternalSample;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -16,6 +17,7 @@ public class SampleSet {
     private String baitSet;
     private String finalProjectTitle;
     private Recipe recipe;
+    private List<ExternalSample> externalSamples = new ArrayList<>();
 
     public SampleSet(String name) {
         this.name = name;
@@ -85,5 +87,13 @@ public class SampleSet {
 
     public void addPairing(PairingInfo pairing) {
         this.pairings.add(pairing);
+    }
+
+    public List<ExternalSample> getExternalSamples() {
+        return externalSamples;
+    }
+
+    public void setExternalSamples(List<ExternalSample> externalSamples) {
+        this.externalSamples = externalSamples;
     }
 }

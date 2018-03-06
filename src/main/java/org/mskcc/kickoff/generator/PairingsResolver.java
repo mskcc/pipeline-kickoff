@@ -8,7 +8,6 @@ import org.mskcc.kickoff.util.Constants;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public class PairingsResolver {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
@@ -22,11 +21,11 @@ public class PairingsResolver {
     }
 
     public Map<String, String> resolve(KickoffRequest request) {
-        LinkedHashMap<String, String> tumorIgoToCmoId = new LinkedHashMap<>();
-        LinkedHashMap<String, String> normalIgoToCmoId = new LinkedHashMap<>();
+        Map<String, String> tumorIgoToCmoId = new LinkedHashMap<>();
+        Map<String, String> normalIgoToCmoId = new LinkedHashMap<>();
 
         for (Sample sample : request.getAllValidSamples().values()) {
-            if (!sample.get(Constants.SAMPLE_CLASS).contains("Normal")) {
+            if (sample.isTumor()) {
                 tumorIgoToCmoId.put(sample.get(Constants.IGO_ID), sample.get(Constants.CORRECTED_CMO_ID));
             } else {
                 normalIgoToCmoId.put(sample.get(Constants.IGO_ID), sample.get(Constants.CORRECTED_CMO_ID));
@@ -38,7 +37,8 @@ public class PairingsResolver {
 
         for (Map.Entry<String, String> pairingInfo : pairingInfos.entrySet()) {
             if (shouldOverride(pairingInfo)) {
-                DEV_LOGGER.info(String.format("Overriding pairing info for tumor: %s, old normal: %s, new normal: %s", pairingInfo.getKey(), pairings.get(pairingInfo.getKey()), pairingInfo.getValue()));
+                DEV_LOGGER.info(String.format("Overriding pairing info for tumor: %s, old normal: %s, new normal: " +
+                        "%s", pairingInfo.getKey(), pairings.get(pairingInfo.getKey()), pairingInfo.getValue()));
                 pairings.put(pairingInfo.getKey(), pairingInfo.getValue());
             }
         }
@@ -48,10 +48,6 @@ public class PairingsResolver {
 
     private boolean shouldOverride(Map.Entry<String, String> pairingInfo) {
         return !isEmptyPairingInfo(pairingInfo);
-    }
-
-    private boolean isNormalDifferent(Map<String, String> pairings, Map.Entry<String, String> pairingInfo) {
-        return !Objects.equals(pairings.get(pairingInfo.getKey()), pairingInfo.getValue());
     }
 
     private boolean isEmptyPairingInfo(Map.Entry<String, String> pairingInfo) {

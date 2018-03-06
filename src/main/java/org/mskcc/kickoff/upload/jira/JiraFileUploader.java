@@ -21,6 +21,7 @@ import org.mskcc.kickoff.upload.jira.state.IssueStatus;
 import org.mskcc.kickoff.upload.jira.state.StatusFactory;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
@@ -53,7 +54,9 @@ public class JiraFileUploader implements FileUploader {
     private StatusFactory statusFactory;
     @Autowired
     private PmJiraUserRetriever pmJiraUserRetriever;
+
     @Autowired
+    @Qualifier("jiraRestTemplate")
     private RestTemplate restTemplate;
 
     private IssueStatus issueStatus;

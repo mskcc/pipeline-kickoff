@@ -241,7 +241,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     sample.setCmoSampleId(cmoNormalId);
                     sample.setPooledNormal(true);
                     sample.setTransfer(false);
-                    //@TODO check
+                    sample.setIsTumor(false);
                     sample.addRuns(getPooledNormalRuns(pooledNormalToRuns.getValue(), kickoffRequest));
 
                     Map<String, String> tempHashMap = getSampleInfoMap(pooledNormalRecord, sample, kickoffRequest);
