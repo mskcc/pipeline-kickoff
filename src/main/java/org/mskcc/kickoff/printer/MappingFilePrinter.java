@@ -32,7 +32,7 @@ import static org.mskcc.kickoff.util.Utils.filterToAscii;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
 @Component
-public class MappingFilePrinter implements FilePrinter {
+public class MappingFilePrinter extends FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
 
@@ -41,7 +41,6 @@ public class MappingFilePrinter implements FilePrinter {
 
     private final Predicate<Set<Pairedness>> pairednessValidPredicate;
     private final PairednessResolver pairednessResolver;
-    private final ObserverManager observerManager;
 
     @Value("${fastq_path}")
     private String fastq_path;
@@ -49,9 +48,9 @@ public class MappingFilePrinter implements FilePrinter {
     @Autowired
     public MappingFilePrinter(Predicate<Set<Pairedness>> pairednessValidPredicate, PairednessResolver
             pairednessResolver, ObserverManager observerManager) {
+        super(observerManager);
         this.pairednessValidPredicate = pairednessValidPredicate;
         this.pairednessResolver = pairednessResolver;
-        this.observerManager = observerManager;
     }
 
     @Override

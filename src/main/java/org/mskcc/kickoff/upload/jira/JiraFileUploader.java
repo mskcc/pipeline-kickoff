@@ -109,7 +109,7 @@ public class JiraFileUploader implements FileUploader {
 
         try {
             restClient = getJiraRestClient();
-            issueStatus = retrieveJiraIssueState(kickoffRequest, summary);
+            issueStatus = retrieveJiraIssueState(summary);
             issueStatus.uploadFiles(kickoffRequest, this, summary);
             issueStatus.validateInputs(summary, this);
             addInfoComment(summary);
@@ -201,7 +201,7 @@ public class JiraFileUploader implements FileUploader {
         return pmJiraUserRetriever.retrieve(projectManagerIgoName);
     }
 
-    private IssueStatus retrieveJiraIssueState(KickoffRequest kickoffRequest, String requestId) {
+    private IssueStatus retrieveJiraIssueState(String requestId) {
         Issue issue = getIssue(requestId);
 
         String currentState = issue.getStatus().getName();

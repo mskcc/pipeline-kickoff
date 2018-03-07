@@ -20,6 +20,7 @@ import org.mockito.MockitoAnnotations;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.FileManifestGenerator;
 import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.printer.ClinicalFilePrinter;
 import org.mskcc.kickoff.printer.FilePrinter;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.process.ProcessingType;
@@ -98,6 +99,9 @@ public class JiraUploadFilesTest {
     private MappingFilePrinter mappingFilePrinter;
 
     @Autowired
+    private ClinicalFilePrinter clinicalFilePrinter;
+
+    @Autowired
     private JiraTestConfiguration.MockJiraFileUploader fileUploader;
     private String initialTransitionName = "To Do";
     private String regenerateTransition = "Regeneration Requested";
@@ -114,6 +118,7 @@ public class JiraUploadFilesTest {
 
         fileUploader.setThrowExceptionOnDelete(false);
         ManifestFile.MAPPING.setFilePrinter(mappingFilePrinter);
+        ManifestFile.CLINICAL.setFilePrinter(clinicalFilePrinter);
     }
 
     private void clearFileGeneratedStatus() {
@@ -199,7 +204,7 @@ public class JiraUploadFilesTest {
 
         //then
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
-                .PAIRING, ManifestFile.REQUEST));
+                .PAIRING, ManifestFile.REQUEST, ManifestFile.CLINICAL));
         assertJiraStatus(filesGeneratedStatus);
     }
 
@@ -215,7 +220,7 @@ public class JiraUploadFilesTest {
 
         //then
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.GROUPING, ManifestFile.PAIRING, ManifestFile
-                .REQUEST, ManifestFile.MAPPING));
+                .REQUEST, ManifestFile.MAPPING, ManifestFile.CLINICAL));
         assertJiraStatus(filesGeneratedStatus);
 
         assertAttachmentsAreDifferent(allAttachmentsRun1);
@@ -233,7 +238,7 @@ public class JiraUploadFilesTest {
 
         //then
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.GROUPING, ManifestFile.PAIRING, ManifestFile
-                .REQUEST));
+                .REQUEST, ManifestFile.CLINICAL));
         assertJiraStatus(badInputsStatus);
 
         assertAttachmentsAreDifferent(allAttachmentsRun1);
@@ -242,7 +247,7 @@ public class JiraUploadFilesTest {
     private List<JiraIssue.Fields.Attachment> uploadFiles() throws Exception {
         fileManifestGenerator.generate(projectId);
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
-                .PAIRING, ManifestFile.REQUEST));
+                .PAIRING, ManifestFile.REQUEST, ManifestFile.CLINICAL));
         assertJiraStatus(filesGeneratedStatus);
 
         List<JiraIssue.Fields.Attachment> allAttachmentsRun1 = getAllAttachments();
@@ -268,7 +273,7 @@ public class JiraUploadFilesTest {
 
         //then
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
-                .PAIRING, ManifestFile.REQUEST));
+                .PAIRING, ManifestFile.REQUEST, ManifestFile.CLINICAL));
 
         assertJiraStatus(regenerateStatus);
 
@@ -276,9 +281,21 @@ public class JiraUploadFilesTest {
     }
 
     @Test
-    public void whenNotAllRequiredFilesAreGenerated_shouldTransitionsToBadInputsStatus() throws Exception {
+    public void whenNoMappingFileIsGenerated_shouldTransitionsToBadInputsStatus() throws Exception {
         //given
         ManifestFile.MAPPING.setFilePrinter(getNotPrintingMappingFilePrinter());
+
+        //when
+        fileManifestGenerator.generate(projectId);
+
+        //then
+        assertJiraStatus(badInputsStatus);
+    }
+
+    @Test
+    public void whenNoClinicalFileIsGenerated_shouldTransitionsToBadInputsStatus() throws Exception {
+        //given
+        ManifestFile.CLINICAL.setFilePrinter(getNotPrintingClinicalFilePrinter());
 
         //when
         fileManifestGenerator.generate(projectId);
@@ -321,6 +338,14 @@ public class JiraUploadFilesTest {
         Mockito.doReturn(false).when(mappingFilePrinter).shouldPrint(any());
 
         return mappingFilePrinter;
+    }
+
+    private FilePrinter getNotPrintingClinicalFilePrinter() {
+        ClinicalFilePrinter clinicalFilePrinter = mock(ClinicalFilePrinter.class);
+        Mockito.doCallRealMethod().when(clinicalFilePrinter).getFilePath(any());
+        Mockito.doReturn(false).when(clinicalFilePrinter).shouldPrint(any());
+
+        return clinicalFilePrinter;
     }
 
     private void assertFilesUploadedToJira(String projectId, List<ManifestFile> expectedFiles) throws Exception {

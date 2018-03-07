@@ -154,13 +154,38 @@ public class JiraTestConfiguration {
     }
 
     @Bean
+    public ClinicalFilePrinter clinicalFilePrinter() {
+        return new ClinicalFilePrinter(observerManager());
+    }
+
+    @Bean
     public PairingFilePrinter pairingFilePrinter() {
-        return new PairingFilePrinter(pairingsResolver);
+        return new PairingFilePrinter(pairingsResolver, observerManager());
     }
 
     @Bean
     public SampleKeyPrinter sampleKeyFilePrinter() {
-        return new SampleKeyPrinter();
+        return new SampleKeyPrinter(observerManager());
+    }
+
+    @Bean
+    public PatientFilePrinter patientFilePrinter() {
+        return new PatientFilePrinter(observerManager());
+    }
+
+    @Bean
+    public ReadMePrinter readMePrinter() {
+        return new ReadMePrinter(observerManager());
+    }
+
+    @Bean
+    public CidToPidMappingPrinter cidToPidMappingPrinter() {
+        return new CidToPidMappingPrinter(observerManager());
+    }
+
+    @Bean
+    public ManifestFilePrinter manifestFilePrinter() {
+        return new ManifestFilePrinter(observerManager());
     }
 
     @Bean

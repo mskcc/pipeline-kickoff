@@ -9,7 +9,6 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.notify.GenerationError;
-import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
@@ -29,7 +28,7 @@ import static org.mskcc.kickoff.util.Utils.filterToAscii;
 import static org.mskcc.kickoff.util.Utils.getJoinedCollection;
 
 @Component
-public class RequestFilePrinter implements FilePrinter {
+public class RequestFilePrinter extends FilePrinter {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
@@ -39,8 +38,6 @@ public class RequestFilePrinter implements FilePrinter {
     private final String manualMappingConfigMap = "name:ProjectTitle,desc:ProjectDesc,invest:PI,invest_name:PI_Name," +
             "tumor_type:TumorType,date_of_last_update:DateOfLastUpdate,assay_type:Assay";
 
-    private final ObserverManager observerManager;
-
     private final Set<String> requiredProjectInfoFields = new HashSet<>();
 
     {
@@ -49,7 +46,7 @@ public class RequestFilePrinter implements FilePrinter {
 
     @Autowired
     public RequestFilePrinter(ObserverManager observerManager) {
-        this.observerManager = observerManager;
+        super(observerManager);
     }
 
     public void print(KickoffRequest request) {
@@ -343,9 +340,5 @@ public class RequestFilePrinter implements FilePrinter {
         Utils.setExitLater(true);
         PM_LOGGER.log(pmLogLevel, message);
         DEV_LOGGER.log(devLogLevel, message);
-    }
-
-    public void register(ManifestFileObserver manifestFileObserver) {
-        observerManager.register(manifestFileObserver);
     }
 }
