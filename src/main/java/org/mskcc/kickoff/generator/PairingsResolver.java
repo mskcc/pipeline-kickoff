@@ -37,7 +37,7 @@ public class PairingsResolver {
         Map<String, String> pairingInfos = pairingInfoRetriever.retrieve(tumorIgoToCmoId, request);
 
         for (Map.Entry<String, String> pairingInfo : pairingInfos.entrySet()) {
-            if(shouldOverride(pairings, pairingInfo)) {
+            if (shouldOverride(pairingInfo)) {
                 DEV_LOGGER.info(String.format("Overriding pairing info for tumor: %s, old normal: %s, new normal: %s", pairingInfo.getKey(), pairings.get(pairingInfo.getKey()), pairingInfo.getValue()));
                 pairings.put(pairingInfo.getKey(), pairingInfo.getValue());
             }
@@ -46,7 +46,7 @@ public class PairingsResolver {
         return pairings;
     }
 
-    private boolean shouldOverride(Map<String, String> pairings, Map.Entry<String, String> pairingInfo) {
+    private boolean shouldOverride(Map.Entry<String, String> pairingInfo) {
         return !isEmptyPairingInfo(pairingInfo);
     }
 

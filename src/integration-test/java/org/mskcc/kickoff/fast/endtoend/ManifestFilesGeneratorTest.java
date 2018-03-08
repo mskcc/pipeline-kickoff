@@ -18,6 +18,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.fast.endtoend.ManifestFilesGeneratorTestConfiguration;
 import org.mskcc.kickoff.generator.FileManifestGenerator;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.printer.ClinicalFilePrinter;
@@ -55,10 +56,10 @@ import static org.mockito.Mockito.mock;
 
 @ComponentScan(basePackages = "org.mskcc.kickoff")
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(classes = JiraTestConfiguration.class)
+@ContextConfiguration(classes = ManifestFilesGeneratorTestConfiguration.class)
 @ActiveProfiles({"test", "tango"})
 @PropertySource("classpath:application-dev.properties")
-public class JiraUploadFilesTest {
+public class ManifestFilesGeneratorTest {
     private static final Logger LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     private final String projectId = "04919_G";
@@ -102,7 +103,7 @@ public class JiraUploadFilesTest {
     private ClinicalFilePrinter clinicalFilePrinter;
 
     @Autowired
-    private JiraTestConfiguration.MockJiraFileUploader fileUploader;
+    private ManifestFilesGeneratorTestConfiguration.MockJiraFileUploader fileUploader;
     private String initialTransitionName = "To Do";
     private String regenerateTransition = "Regeneration Requested";
 
@@ -308,6 +309,19 @@ public class JiraUploadFilesTest {
     public void whenGeneratedFilesContainErrors_shouldTransitionsToBadInputsStatus() throws Exception {
         //given
         ManifestFile.REQUEST.addGenerationError("terrible error");
+
+        //when
+        fileManifestGenerator.generate(projectId);
+
+        //then
+        assertJiraStatus(badInputsStatus);
+    }
+
+    @Test
+    public void whenPairingFileHasError_shouldSetStatusBadInputs() throws Exception {
+        //given
+        KickoffRequest request = new KickoffRequest(projectId, mock(ProcessingType.class));
+        ManifestFile.PAIRING.addGenerationError("some error");
 
         //when
         fileManifestGenerator.generate(projectId);

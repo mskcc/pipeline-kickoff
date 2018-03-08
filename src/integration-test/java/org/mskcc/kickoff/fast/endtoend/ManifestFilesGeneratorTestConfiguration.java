@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.fast.jirauploadfiles;
+package org.mskcc.kickoff.fast.endtoend;
 
 import org.mskcc.domain.Pairedness;
 import org.mskcc.kickoff.archive.FilesArchiver;
@@ -37,7 +37,7 @@ import static org.mockito.Mockito.mock;
 
 @Configuration
 @Import(AppConfiguration.class)
-public class JiraTestConfiguration {
+public class ManifestFilesGeneratorTestConfiguration {
     @Value("${jira.url}")
     private String jiraUrl;
 
@@ -78,13 +78,13 @@ public class JiraTestConfiguration {
     }
 
     @Bean
-    public ToHoldTransitioner dummyToHoldTransitioner() {
-        return new DummyTransitioner();
+    public BadInputsIssueStatus badInputsJiraIssueState() {
+        return new BadInputsIssueStatus();
     }
 
     @Bean
-    public BadInputsIssueStatus badInputsJiraIssueState() {
-        return new BadInputsIssueStatus();
+    public ToHoldTransitioner toHoldTransitioner() {
+        return new DummyTransitioner();
     }
 
     @Bean
@@ -198,7 +198,7 @@ public class JiraTestConfiguration {
         return new LoggingClientHttpRequestInterceptor();
     }
 
-    class MockJiraFileUploader extends JiraFileUploader {
+    public class MockJiraFileUploader extends JiraFileUploader {
         private boolean throwExceptionOnDelete;
 
         public void setThrowExceptionOnDelete(boolean throwException) {

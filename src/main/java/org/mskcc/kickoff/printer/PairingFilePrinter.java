@@ -6,6 +6,7 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.PairingsResolver;
 import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
@@ -61,6 +62,8 @@ public class PairingFilePrinter extends FilePrinter {
                 for (String tum : pairingInfo.keySet()) {
                     String norm = pairingInfo.get(tum);
                     pW.write(sampleNormalization(norm) + "\t" + sampleNormalization(tum) + "\n");
+
+                    notifyIfTumorUnmatched(request, tum, norm);
                 }
                 for (String unmatchedNorm : missingNormalsToBeAdded) {
                     String tum = "na";
@@ -77,6 +80,13 @@ public class PairingFilePrinter extends FilePrinter {
             }
         } catch (Exception e) {
             DEV_LOGGER.warn("Exception thrown: ", e);
+        }
+    }
+
+    private void notifyIfTumorUnmatched(KickoffRequest request, String tum, String norm) {
+        if (Constants.NA_LOWER_CASE.equals(norm)) {
+            String message = String.format("No normal sample for tumor %s", tum);
+            observerManager.notifyObserversOfError(request, ManifestFile.PAIRING, message, GenerationError.INSTANCE);
         }
     }
 
