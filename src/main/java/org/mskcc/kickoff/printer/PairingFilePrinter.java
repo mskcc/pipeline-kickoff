@@ -24,13 +24,13 @@ import static org.mskcc.kickoff.config.Arguments.shiny;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
 @Component
-public class PairingFilePrinter implements FilePrinter {
+public class PairingFilePrinter extends FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private final PairingsResolver pairingsResolver;
-    private final ObserverManager observerManager = new ObserverManager();
 
     @Autowired
-    public PairingFilePrinter(PairingsResolver pairingsResolver) {
+    public PairingFilePrinter(PairingsResolver pairingsResolver, ObserverManager observerManager) {
+        super(observerManager);
         this.pairingsResolver = pairingsResolver;
     }
 
@@ -100,7 +100,7 @@ public class PairingFilePrinter implements FilePrinter {
 
     private void printPairingExcel(KickoffRequest request, String pairing_filename, Map<String, String> pair_Info,
                                    Set<String> missingNormalsToBeAdded) {
-        new PairingXlsxPrinter(pairing_filename, pair_Info, missingNormalsToBeAdded).print(request);
+        new PairingXlsxPrinter(pairing_filename, pair_Info, missingNormalsToBeAdded, observerManager).print(request);
     }
 
     public void register(ManifestFileObserver manifestFileObserver) {

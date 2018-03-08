@@ -13,13 +13,13 @@ public enum ManifestFile {
     MAPPING("Mapping file"),
     PAIRING("Pairing file"),
     SAMPLE_KEY("Sample Key file"),
-    PATIENT("Patient file", new PatientFilePrinter()),
-    CLINICAL("Clinical file", new ClinicalFilePrinter()),
+    PATIENT("Patient file"),
+    CLINICAL("Clinical file"),
     GROUPING("Grouping file"),
     REQUEST("Request file"),
-    README("Readme file", new ReadMePrinter()),
-    MANIFEST("Manifest file", new ManifestFilePrinter()),
-    C_TO_P_MAPPING("C to p mapping file", new CidToPidMappingPrinter());
+    README("Readme file"),
+    MANIFEST("Manifest file"),
+    C_TO_P_MAPPING("C to p mapping file");
 
     private static List<ManifestFile> requiredFiles = new ArrayList<>();
 
@@ -102,6 +102,21 @@ public enum ManifestFile {
         @Autowired
         private SampleKeyPrinter sampleKeyPrinter;
 
+        @Autowired
+        private ClinicalFilePrinter clinicalFilePrinter;
+
+        @Autowired
+        private PatientFilePrinter patientFilePrinter;
+
+        @Autowired
+        private ReadMePrinter readMePrinter;
+
+        @Autowired
+        private CidToPidMappingPrinter cidToPidMappingPrinter;
+
+        @Autowired
+        private ManifestFilePrinter manifestFilePrinter;
+
         @PostConstruct
         public void init() {
             initObservers();
@@ -110,6 +125,11 @@ public enum ManifestFile {
             ManifestFile.PAIRING.setFilePrinter(pairingFilePrinter);
             ManifestFile.REQUEST.setFilePrinter(requestFilePrinter);
             ManifestFile.SAMPLE_KEY.setFilePrinter(sampleKeyPrinter);
+            ManifestFile.CLINICAL.setFilePrinter(clinicalFilePrinter);
+            ManifestFile.PATIENT.setFilePrinter(patientFilePrinter);
+            ManifestFile.README.setFilePrinter(readMePrinter);
+            ManifestFile.C_TO_P_MAPPING.setFilePrinter(cidToPidMappingPrinter);
+            ManifestFile.MANIFEST.setFilePrinter(manifestFilePrinter);
         }
 
         private void initObservers() {
@@ -117,6 +137,11 @@ public enum ManifestFile {
             mappingFilePrinter.register(fileGenerationStatusObserver);
             pairingFilePrinter.register(fileGenerationStatusObserver);
             requestFilePrinter.register(fileGenerationStatusObserver);
+            clinicalFilePrinter.register(fileGenerationStatusObserver);
+            patientFilePrinter.register(fileGenerationStatusObserver);
+            readMePrinter.register(fileGenerationStatusObserver);
+            cidToPidMappingPrinter.register(fileGenerationStatusObserver);
+            manifestFilePrinter.register(fileGenerationStatusObserver);
         }
     }
 }

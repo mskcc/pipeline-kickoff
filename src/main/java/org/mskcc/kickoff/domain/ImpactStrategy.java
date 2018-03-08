@@ -8,6 +8,7 @@ public class ImpactStrategy implements RequestTypeStrategy {
     @Override
     public void setRequiredFiles() {
         ManifestFile.setRequiredFiles(Arrays.asList(
+                ManifestFile.CLINICAL,
                 ManifestFile.GROUPING,
                 ManifestFile.PAIRING,
                 ManifestFile.MAPPING,

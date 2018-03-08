@@ -4,6 +4,7 @@ import org.apache.log4j.Logger;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 
 import java.io.File;
@@ -15,14 +16,16 @@ import java.util.Set;
 
 import static org.mskcc.kickoff.util.Utils.addRowToSheet;
 
-class PairingXlsxPrinter implements FilePrinter  {
+class PairingXlsxPrinter extends FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     private String pairing_filename;
     private Map<String, String> pair_info;
     private Set<String> missingNormalsToBeAdded;
 
-    public PairingXlsxPrinter(String pairing_filename, Map<String, String> pair_Info, Set<String> missingNormalsToBeAdded) {
+    public PairingXlsxPrinter(String pairing_filename, Map<String, String> pair_Info, Set<String>
+            missingNormalsToBeAdded, ObserverManager observerManager) {
+        super(observerManager);
         this.pairing_filename = pairing_filename;
         this.pair_info = pair_Info;
         this.missingNormalsToBeAdded = missingNormalsToBeAdded;
@@ -37,7 +40,8 @@ class PairingXlsxPrinter implements FilePrinter  {
         XSSFSheet pairingInfo = wb.createSheet(Constants.PAIRING_INFO);
         int rowNum = 0;
 
-        pairingInfo = addRowToSheet(wb, pairingInfo, new ArrayList<>(Arrays.asList(Constants.TUMOR, Constants.MATCHED_NORMAL, Constants.SAMPLE_RENAME)), rowNum, Constants.EXCEL_ROW_TYPE_HEADER);
+        pairingInfo = addRowToSheet(wb, pairingInfo, new ArrayList<>(Arrays.asList(Constants.TUMOR, Constants
+                .MATCHED_NORMAL, Constants.SAMPLE_RENAME)), rowNum, Constants.EXCEL_ROW_TYPE_HEADER);
         rowNum++;
 
         for (String tum : pair_info.keySet()) {
@@ -49,7 +53,8 @@ class PairingXlsxPrinter implements FilePrinter  {
 
         for (String unmatchedNorm : missingNormalsToBeAdded) {
             String tum = "na";
-            pairingInfo = addRowToSheet(wb, pairingInfo, new ArrayList<>(Arrays.asList(tum, unmatchedNorm)), rowNum, null);
+            pairingInfo = addRowToSheet(wb, pairingInfo, new ArrayList<>(Arrays.asList(tum, unmatchedNorm)), rowNum,
+                    null);
             rowNum++;
 
         }

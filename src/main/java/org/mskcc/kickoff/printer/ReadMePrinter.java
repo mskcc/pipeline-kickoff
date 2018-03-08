@@ -3,8 +3,11 @@ package org.mskcc.kickoff.printer;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.RequestType;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -12,8 +15,14 @@ import java.io.PrintWriter;
 
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
 
-public class ReadMePrinter implements FilePrinter  {
+@Component
+public class ReadMePrinter extends FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+
+    @Autowired
+    public ReadMePrinter(ObserverManager observerManager) {
+        super(observerManager);
+    }
 
     public void print(KickoffRequest request) {
         DEV_LOGGER.info(String.format("Starting to create file: %s", getFilePath(request)));

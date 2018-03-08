@@ -27,15 +27,14 @@ import static org.mskcc.kickoff.util.Utils.filterToAscii;
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
 @Component
-public class GroupingFilePrinter implements FilePrinter {
+public class GroupingFilePrinter extends FilePrinter {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private final DecimalFormat groupNumberFormat = new DecimalFormat("000");
-    private final ObserverManager observerManager;
 
     @Autowired
     public GroupingFilePrinter(ObserverManager observerManager) {
-        this.observerManager = observerManager;
+        super(observerManager);
     }
 
     public void print(KickoffRequest kickoffRequest) {

@@ -5,8 +5,10 @@ import org.apache.log4j.Logger;
 import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -20,8 +22,13 @@ import java.util.function.Predicate;
 
 import static org.mskcc.kickoff.util.Utils.sampleNormalization;
 
-public abstract class ClinicalPatientFilePrinter implements FilePrinter {
+public abstract class ClinicalPatientFilePrinter extends FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+
+    @Autowired
+    public ClinicalPatientFilePrinter(ObserverManager observerManager) {
+        super(observerManager);
+    }
 
     @Override
     public void print(KickoffRequest kickoffRequest) {
@@ -70,11 +77,15 @@ public abstract class ClinicalPatientFilePrinter implements FilePrinter {
                 PrintWriter pW = new PrintWriter(new FileWriter(outputFile, false), false);
                 pW.write(outputText);
                 pW.close();
+
+                notifyObservers(kickoffRequest);
             } catch (Exception e) {
                 DEV_LOGGER.warn(String.format("Exception thrown while creating file: %s", getOutputFilenameEnding()), e);
             }
         }
     }
+
+    protected abstract void notifyObservers(KickoffRequest kickoffRequest);
 
     @Override
     public String getFilePath(KickoffRequest request) {

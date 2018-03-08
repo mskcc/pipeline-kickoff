@@ -3,17 +3,26 @@ package org.mskcc.kickoff.printer;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 
-public class CidToPidMappingPrinter implements FilePrinter {
+@Component
+public class CidToPidMappingPrinter extends FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     private String mappingFileName = "sample_c_to_p_mapping.txt";
+
+    @Autowired
+    public CidToPidMappingPrinter(ObserverManager observerManager) {
+        super(observerManager);
+    }
 
     @Override
     public void print(KickoffRequest request) {

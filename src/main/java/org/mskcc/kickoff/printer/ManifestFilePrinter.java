@@ -12,21 +12,30 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.FileOutputStream;
 import java.util.*;
 
 import static org.mskcc.util.Constants.MAX_HEADER_SIZE;
 
-public class ManifestFilePrinter implements FilePrinter  {
+@Component
+public class ManifestFilePrinter extends FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private static final List<String> hashMapHeader = Arrays.asList(Constants.MANIFEST_SAMPLE_ID, Constants.CMO_PATIENT_ID, Constants.INVESTIGATOR_SAMPLE_ID, Constants.INVESTIGATOR_PATIENT_ID, Constants.ONCOTREE_CODE, Constants.SAMPLE_CLASS, Constants.TISSUE_SITE, Constants.SAMPLE_TYPE, Constants.SPECIMEN_PRESERVATION_TYPE, Constants.Excel.SPECIMEN_COLLECTION_YEAR, "SEX", "BARCODE_ID", "BARCODE_INDEX", "LIBRARY_INPUT", "LIBRARY_YIELD", "CAPTURE_INPUT", "CAPTURE_NAME", "CAPTURE_CONCENTRATION", Constants.CAPTURE_BAIT_SET, Constants.SPIKE_IN_GENES, Constants.STATUS, Constants.INCLUDE_RUN_ID, Constants.
             EXCLUDE_RUN_ID);
     private static final List<String> exceptionList = Arrays.asList(Constants.TISSUE_SITE, Constants.Excel.SPECIMEN_COLLECTION_YEAR, Constants.SPIKE_IN_GENES);
     private static final List<String> silentList = Arrays.asList(Constants.STATUS, Constants.EXCLUDE_RUN_ID);
     private static final String manualMappingHashMap = "LIBRARY_INPUT:LIBRARY_INPUT[ng],LIBRARY_YIELD:LIBRARY_YIELD[ng],CAPTURE_INPUT:CAPTURE_INPUT[ng],CAPTURE_CONCENTRATION:CAPTURE_CONCENTRATION[nM],MANIFEST_SAMPLE_ID:CMO_SAMPLE_ID";
+
+    @Autowired
+    public ManifestFilePrinter(ObserverManager observerManager) {
+        super(observerManager);
+    }
 
     @Override
     public void print(KickoffRequest kickoffRequest) {
