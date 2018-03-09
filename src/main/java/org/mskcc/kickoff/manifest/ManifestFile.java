@@ -1,6 +1,7 @@
 package org.mskcc.kickoff.manifest;
 
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.*;
 import org.mskcc.kickoff.printer.observer.FileGenerationStatusManifestFileObserver;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,12 +28,7 @@ public enum ManifestFile {
 
     private FilePrinter filePrinter;
     private boolean fileGenerated;
-    private List<String> generationErrors = new ArrayList<>();
-
-    ManifestFile(String name, FilePrinter filePrinter) {
-        this.name = name;
-        this.filePrinter = filePrinter;
-    }
+    private List<GenerationError> generationErrors = new ArrayList<>();
 
     ManifestFile(String name) {
         this.name = name;
@@ -66,11 +62,11 @@ public enum ManifestFile {
         this.fileGenerated = fileGenerated;
     }
 
-    public List<String> getGenerationErrors() {
+    public List<GenerationError> getGenerationErrors() {
         return generationErrors;
     }
 
-    public void addGenerationError(String generationError) {
+    public void addGenerationError(GenerationError generationError) {
         this.generationErrors.add(generationError);
     }
 

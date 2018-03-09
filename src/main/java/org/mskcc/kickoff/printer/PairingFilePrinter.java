@@ -63,16 +63,17 @@ public class PairingFilePrinter extends FilePrinter {
                     String norm = pairingInfo.get(tum);
                     pW.write(sampleNormalization(norm) + "\t" + sampleNormalization(tum) + "\n");
 
-                    notifyIfTumorUnmatched(request, tum, norm);
+                    notifyIfTumorUnmatched(tum, norm);
                 }
                 for (String unmatchedNorm : missingNormalsToBeAdded) {
                     String tum = "na";
                     pW.write(sampleNormalization(unmatchedNorm) + "\t" + sampleNormalization(tum) + "\n");
+                    notifyNormalUnmatched(unmatchedNorm);
                 }
 
                 pW.close();
 
-                observerManager.notifyObserversOfFileCreated(request, ManifestFile.PAIRING);
+                observerManager.notifyObserversOfFileCreated(ManifestFile.PAIRING);
 
                 if (shiny) {
                     printPairingExcel(request, filename, pairingInfo, missingNormalsToBeAdded);
@@ -83,10 +84,17 @@ public class PairingFilePrinter extends FilePrinter {
         }
     }
 
-    private void notifyIfTumorUnmatched(KickoffRequest request, String tum, String norm) {
+    private void notifyNormalUnmatched(String unmatchedNorm) {
+        GenerationError generationError = new GenerationError(String.format("No tumor sample for normal %s",
+                unmatchedNorm), ErrorCode.UNMATCHED_NORMAL);
+        observerManager.notifyObserversOfError(ManifestFile.PAIRING, generationError);
+    }
+
+    private void notifyIfTumorUnmatched(String tum, String norm) {
         if (Constants.NA_LOWER_CASE.equals(norm)) {
-            String message = String.format("No normal sample for tumor %s", tum);
-            observerManager.notifyObserversOfError(request, ManifestFile.PAIRING, message, GenerationError.INSTANCE);
+            GenerationError generationError = new GenerationError(String.format("No normal sample for tumor %s", tum),
+                    ErrorCode.UNMATCHED_TUMOR);
+            observerManager.notifyObserversOfError(ManifestFile.PAIRING, generationError);
         }
     }
 

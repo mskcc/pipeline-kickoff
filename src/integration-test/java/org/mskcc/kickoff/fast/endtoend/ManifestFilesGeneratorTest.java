@@ -21,7 +21,9 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.fast.endtoend.ManifestFilesGeneratorTestConfiguration;
 import org.mskcc.kickoff.generator.FileManifestGenerator;
 import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.ClinicalFilePrinter;
+import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.printer.FilePrinter;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.process.ProcessingType;
@@ -308,7 +310,7 @@ public class ManifestFilesGeneratorTest {
     @Test
     public void whenGeneratedFilesContainErrors_shouldTransitionsToBadInputsStatus() throws Exception {
         //given
-        ManifestFile.REQUEST.addGenerationError("terrible error");
+        ManifestFile.REQUEST.addGenerationError(new GenerationError("terribel eror", ErrorCode.UNMATCHED_NORMAL));
 
         //when
         fileManifestGenerator.generate(projectId);
@@ -321,7 +323,7 @@ public class ManifestFilesGeneratorTest {
     public void whenPairingFileHasError_shouldSetStatusBadInputs() throws Exception {
         //given
         KickoffRequest request = new KickoffRequest(projectId, mock(ProcessingType.class));
-        ManifestFile.PAIRING.addGenerationError("some error");
+        ManifestFile.PAIRING.addGenerationError(new GenerationError("some eror", ErrorCode.UNMATCHED_NORMAL));
 
         //when
         fileManifestGenerator.generate(projectId);
