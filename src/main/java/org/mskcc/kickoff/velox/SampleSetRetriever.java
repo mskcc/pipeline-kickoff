@@ -54,7 +54,6 @@ class SampleSetRetriever {
             throws Exception {
         List<KickoffRequest> kickoffRequests = new ArrayList<>();
         kickoffRequests.addAll(sampleSetProxy.getRequests(processingType));
-        kickoffRequests.addAll(convertToRequests(sampleSetProxy.getIgoSamples(), processingType));
 
         Collection<KickoffRequest> requestsFromSamples = convertToRequests(samples, processingType);
         kickoffRequests.addAll(requestsFromSamples);

@@ -3,6 +3,7 @@ package org.mskcc.kickoff.converter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.*;
+import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
@@ -105,7 +106,9 @@ public class SampleSetToRequestConverter {
                 .flatMap(r -> r.getRunIds().stream())
                 .collect(Collectors.toSet());
 
-        runIdList.forEach(kickoffRequest::addRunID);
+        for (String runId : runIdList) {
+            kickoffRequest.addRunID(runId);
+        }
     }
 
     private void setReadmeInfo(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
@@ -114,9 +117,13 @@ public class SampleSetToRequestConverter {
     }
 
     private void setPools(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
-        sampleSet.getKickoffRequests().stream()
+        List<Map.Entry<String, Pool>> pools = sampleSet.getKickoffRequests().stream()
                 .flatMap(r -> r.getPools().entrySet().stream())
-                .forEach(pool -> kickoffRequest.putPoolIfAbsent(pool.getValue()));
+                .collect(Collectors.toList());
+
+        for (Map.Entry<String, Pool> pool : pools) {
+            kickoffRequest.putPoolIfAbsent(pool.getValue());
+        }
     }
 
     private void setStrand(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
@@ -152,8 +159,9 @@ public class SampleSetToRequestConverter {
         DEV_LOGGER.info(String.format("Samples found for sample set: %s [%s]", sampleSet.getName(), Utils
                 .getJoinedCollection(sampleSetSamples.keySet())));
 
-        sampleSet.getExternalSamples().stream()
-                .forEach(es -> sampleSetSamples.put(es.getIgoId(), es));
+        for (ExternalSample externalSample : sampleSet.getExternalSamples()) {
+            sampleSetSamples.put(externalSample.getIgoId(), externalSample);
+        }
 
         kickoffRequest.setSamples(sampleSetSamples);
 
@@ -231,10 +239,13 @@ public class SampleSetToRequestConverter {
         Set<LibType> libTypes = sampleSet.getKickoffRequests().stream()
                 .flatMap(r -> r.getLibTypes().stream())
                 .collect(Collectors.toSet());
-        libTypes.forEach(kickoffRequest::addLibType);
+
+        for (LibType libType : libTypes) {
+            kickoffRequest.addLibType(libType);
+        }
     }
 
-    private void setProjectInvestigators(KickoffRequest kickoffRequest, SampleSet sampleSet) {
+    private void setProjectInvestigators(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         kickoffRequest.setPi(sampleSet.getPrimaryRequest().getPi());
     }
 
