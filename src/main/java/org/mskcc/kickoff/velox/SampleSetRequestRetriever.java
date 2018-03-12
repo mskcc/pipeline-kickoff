@@ -3,7 +3,7 @@ package org.mskcc.kickoff.velox;
 import com.velox.api.datarecord.DataRecord;
 import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.domain.SampleSet;
+import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.retriever.RequestsRetriever;
@@ -30,9 +30,9 @@ public class SampleSetRequestRetriever implements RequestsRetriever {
 
     @Override
     public KickoffRequest retrieve(String projectId, ProcessingType processingType) throws Exception {
-        SampleSet sampleSet = sampleSetRetriever.retrieve(projectId, processingType);
+        KickoffSampleSet sampleSet = sampleSetRetriever.retrieve(projectId, processingType);
 
-        requestDataPropagator.propagateRequestData(sampleSet.getRequests());
+        requestDataPropagator.propagateRequestData(sampleSet.getKickoffRequests());
         KickoffRequest kickoffRequest = sampleSetToRequestConverter.convert(sampleSet);
         kickoffRequest.setPairingInfos(veloxPairingsRetriever.retrieve(sampleSetRecord, kickoffRequest));
 

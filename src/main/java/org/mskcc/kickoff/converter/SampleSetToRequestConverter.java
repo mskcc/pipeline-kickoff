@@ -5,7 +5,7 @@ import org.apache.log4j.Logger;
 import org.mskcc.domain.*;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.domain.SampleSet;
+import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.util.Constants;
@@ -28,7 +28,7 @@ public class SampleSetToRequestConverter {
         this.sampleSetProjectInfoConverter = sampleSetProjectInfoConverter;
     }
 
-    public KickoffRequest convert(SampleSet sampleSet) {
+    public KickoffRequest convert(KickoffSampleSet sampleSet) {
         KickoffRequest kickoffRequest = new KickoffRequest(sampleSet.getName(), getProcessingType(sampleSet));
 
         if (hasRequests(sampleSet)) {
@@ -60,24 +60,25 @@ public class SampleSetToRequestConverter {
         return kickoffRequest;
     }
 
-    private void setRequests(KickoffRequest kickoffRequest, SampleSet sampleSet) {
-        kickoffRequest.addRequests(sampleSet.getRequests());
+    private void setRequests(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        kickoffRequest.addRequests(sampleSet.getKickoffRequests());
     }
 
-    private boolean hasRequests(SampleSet sampleSet) {
-        DEV_LOGGER.info(String.format("Found %d requests for SampleSet: %s [%s]", sampleSet.getRequests().size(),
+    private boolean hasRequests(KickoffSampleSet sampleSet) {
+        DEV_LOGGER.info(String.format("Found %d requests for SampleSet: %s [%s]", sampleSet.getKickoffRequests().size(),
                 sampleSet.getName(), getRequestsList(sampleSet)));
 
-        return sampleSet.getRequests().size() > 0;
+        return sampleSet.getKickoffRequests().size() > 0;
     }
 
-    private String getRequestsList(SampleSet sampleSet) {
-        return sampleSet.getRequests().stream().map(Request::getId).collect(Collectors.joining(","));
+    private String getRequestsList(KickoffSampleSet sampleSet) {
+        return sampleSet.getKickoffRequests().stream().map(Request::getId).collect(Collectors.joining(","));
     }
 
-    private void setPatients(KickoffRequest kickoffRequest, SampleSet sampleSet) {
+    private void setPatients(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         Patient.resetGroupCounter();
-        List<Patient> allRequestsPatients = sampleSet.getRequests().stream().flatMap(r -> r.getPatients().values()
+        List<Patient> allRequestsPatients = sampleSet.getKickoffRequests().stream().flatMap(r -> r.getPatients()
+                .values()
                 .stream()).collect(Collectors.toList());
 
         for (Patient originalPatient : allRequestsPatients) {
@@ -89,8 +90,8 @@ public class SampleSetToRequestConverter {
                 .getPatients().size(), Utils.getJoinedCollection(kickoffRequest.getPatients().keySet())));
     }
 
-    private void setAmplificationType(KickoffRequest kickoffRequest, SampleSet sampleSet) {
-        Set<String> amplificationTypes = sampleSet.getRequests().stream()
+    private void setAmplificationType(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        Set<String> amplificationTypes = sampleSet.getKickoffRequests().stream()
                 .flatMap(r -> r.getAmpTypes().stream())
                 .collect(Collectors.toSet());
 
@@ -99,27 +100,27 @@ public class SampleSetToRequestConverter {
         kickoffRequest.setAmpTypes(amplificationTypes);
     }
 
-    private void setRunIdList(KickoffRequest kickoffRequest, SampleSet sampleSet) {
-        Set<String> runIdList = sampleSet.getRequests().stream()
+    private void setRunIdList(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        Set<String> runIdList = sampleSet.getKickoffRequests().stream()
                 .flatMap(r -> r.getRunIds().stream())
                 .collect(Collectors.toSet());
 
         runIdList.forEach(kickoffRequest::addRunID);
     }
 
-    private void setReadmeInfo(KickoffRequest kickoffRequest, SampleSet sampleSet) {
+    private void setReadmeInfo(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         kickoffRequest.setReadmeInfo(ConverterUtils.getJoinedRequestProperty(sampleSet, Request::getReadmeInfo,
                 System.lineSeparator()));
     }
 
-    private void setPools(KickoffRequest kickoffRequest, SampleSet sampleSet) {
-        sampleSet.getRequests().stream()
+    private void setPools(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        sampleSet.getKickoffRequests().stream()
                 .flatMap(r -> r.getPools().entrySet().stream())
                 .forEach(pool -> kickoffRequest.putPoolIfAbsent(pool.getValue()));
     }
 
-    private void setStrand(KickoffRequest kickoffRequest, SampleSet sampleSet) {
-        Set<Strand> allStrands = sampleSet.getRequests().stream()
+    private void setStrand(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        Set<Strand> allStrands = sampleSet.getKickoffRequests().stream()
                 .flatMap(r -> r.getStrands().stream()).collect(Collectors.toSet());
 
         if (allStrands.size() > 1)
@@ -129,21 +130,21 @@ public class SampleSetToRequestConverter {
         kickoffRequest.setStrands(allStrands);
     }
 
-    private void setProcessingType(KickoffRequest kickoffRequest, SampleSet sampleSet) {
-        if (sampleSet.getRequests().stream().anyMatch(KickoffRequest::isForced)) {
+    private void setProcessingType(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        if (sampleSet.getKickoffRequests().stream().anyMatch(KickoffRequest::isForced)) {
             DEV_LOGGER.info(String.format("Setting forced processing type for sample set: %s", sampleSet.getName()));
             kickoffRequest.setProcessingType(new ForcedProcessingType());
         }
     }
 
-    private ProcessingType getProcessingType(SampleSet sampleSet) {
-        List<KickoffRequest> kickoffRequests = sampleSet.getRequests();
+    private ProcessingType getProcessingType(KickoffSampleSet sampleSet) {
+        List<KickoffRequest> kickoffRequests = sampleSet.getKickoffRequests();
         Optional<KickoffRequest> request = kickoffRequests.stream().filter(r -> !r.isForced()).findAny();
         return request.map(KickoffRequest::getProcessingType).orElseGet(ForcedProcessingType::new);
     }
 
-    private void setSamples(KickoffRequest kickoffRequest, SampleSet sampleSet) {
-        Map<String, Sample> sampleSetSamples = sampleSet.getRequests().stream()
+    private void setSamples(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        Map<String, Sample> sampleSetSamples = sampleSet.getKickoffRequests().stream()
                 .flatMap(r -> r.getSamples().entrySet().stream())
                 .distinct()
                 .collect(CommonUtils.getLinkedHashMapCollector());
@@ -156,46 +157,46 @@ public class SampleSetToRequestConverter {
         kickoffRequest.validateHasSamples();
     }
 
-    private void setProjectInfo(KickoffRequest kickoffRequest, SampleSet sampleSet) {
+    private void setProjectInfo(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         Map<String, String> projectInfo = sampleSetProjectInfoConverter.convert(sampleSet);
         kickoffRequest.setProjectInfo(projectInfo);
     }
 
-    private void setRecipe(KickoffRequest kickoffRequest, SampleSet sampleSet) {
+    private void setRecipe(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         kickoffRequest.setRecipe(sampleSet.getRecipe());
     }
 
-    private void setInvest(KickoffRequest kickoffRequest, SampleSet sampleSet) {
+    private void setInvest(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         kickoffRequest.setInvest(ConverterUtils.getJoinedRequestProperty(sampleSet, r -> r.getInvest()));
     }
 
-    private void setExtraReadMe(KickoffRequest kickoffRequest, SampleSet sampleSet) {
+    private void setExtraReadMe(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         kickoffRequest.setExtraReadMeInfo(ConverterUtils.getJoinedRequestProperty(sampleSet, r -> r
                 .getExtraReadMeInfo(), System.lineSeparator()));
     }
 
-    private void setReadMe(KickoffRequest kickoffRequest, SampleSet sampleSet) {
+    private void setReadMe(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         kickoffRequest.setReadMe(ConverterUtils.getJoinedRequestProperty(sampleSet, r -> r.getReadMe(), System
                 .lineSeparator()));
     }
 
-    private void setBicAutorunnable(KickoffRequest kickoffRequest, SampleSet sampleSet) {
-        kickoffRequest.setBicAutorunnable(sampleSet.getRequests().stream()
+    private void setBicAutorunnable(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        kickoffRequest.setBicAutorunnable(sampleSet.getKickoffRequests().stream()
                 .allMatch(r -> r.isBicAutorunnable()));
     }
 
-    private void setMannualDemux(KickoffRequest kickoffRequest, SampleSet sampleSet) {
-        kickoffRequest.setManualDemux(sampleSet.getRequests().stream()
+    private void setMannualDemux(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        kickoffRequest.setManualDemux(sampleSet.getKickoffRequests().stream()
                 .anyMatch(r -> r.isManualDemux()));
     }
 
-    private void setRunNumbers(KickoffRequest kickoffRequest, SampleSet sampleSet) {
+    private void setRunNumbers(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         kickoffRequest.setRunNumbers(ConverterUtils.getJoinedRequestProperty(sampleSet, r -> String.valueOf(r
                 .getRunNumber())));
     }
 
-    private void setRequestType(KickoffRequest kickoffRequest, SampleSet sampleSet) {
-        Set<String> requestsWithNotSetType = sampleSet.getRequests().stream()
+    private void setRequestType(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        Set<String> requestsWithNotSetType = sampleSet.getKickoffRequests().stream()
                 .filter(r -> r.getRequestType() == null)
                 .map(r -> r.getId())
                 .collect(Collectors.toSet());
@@ -205,7 +206,7 @@ public class SampleSetToRequestConverter {
                     "out request type", kickoffRequest.getId(), ConverterUtils.getJoinedRequestProperty(sampleSet, r
                     -> r.getId(), ",")));
 
-        Set<RequestType> requestTypes = sampleSet.getRequests().stream()
+        Set<RequestType> requestTypes = sampleSet.getKickoffRequests().stream()
                 .map(r -> r.getRequestType())
                 .collect(Collectors.toSet());
 
@@ -219,23 +220,23 @@ public class SampleSetToRequestConverter {
         kickoffRequest.setRequestType(requestTypes.stream().findAny().get());
     }
 
-    private void setBaitVersion(KickoffRequest kickoffRequest, SampleSet sampleSet) {
+    private void setBaitVersion(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         kickoffRequest.setBaitVersion(sampleSet.getBaitSet());
     }
 
-    private void setLibTypes(KickoffRequest kickoffRequest, SampleSet sampleSet) {
-        Set<LibType> libTypes = sampleSet.getRequests().stream()
+    private void setLibTypes(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        Set<LibType> libTypes = sampleSet.getKickoffRequests().stream()
                 .flatMap(r -> r.getLibTypes().stream())
                 .collect(Collectors.toSet());
         libTypes.forEach(kickoffRequest::addLibType);
     }
 
-    private void setProjectInvestigators(KickoffRequest kickoffRequest, SampleSet sampleSet) {
+    private void setProjectInvestigators(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         kickoffRequest.setPi(ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getPi(), "project " +
                 "investigator", x -> !StringUtils.isEmpty(x)));
     }
 
-    private void setSpecies(KickoffRequest kickoffRequest, SampleSet sampleSet) {
+    private void setSpecies(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         kickoffRequest.setSpecies(ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getSpecies(),
                 "species"));
     }

@@ -6,7 +6,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mskcc.domain.RequestSpecies;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.domain.SampleSet;
+import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.util.TestUtils;
@@ -24,11 +24,11 @@ public class SampleSetProjectInfoConverterTest {
     private KickoffRequest primaryKickoffRequest;
     private KickoffRequest kickoffRequest;
     private Random random = new Random();
-    private SampleSet sampleSet;
+    private KickoffSampleSet sampleSet;
 
     @Before
     public void setUp() throws Exception {
-        sampleSet = new SampleSet("32113");
+        sampleSet = new KickoffSampleSet("32113");
         primaryKickoffRequest = getRequestWithRequiredProperties(primaryReqId);
         kickoffRequest = getRequestWithRequiredProperties("213123");
     }
@@ -114,7 +114,7 @@ public class SampleSetProjectInfoConverterTest {
         KickoffRequest kickoffRequest2 = getRequestWithRequiredProperties("33234");
         KickoffRequest kickoffRequest3 = getRequestWithRequiredProperties("2345232354");
 
-        sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest2, kickoffRequest3));
+        setRequests(Arrays.asList(kickoffRequest, kickoffRequest2, kickoffRequest3));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
         Map<String, String> projectInfo = sampleSetProjectInfoConverter.convert(sampleSet);
@@ -129,7 +129,7 @@ public class SampleSetProjectInfoConverterTest {
         KickoffRequest kickoffRequest2 = getRequestWithProperty("1232", Constants.ProjectInfo.NUMBER_OF_SAMPLES, "10");
         KickoffRequest kickoffRequest3 = getRequestWithProperty("75354", Constants.ProjectInfo.NUMBER_OF_SAMPLES, "42");
 
-        sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest2, kickoffRequest3));
+        setRequests(Arrays.asList(kickoffRequest, kickoffRequest2, kickoffRequest3));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
         Map<String, String> projectInfo = sampleSetProjectInfoConverter.convert(sampleSet);
@@ -154,16 +154,25 @@ public class SampleSetProjectInfoConverterTest {
 
     @Test
     public void whenProjectHasOneRequestWhichIsPrimary_shouldPropertiesShouldBeTakenFromThisRequest() {
-        sampleSet.setRequests(Arrays.asList(primaryKickoffRequest));
+        List<KickoffRequest> requests = Arrays.asList(primaryKickoffRequest);
+        setRequests(requests);
         sampleSet.setPrimaryRequestId(primaryReqId);
         Map<String, String> projectInfo = sampleSetProjectInfoConverter.convert(sampleSet);
 
         assertProjectInfo(projectInfo);
     }
 
+    private void setRequests(List<KickoffRequest> requests) {
+        sampleSet.setKickoffRequests(requests);
+
+        for (KickoffRequest request : requests) {
+            sampleSet.putRequestIfAbsent(request);
+        }
+    }
+
     @Test
     public void whenProjectHasTwoRequestsAndOneIsPrimary_shouldPropertiesBeTakenFromPrimaryRequest() {
-        sampleSet.setRequests(Arrays.asList(primaryKickoffRequest, kickoffRequest));
+        setRequests(Arrays.asList(primaryKickoffRequest, kickoffRequest));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
         Map<String, String> projectInfo = sampleSetProjectInfoConverter.convert(sampleSet);
@@ -173,7 +182,7 @@ public class SampleSetProjectInfoConverterTest {
 
     @Test
     public void whenPrimaryRequestNotSet_shouldThrowAnException() {
-        sampleSet.setRequests(Arrays.asList(getRequestWithRequiredProperties(primaryReqId)));
+        setRequests(Arrays.asList(getRequestWithRequiredProperties(primaryReqId)));
         Optional<Exception> exception = TestUtils.assertThrown(() -> sampleSetProjectInfoConverter.convert(sampleSet));
 
         assertThat(exception.isPresent(), is(true));
@@ -183,7 +192,8 @@ public class SampleSetProjectInfoConverterTest {
 
     @Test
     public void whenPrimaryRequestNotPartOfSampleSet_shouldThrowAnException() {
-        sampleSet.setRequests(Arrays.asList(getRequestWithRequiredProperties("otherId")));
+        setRequests(Arrays.asList(getRequestWithRequiredProperties("otherId")));
+        sampleSet.setKickoffRequests(Arrays.asList(getRequestWithRequiredProperties("otherId")));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
         Optional<Exception> exception = TestUtils.assertThrown(() -> sampleSetProjectInfoConverter.convert(sampleSet));
@@ -203,7 +213,7 @@ public class SampleSetProjectInfoConverterTest {
         KickoffRequest request1 = getRequestWithProperty(primaryReqId, arbitraryProperty, arbitraryValue);
         KickoffRequest request2 = getRequestWithProperty("someId", arbitraryProperty, "someOtherValue");
 
-        sampleSet.setRequests(Arrays.asList(request1, request2));
+        setRequests(Arrays.asList(request1, request2));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
         Map<String, String> projectInfo = sampleSetProjectInfoConverter.convert(sampleSet);
@@ -218,7 +228,7 @@ public class SampleSetProjectInfoConverterTest {
         KickoffRequest request2 = getRequestWithRequiredProperties("5678");
         request2.addProjectProperty(ambiguousProperty, "otherValue");
 
-        sampleSet.setRequests(Arrays.asList(request1, request2));
+        setRequests(Arrays.asList(request1, request2));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
         Optional<Exception> exception = TestUtils.assertThrown(() -> sampleSetProjectInfoConverter.convert(sampleSet));
@@ -238,7 +248,7 @@ public class SampleSetProjectInfoConverterTest {
         String value3 = "ffddf";
         KickoffRequest request3 = getRequestWithProperty("43424", propertyToMerge, value3);
 
-        sampleSet.setRequests(Arrays.asList(request1, request2, request3));
+        setRequests(Arrays.asList(request1, request2, request3));
         sampleSet.setPrimaryRequestId(primaryReqId);
 
         Map<String, String> projetInfo = sampleSetProjectInfoConverter.convert(sampleSet);
@@ -273,7 +283,7 @@ public class SampleSetProjectInfoConverterTest {
             requests.add(getRequestWithMissingProjectInfoProperty(missingReqId, missingProperty));
         }
 
-        sampleSet.setRequests(requests);
+        sampleSet.setKickoffRequests(requests);
         sampleSet.setPrimaryRequestId(primaryReqId);
 
         Optional<Exception> exception = TestUtils.assertThrown(() -> sampleSetProjectInfoConverter.convert(sampleSet));

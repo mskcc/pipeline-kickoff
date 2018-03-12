@@ -3,12 +3,10 @@ package org.mskcc.kickoff.velox;
 import org.mskcc.domain.Recipe;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.domain.SampleSet;
+import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ProcessingType;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 class SampleSetRetriever {
     private final SampleSetProxy sampleSetProxy;
@@ -19,11 +17,11 @@ class SampleSetRetriever {
         this.samplesToRequestsConverter = samplesToRequestsConverter;
     }
 
-    public SampleSet retrieve(String projectId, ProcessingType processingType) {
+    public KickoffSampleSet retrieve(String projectId, ProcessingType processingType) {
         try {
-            SampleSet sampleSet = new SampleSet(projectId);
+            KickoffSampleSet sampleSet = new KickoffSampleSet(projectId);
 
-            sampleSet.setRequests(getRequests(processingType));
+            putRequestsAndSamples(processingType, sampleSet);
             sampleSet.setPrimaryRequestId(sampleSetProxy.getPrimaryRequestId());
             sampleSet.setBaitSet(sampleSetProxy.getBaitVersion());
             sampleSet.setRecipe(getRecipe());
@@ -34,16 +32,35 @@ class SampleSetRetriever {
         }
     }
 
-    private Recipe getRecipe() throws Exception {
-        return Recipe.getRecipeByValue(sampleSetProxy.getRecipe());
+    private void putRequestsAndSamples(ProcessingType processingType, KickoffSampleSet sampleSet) throws Exception {
+        Collection<Sample> samples = sampleSetProxy.getSamples();
+        for (Sample sample : samples) {
+            sampleSet.putSampleIfAbsent(sample);
+        }
+
+        putRequests(processingType, sampleSet, samples);
     }
 
-    private List<KickoffRequest> getRequests(ProcessingType processingType) throws Exception {
+    private void putRequests(ProcessingType processingType, KickoffSampleSet sampleSet, Collection<Sample> samples)
+            throws Exception {
         List<KickoffRequest> kickoffRequests = new ArrayList<>();
         kickoffRequests.addAll(sampleSetProxy.getRequests(processingType));
-        kickoffRequests.addAll(convertToRequests(sampleSetProxy.getSamples(), processingType));
 
-        return kickoffRequests;
+        Collection<KickoffRequest> requestsFromSamples = convertToRequests(samples, processingType);
+        kickoffRequests.addAll(requestsFromSamples);
+
+        Map<String, KickoffRequest> requestIdToRequest = new HashMap<>();
+
+        for (KickoffRequest kickoffRequest : kickoffRequests) {
+            requestIdToRequest.put(kickoffRequest.getId(), kickoffRequest);
+            sampleSet.putRequestIfAbsent(kickoffRequest);
+        }
+
+        sampleSet.setRequestIdToKickoffRequest(requestIdToRequest);
+    }
+
+    private Recipe getRecipe() throws Exception {
+        return Recipe.getRecipeByValue(sampleSetProxy.getRecipe());
     }
 
     private Collection<KickoffRequest> convertToRequests(Collection<Sample> samples, ProcessingType processingType)
