@@ -7,6 +7,7 @@ import org.mskcc.kickoff.upload.jira.domain.JiraUserProperty;
 import org.mskcc.kickoff.upload.jira.domain.UserProperties;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
@@ -41,6 +42,7 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
     private String jiraRestPath;
 
     @Autowired
+    @Qualifier("jiraRestTemplate")
     private RestTemplate restTemplate;
 
     @Override

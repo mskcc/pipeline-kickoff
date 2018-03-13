@@ -83,7 +83,7 @@ public class SampleSetRetrieverTest {
     public void whenSampleSetHasSamplesFromOneRequest_shouldReturnSampleSetWithThisOneRequests() throws Exception {
         List<Sample> samples = getSamples(1);
 
-        when(sampleSetProxyMock.getSamples()).thenReturn(samples);
+        when(sampleSetProxyMock.getIgoSamples()).thenReturn(samples);
         when(sampleSetProxyMock.getRecipe()).thenReturn(Recipe.AMPLI_SEQ.getValue());
 
         //when
@@ -98,7 +98,7 @@ public class SampleSetRetrieverTest {
             Exception {
         List<Sample> samples = getSamples(1, 2, 3, 4);
 
-        when(sampleSetProxyMock.getSamples()).thenReturn(samples);
+        when(sampleSetProxyMock.getIgoSamples()).thenReturn(samples);
         when(sampleSetProxyMock.getRecipe()).thenReturn(Recipe.AMPLI_SEQ.getValue());
 
         //when
@@ -115,7 +115,7 @@ public class SampleSetRetrieverTest {
         List<Sample> samples = getSamples(1, 2, 3, 4);
         List<KickoffRequest> requests = getKickoffRequests(3);
 
-        when(sampleSetProxyMock.getSamples()).thenReturn(samples);
+        when(sampleSetProxyMock.getIgoSamples()).thenReturn(samples);
         when(sampleSetProxyMock.getRequests(normalProcessingType)).thenReturn(requests);
         when(sampleSetProxyMock.getRecipe()).thenReturn(Recipe.AMPLI_SEQ.getValue());
 

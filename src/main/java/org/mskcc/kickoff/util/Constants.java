@@ -27,7 +27,6 @@ public class Constants {
     public static final String EXOME = "Exome";
     public static final String FAILED = "Failed";
     public static final String FAILED_COMPLETED = "Failed - Completed";
-    public static final String FAILED_REPROCESS = "Failed-Reprocess";
     public static final String FFPEPOOLEDNORMAL = "FFPEPOOLEDNORMAL";
     public static final String FORCED = "#FORCED";
     public static final String FROZENPOOLEDNORMAL = "FROZENPOOLEDNORMAL";

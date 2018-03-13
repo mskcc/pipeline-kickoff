@@ -8,6 +8,7 @@ import org.apache.log4j.Logger;
 import org.mskcc.domain.QcStatus;
 import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.Run;
+import org.mskcc.domain.sample.CmoSampleInfo;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
@@ -73,6 +74,7 @@ public class SampleInfo {
     String SPECIES;
     String CORRECTED_CMO_ID;
     String REQUEST_ID = Constants.EMPTY;
+    private CmoSampleInfo cmoSampleInfo;
 
     /**
      * This is the method that is called by CreateManifestSheet. <p>Features Of this Method:<p> - Populate the default fields<br> - Assign all possible
@@ -230,6 +232,7 @@ public class SampleInfo {
         this.CORRECTED_CMO_ID = setFromMap(this.CMO_SAMPLE_ID, "CorrectedCMOID", fieldMap);
 
         grabRequestSpecificValues(fieldMap);
+        cmoSampleInfo = new CmoSampleInfo(fieldMap);
     }
 
     /**
@@ -334,6 +337,10 @@ public class SampleInfo {
         Utils.setExitLater(true);
         PM_LOGGER.log(pmLogLevel, message);
         DEV_LOGGER.log(devLogLevel, message);
+    }
+
+    public CmoSampleInfo getCmoSampleInfo() {
+        return cmoSampleInfo;
     }
 }
 

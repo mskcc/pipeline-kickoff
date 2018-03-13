@@ -64,10 +64,9 @@ public class PairingInfoRetriever {
                 continue;
             }
 
-            pairings.put(sample.get(Constants.CORRECTED_CMO_ID), normalCmoId);
+            pairings.put(sample.getCorrectedCmoSampleId(), normalCmoId);
         }
 
-        // checking to see if all exome records are empty!
         if (isPairingInfo(request) && Objects.equals(request.getRequestType(), Constants.EXOME)) {
             Set<String> normals = new HashSet<>(pairings.values());
             if (normals.size() == 1 && normals.contains(Constants.NA_LOWER_CASE)) {

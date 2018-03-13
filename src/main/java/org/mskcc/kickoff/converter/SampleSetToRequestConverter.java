@@ -152,6 +152,9 @@ public class SampleSetToRequestConverter {
         DEV_LOGGER.info(String.format("Samples found for sample set: %s [%s]", sampleSet.getName(), Utils
                 .getJoinedCollection(sampleSetSamples.keySet())));
 
+        sampleSet.getExternalSamples().stream()
+                .forEach(es -> sampleSetSamples.put(es.getIgoId(), es));
+
         kickoffRequest.setSamples(sampleSetSamples);
 
         kickoffRequest.validateHasSamples();
