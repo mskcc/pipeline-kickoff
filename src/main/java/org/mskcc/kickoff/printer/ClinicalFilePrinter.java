@@ -1,7 +1,6 @@
 package org.mskcc.kickoff.printer;
 
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
@@ -21,8 +20,8 @@ public class ClinicalFilePrinter extends ClinicalPatientFilePrinter {
     }
 
     @Override
-    protected void notifyObservers(KickoffRequest kickoffRequest) {
-        observerManager.notifyObserversOfFileCreated(kickoffRequest, ManifestFile.CLINICAL);
+    protected void notifyObservers() {
+        observerManager.notifyObserversOfFileCreated(ManifestFile.CLINICAL);
     }
 
     @Override

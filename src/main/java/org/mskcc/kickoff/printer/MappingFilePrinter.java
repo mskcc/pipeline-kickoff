@@ -93,7 +93,7 @@ public class MappingFilePrinter extends FilePrinter {
                             if (isPooledNormal(sampleId) && !fastqExist(path, request.getBaitVersion()))
                                 continue;
 
-                            Pairedness pairedness = getPairedness(path, request);
+                            Pairedness pairedness = getPairedness(path);
                             DEV_LOGGER.trace(String.format("Pairedness for sample: %s - %s", sampleId, pairedness));
                             pairednesses.add(pairedness);
 
@@ -124,19 +124,20 @@ public class MappingFilePrinter extends FilePrinter {
             DEV_LOGGER.error(message);
             Utils.setExitLater(true);
 
-            observerManager.notifyObserversOfError(request, ManifestFile.MAPPING, message, GenerationError.INSTANCE);
+            observerManager.notifyObserversOfError(ManifestFile.MAPPING, new GenerationError(message, ErrorCode
+                    .AMBIGUOUS_PAIREDNESS));
         }
     }
 
-    private Pairedness getPairedness(String path, KickoffRequest request) {
+    private Pairedness getPairedness(String path) {
         try {
             return pairednessResolver.resolve(path);
         } catch (IOException e) {
-            String errorMessage = String.format("Unable to retrieve pairedness from path: %s", path);
-            observerManager.notifyObserversOfError(request, ManifestFile.MAPPING, errorMessage, GenerationError
-                    .INSTANCE);
+            GenerationError generationError = new GenerationError(String.format("Unable to retrieve pairedness from " +
+                    "path: %s", path), ErrorCode.PAIREDNESS_RETRIEVAL_ERROR);
+            observerManager.notifyObserversOfError(ManifestFile.MAPPING, generationError);
 
-            throw new RuntimeException(errorMessage);
+            throw new RuntimeException(generationError.getMessage());
         }
     }
 
@@ -174,8 +175,8 @@ public class MappingFilePrinter extends FilePrinter {
                     PM_LOGGER.log(Level.ERROR, message);
                     DEV_LOGGER.log(Level.ERROR, message);
 
-                    observerManager.notifyObserversOfError(request, ManifestFile.MAPPING, message, GenerationError
-                            .INSTANCE);
+                    observerManager.notifyObserversOfError(ManifestFile.MAPPING, new GenerationError(message,
+                            ErrorCode.FASTQ_DIR_NOT_FOUND));
 
                     BufferedReader bufE = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
                     while (bufE.ready()) {
@@ -222,7 +223,8 @@ public class MappingFilePrinter extends FilePrinter {
             DEV_LOGGER.log(Level.ERROR, errorMessage);
             request.setMappingIssue(true);
 
-            observerManager.notifyObserversOfError(request, ManifestFile.MAPPING, errorMessage, GenerationError.INSTANCE);
+            observerManager.notifyObserversOfError(ManifestFile.MAPPING, new GenerationError(errorMessage, ErrorCode
+                    .SEQUENCING_FOLDER_NOT_FOUND));
 
             throw new NoSequencingRunFolderFoundException(errorMessage);
         } else if (files.length > 1) {
@@ -238,14 +240,14 @@ public class MappingFilePrinter extends FilePrinter {
 
             if (files.length == 0) {
                 String errorMessage = String.format("Sequencing run folder not found for run id: %s and request: %s " +
-                                "in path: %s",
-                        runId, request.getId(), dir.getPath());
+                        "in path: %s", runId, request.getId(), dir.getPath());
                 Utils.setExitLater(true);
                 PM_LOGGER.log(Level.ERROR, errorMessage);
                 DEV_LOGGER.log(Level.ERROR, errorMessage);
                 request.setMappingIssue(true);
 
-                observerManager.notifyObserversOfError(request, ManifestFile.MAPPING, errorMessage, GenerationError.INSTANCE);
+                observerManager.notifyObserversOfError(ManifestFile.MAPPING, new GenerationError
+                        (errorMessage, ErrorCode.SEQUENCING_FOLDER_NOT_FOUND));
 
                 throw new NoSequencingRunFolderFoundException(errorMessage);
             } else if (files.length > 1) {
@@ -328,7 +330,7 @@ public class MappingFilePrinter extends FilePrinter {
             PrintWriter pW = new PrintWriter(new FileWriter(mappingFile, false), false);
             pW.write(mappingFileContents);
             pW.close();
-            observerManager.notifyObserversOfFileCreated(request, ManifestFile.MAPPING);
+            observerManager.notifyObserversOfFileCreated(ManifestFile.MAPPING);
         } catch (Exception e) {
             throw new RuntimeException(String.format("Unable to write sample mapping file for request: %s", request
                     .getId()));
@@ -338,7 +340,8 @@ public class MappingFilePrinter extends FilePrinter {
     private void validateMappingsExist(KickoffRequest request, String mappingFileContents) {
         if (StringUtils.isEmpty(mappingFileContents)) {
             String message = String.format("No sample mappings for request: %s", request.getId());
-            observerManager.notifyObserversOfError(request, ManifestFile.MAPPING, message, GenerationError.INSTANCE);
+            observerManager.notifyObserversOfError(ManifestFile.MAPPING, new GenerationError(message,
+                    ErrorCode.NO_SAMPLE_MAPPINGS));
             throw new NoSampleMappingExistException(message);
         }
     }
