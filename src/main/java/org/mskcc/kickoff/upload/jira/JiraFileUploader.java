@@ -84,7 +84,8 @@ public class JiraFileUploader implements FileUploader {
         int numberOfManifestAttachments = getExistingManifestAttachments(request, requestId).size();
 
         if (numberOfManifestAttachments > 0) {
-            throw new FileDeletionException(String.format("%d attached manifest file (s) was/were not deleted from jira " +
+            throw new FileDeletionException(String.format("%d attached manifest file (s) was/were not deleted from " +
+                    "jira " +
                     "instance: %s for issue: %s", numberOfManifestAttachments, jiraUrl, requestId));
         }
     }
