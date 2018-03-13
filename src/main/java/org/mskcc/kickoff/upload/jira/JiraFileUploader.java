@@ -143,9 +143,9 @@ public class JiraFileUploader implements FileUploader {
 
             if (manifestFile.getGenerationErrors().size() > 0) {
                 errorComment.append(String.format("%s errors: \\n", manifestFile.getName()));
-                manifestFile.getGenerationErrors().forEach(e -> errorComment.append(String.format("    -%s\\n", e
-                        .getMessage())));
-                errorComment.append("\\n");
+                errorComment.append(manifestFile.getGenerationErrors().stream()
+                        .map(e -> String.format("    -%s\\n", e.getMessage()))
+                        .collect(Collectors.joining()));
             }
         }
 
