@@ -17,7 +17,9 @@ import org.mskcc.kickoff.notify.NewLineNotificationFormatter;
 import org.mskcc.kickoff.notify.NotificationFormatter;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.resolver.PairednessResolver;
+import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
+import org.mskcc.kickoff.retriever.ServiceReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.upload.jira.state.*;
 import org.mskcc.kickoff.validator.*;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
@@ -30,6 +32,7 @@ import org.mskcc.util.email.EmailSender;
 import org.mskcc.util.email.EmailToMimeMessageConverter;
 import org.mskcc.util.email.JavaxEmailSender;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -120,6 +123,18 @@ public class AppConfiguration {
 
     @Value("${jira.igo.formatted.name.property}")
     private String igoFormattedNameProperty;
+
+    @Value("${external.sample.rest.url}")
+    private String externalRestUrl;
+
+    @Value("${external.sample.rest.samples.endpoint}")
+    private String externalRestEndpoint;
+
+    @Value("${external.sample.rest.username}")
+    private String externalSampleRestUsername;
+
+    @Value("${external.sample.rest.password}")
+    private String externalSampleRestPassword;
 
     @Autowired
     private ClientHttpRequestInterceptor loggingClientHttpRequestInterceptor;
@@ -252,8 +267,17 @@ public class AppConfiguration {
 
     @Bean
     public RequestsRetrieverFactory requestsRetrieverFactory() {
-        return new RequestsRetrieverFactory(projectInfoRetriever(), requestDataPropagator(),
-                sampleSetToRequestConverter());
+        return new RequestsRetrieverFactory(
+                projectInfoRetriever(),
+                requestDataPropagator(),
+                sampleSetToRequestConverter(),
+                readOnlyExternalSamplesRepository());
+    }
+
+    @Bean
+    public ReadOnlyExternalSamplesRepository readOnlyExternalSamplesRepository() {
+        return new ServiceReadOnlyExternalSamplesRepository(externalRestUrl, externalRestEndpoint,
+                externalRestTemplate());
     }
 
     @Bean
@@ -315,27 +339,37 @@ public class AppConfiguration {
 
     @Bean
     @Profile(Constants.PROD_PROFILE)
-    public RestTemplate restTemplate() {
+    @Qualifier("jiraRestTemplate")
+    public RestTemplate jiraRestTemplate() {
         RestTemplate restTemplate = new RestTemplate();
-        addBasicAuth(restTemplate);
+        addBasicAuth(restTemplate, jiraUsername, jiraPassword);
 
         return restTemplate;
     }
 
-    private void addBasicAuth(RestTemplate restTemplate) {
+    private void addBasicAuth(RestTemplate restTemplate, String username, String password) {
         List<ClientHttpRequestInterceptor> interceptors = Collections.singletonList(new BasicAuthorizationInterceptor
-                (jiraUsername, jiraPassword));
+                (username, password));
         restTemplate.setRequestFactory(new InterceptingClientHttpRequestFactory(restTemplate.getRequestFactory(),
                 interceptors));
     }
 
     @Bean
+    @Qualifier("externalSampleRest")
+    public RestTemplate externalRestTemplate() {
+        RestTemplate restTemplate = new RestTemplate();
+        addBasicAuth(restTemplate, externalSampleRestUsername, externalSampleRestPassword);
+
+        return restTemplate;
+    }
+
+    @Bean
     @Profile({Constants.DEV_PROFILE, Constants.TEST_PROFILE})
-    public RestTemplate logginRestTemplate() {
+    @Qualifier("jiraRestTemplate")
+    public RestTemplate jiraLoggingRestTemplate() {
         RestTemplate restTemplate = new RestTemplate();
         restTemplate.getInterceptors().add(loggingClientHttpRequestInterceptor);
-        addBasicAuth(restTemplate);
-
+        addBasicAuth(restTemplate, jiraUsername, jiraPassword);
         return restTemplate;
     }
 

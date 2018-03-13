@@ -5,10 +5,7 @@ import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
 import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
-import org.mskcc.kickoff.retriever.RequestDataPropagator;
-import org.mskcc.kickoff.retriever.RequestNotFoundException;
-import org.mskcc.kickoff.retriever.RequestsRetriever;
-import org.mskcc.kickoff.retriever.SingleRequestRetriever;
+import org.mskcc.kickoff.retriever.*;
 
 import java.util.List;
 import java.util.function.Predicate;
@@ -20,14 +17,17 @@ public class RequestsRetrieverFactory {
     private ProjectInfoRetriever projectInfoRetriever;
     private RequestDataPropagator requestDataPropagator;
     private SampleSetToRequestConverter sampleSetToRequestConverter;
+    private ReadOnlyExternalSamplesRepository externalSamplesRepository;
 
     public RequestsRetrieverFactory(ProjectInfoRetriever projectInfoRetriever,
                                     RequestDataPropagator requestDataPropagator,
-                                    SampleSetToRequestConverter sampleSetToRequestConverter) {
+                                    SampleSetToRequestConverter sampleSetToRequestConverter,
+                                    ReadOnlyExternalSamplesRepository readOnlyExternalSamplesRepository) {
         this.projectInfoRetriever = projectInfoRetriever;
         this.requestDataPropagator = requestDataPropagator;
         this.sampleSetToRequestConverter = sampleSetToRequestConverter;
         this.sampleSetProjectPredicate = new SampleSetProjectPredicate();
+        this.externalSamplesRepository = readOnlyExternalSamplesRepository;
     }
 
     public RequestsRetriever getRequestsRetriever(User user, DataRecordManager dataRecordManager, String projectId)
@@ -46,7 +46,8 @@ public class RequestsRetrieverFactory {
         SingleRequestRetriever requestsRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager,
                 projectInfoRetriever);
         DataRecord sampleSetRecord = getSampleSetRecord(projectId, dataRecordManager, user);
-        SampleSetProxy veloxSampleSetProxy = new VeloxSampleSetProxy(sampleSetRecord, user, requestsRetriever);
+        SampleSetProxy veloxSampleSetProxy = new VeloxSampleSetProxy(sampleSetRecord, user, requestsRetriever,
+                externalSamplesRepository);
 
         SamplesToRequestsConverter samplesToRequestsConverter = new SamplesToRequestsConverter(new
                 VeloxSingleRequestRetriever(user, dataRecordManager, projectInfoRetriever));

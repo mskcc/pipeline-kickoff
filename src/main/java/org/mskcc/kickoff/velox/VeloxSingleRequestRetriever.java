@@ -241,7 +241,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     sample.setCmoSampleId(cmoNormalId);
                     sample.setPooledNormal(true);
                     sample.setTransfer(false);
-                    //@TODO check
+                    sample.setIsTumor(false);
                     sample.addRuns(getPooledNormalRuns(pooledNormalToRuns.getValue(), kickoffRequest));
 
                     Map<String, String> tempHashMap = getSampleInfoMap(pooledNormalRecord, sample, kickoffRequest);
@@ -381,7 +381,6 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     }
 
     private void processSample(KickoffRequest kickoffRequest, DataRecord dataRecordSample) throws Exception {
-        // Is this sample sequenced?
         String cmoSampleId = dataRecordSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
         String igoSampleId = dataRecordSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
 
@@ -821,6 +820,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         Set<Run> badRuns = sample.getBadRuns();
         String excludeRuns = StringUtils.join(badRuns, ";");
         sampleInfoMap.put(Constants.EXCLUDE_RUN_ID, excludeRuns);
+        sample.setCmoSampleInfo(sampleInfo.getCmoSampleInfo());
 
         return sampleInfoMap;
     }

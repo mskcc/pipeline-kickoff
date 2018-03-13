@@ -21,6 +21,7 @@ import org.mskcc.kickoff.upload.jira.state.IssueStatus;
 import org.mskcc.kickoff.upload.jira.state.StatusFactory;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
@@ -53,7 +54,9 @@ public class JiraFileUploader implements FileUploader {
     private StatusFactory statusFactory;
     @Autowired
     private PmJiraUserRetriever pmJiraUserRetriever;
+
     @Autowired
+    @Qualifier("jiraRestTemplate")
     private RestTemplate restTemplate;
 
     private IssueStatus issueStatus;
@@ -81,9 +84,9 @@ public class JiraFileUploader implements FileUploader {
         int numberOfManifestAttachments = getExistingManifestAttachments(request, requestId).size();
 
         if (numberOfManifestAttachments > 0) {
-            String error = String.format("%d attached manifest file (s) was/were not deleted from jira " +
-                    "instance: %s for issue: %s", numberOfManifestAttachments, jiraUrl, requestId);
-            throw new FileDeletionException(error);
+            throw new FileDeletionException(String.format("%d attached manifest file (s) was/were not deleted from " +
+                    "jira " +
+                    "instance: %s for issue: %s", numberOfManifestAttachments, jiraUrl, requestId));
         }
     }
 
