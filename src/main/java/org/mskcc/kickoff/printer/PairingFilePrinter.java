@@ -58,7 +58,6 @@ public class PairingFilePrinter extends FilePrinter {
                 pairUnmatchedNormals(request, pairingInfo, normalCMOids, pW);
 
                 pW.close();
-
                 observerManager.notifyObserversOfFileCreated(ManifestFile.PAIRING);
             }
         } catch (Exception e) {
