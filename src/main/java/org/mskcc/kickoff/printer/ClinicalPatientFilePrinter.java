@@ -78,14 +78,14 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
                 pW.write(outputText);
                 pW.close();
 
-                notifyObservers(kickoffRequest);
+                notifyObservers();
             } catch (Exception e) {
                 DEV_LOGGER.warn(String.format("Exception thrown while creating file: %s", getOutputFilenameEnding()), e);
             }
         }
     }
 
-    protected abstract void notifyObservers(KickoffRequest kickoffRequest);
+    protected abstract void notifyObservers();
 
     @Override
     public String getFilePath(KickoffRequest request) {

@@ -6,6 +6,7 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.PairingsResolver;
 import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
@@ -61,15 +62,18 @@ public class PairingFilePrinter extends FilePrinter {
                 for (String tum : pairingInfo.keySet()) {
                     String norm = pairingInfo.get(tum);
                     pW.write(sampleNormalization(norm) + "\t" + sampleNormalization(tum) + "\n");
+
+                    notifyIfTumorUnmatched(tum, norm);
                 }
                 for (String unmatchedNorm : missingNormalsToBeAdded) {
                     String tum = "na";
                     pW.write(sampleNormalization(unmatchedNorm) + "\t" + sampleNormalization(tum) + "\n");
+                    notifyNormalUnmatched(unmatchedNorm);
                 }
 
                 pW.close();
 
-                observerManager.notifyObserversOfFileCreated(request, ManifestFile.PAIRING);
+                observerManager.notifyObserversOfFileCreated(ManifestFile.PAIRING);
 
                 if (shiny) {
                     printPairingExcel(request, filename, pairingInfo, missingNormalsToBeAdded);
@@ -77,6 +81,20 @@ public class PairingFilePrinter extends FilePrinter {
             }
         } catch (Exception e) {
             DEV_LOGGER.warn("Exception thrown: ", e);
+        }
+    }
+
+    private void notifyNormalUnmatched(String unmatchedNorm) {
+        GenerationError generationError = new GenerationError(String.format("No tumor sample for normal %s",
+                unmatchedNorm), ErrorCode.UNMATCHED_NORMAL);
+        observerManager.notifyObserversOfError(ManifestFile.PAIRING, generationError);
+    }
+
+    private void notifyIfTumorUnmatched(String tum, String norm) {
+        if (Constants.NA_LOWER_CASE.equals(norm)) {
+            GenerationError generationError = new GenerationError(String.format("No normal sample for tumor %s", tum),
+                    ErrorCode.UNMATCHED_TUMOR);
+            observerManager.notifyObserversOfError(ManifestFile.PAIRING, generationError);
         }
     }
 

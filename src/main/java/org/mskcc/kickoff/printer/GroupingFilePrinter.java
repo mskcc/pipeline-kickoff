@@ -56,7 +56,7 @@ public class GroupingFilePrinter extends FilePrinter {
                 PrintWriter pW = new PrintWriter(new FileWriter(outputFile, false), false);
                 pW.write(outputText.toString());
                 pW.close();
-                observerManager.notifyObserversOfFileCreated(kickoffRequest, ManifestFile.GROUPING);
+                observerManager.notifyObserversOfFileCreated(ManifestFile.GROUPING);
             } catch (Exception e) {
                 DEV_LOGGER.warn(String.format("Exception thrown while creating grouping file: %s", filename), e);
             }

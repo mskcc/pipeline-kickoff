@@ -150,7 +150,7 @@ public class RequestFilePrinter extends FilePrinter {
             pW.write(requestFileContents.toString());
             pW.close();
 
-            observerManager.notifyObserversOfFileCreated(request, ManifestFile.REQUEST);
+            observerManager.notifyObserversOfFileCreated(ManifestFile.REQUEST);
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Exception thrown while creating request file: %s", getFilePath(request)), e);
         }
@@ -167,8 +167,8 @@ public class RequestFilePrinter extends FilePrinter {
 
                 DEV_LOGGER.warn(message);
 
-                observerManager.notifyObserversOfError(request, ManifestFile.REQUEST, message, GenerationError
-                        .INSTANCE);
+                observerManager.notifyObserversOfError(ManifestFile.REQUEST, new GenerationError(message, ErrorCode
+                        .REQUEST_INFO_MISSING));
             }
         }
     }
