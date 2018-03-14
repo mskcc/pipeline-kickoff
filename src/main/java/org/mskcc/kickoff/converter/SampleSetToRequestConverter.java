@@ -234,8 +234,7 @@ public class SampleSetToRequestConverter {
     }
 
     private void setProjectInvestigators(KickoffRequest kickoffRequest, SampleSet sampleSet) {
-        kickoffRequest.setPi(ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getPi(), "project " +
-                "investigator", x -> !StringUtils.isEmpty(x)));
+        kickoffRequest.setPi(sampleSet.getPrimaryRequest().getPi());
     }
 
     private void setSpecies(KickoffRequest kickoffRequest, SampleSet sampleSet) {

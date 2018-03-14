@@ -35,22 +35,7 @@ public class SampleSetProjectInfoConverterTest {
 
     @Test
     public void whenNotAllRequestsHaveLabHeadSet_shouldThrowAnException() {
-        assertExceptionThrownOnMissingRequiredRequestProperty(Constants.ProjectInfo.LAB_HEAD);
-    }
-
-    @Test
-    public void whenRequestsInSampleSetHaveDifferentLabHead_shouldThrowAnException() {
-        assertAmbiguousPropertyThrowsAnException(Constants.ProjectInfo.LAB_HEAD);
-    }
-
-    @Test
-    public void whenNotAllRequestsHaveLabHeadEmailSet_shouldThrowAnException() {
-        assertExceptionThrownOnMissingRequiredRequestProperty(Constants.ProjectInfo.LAB_HEAD_E_MAIL);
-    }
-
-    @Test
-    public void whenRequestsInSampleSetHaveDifferentLabHeadEmail_shouldThrowAnException() {
-        assertAmbiguousPropertyThrowsAnException(Constants.ProjectInfo.LAB_HEAD_E_MAIL);
+        assertExceptionThrownOnMissingPrimaryRequestProperty(Constants.ProjectInfo.LAB_HEAD);
     }
 
     @Test
