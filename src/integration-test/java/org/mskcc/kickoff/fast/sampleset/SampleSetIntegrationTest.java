@@ -26,6 +26,8 @@ import org.mskcc.kickoff.velox.VeloxConnectionData;
 import org.mskcc.kickoff.velox.VeloxProjectProxy;
 import org.mskcc.util.TestUtils;
 import org.mskcc.util.VeloxConstants;
+import org.mskcc.domain.SampleSet;
+import org.mskcc.domain.SampleSet.PrimaryRequestNotPartOfSampleSetException;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -183,7 +185,7 @@ public class SampleSetIntegrationTest {
         Optional<Exception> exception = TestUtils.assertThrown(() -> veloxProjectProxy.getRequest(validSampleSetId));
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSet
                 .PrimaryRequestNotPartOfSampleSetException.class));
     }
 
@@ -199,7 +201,7 @@ public class SampleSetIntegrationTest {
         Optional<Exception> exception = TestUtils.assertThrown(() -> veloxProjectProxy.getRequest(validSampleSetId));
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSet
                 .PrimaryRequestNotPartOfSampleSetException.class));
     }
 

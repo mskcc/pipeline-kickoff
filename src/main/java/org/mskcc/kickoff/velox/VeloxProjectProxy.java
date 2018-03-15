@@ -9,6 +9,7 @@ import com.velox.sapioutils.client.standalone.VeloxStandaloneException;
 import com.velox.sapioutils.client.standalone.VeloxTask;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.PairingInfo;
+import org.mskcc.domain.SampleSet;
 import org.mskcc.domain.instrument.InstrumentType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
@@ -113,7 +114,7 @@ public class VeloxProjectProxy implements RequestProxy {
             String message = String.format("No matching requests for request id: %s", projectId);
             PM_LOGGER.info(message);
             throw e;
-        } catch (SampleSetProjectInfoConverter.PrimaryRequestNotSetException | SampleSetProjectInfoConverter
+        } catch (SampleSetProjectInfoConverter.PrimaryRequestNotSetException | SampleSet
                 .PrimaryRequestNotPartOfSampleSetException | SampleSetProjectInfoConverter
                 .PropertyInPrimaryRequestNotSetException e) {
             PM_LOGGER.error(e.getMessage());

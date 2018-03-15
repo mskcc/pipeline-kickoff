@@ -1,6 +1,8 @@
 package org.mskcc.kickoff.domain;
 
+import org.apache.commons.lang3.StringUtils;
 import org.mskcc.domain.SampleSet;
+import org.mskcc.kickoff.converter.SampleSetProjectInfoConverter;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -30,5 +32,18 @@ public class KickoffSampleSet extends SampleSet {
         for (KickoffRequest kickoffRequest : kickoffRequests) {
             requestIdToKickoffRequest.put(kickoffRequest.getId(), kickoffRequest);
         }
+    }
+
+    @Override
+    public KickoffRequest getPrimaryRequest() {
+        if (StringUtils.isEmpty(getPrimaryRequestId()))
+            throw new SampleSetProjectInfoConverter.PrimaryRequestNotSetException(String.format("Primary request not " +
+                            "set for project: %s",
+                    getName()));
+        if (!requestIdToKickoffRequest.containsKey(getPrimaryRequestId()))
+            throw new SampleSet.PrimaryRequestNotPartOfSampleSetException(String.format("Prime request provided %s is not part of sample set %s",
+                    getPrimaryRequestId(), getName()));
+
+        return requestIdToKickoffRequest.get(getPrimaryRequestId());
     }
 }

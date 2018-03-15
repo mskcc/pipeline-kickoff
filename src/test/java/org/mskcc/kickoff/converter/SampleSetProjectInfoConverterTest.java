@@ -10,6 +10,8 @@ import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.util.TestUtils;
+import org.mskcc.domain.SampleSet;
+import org.mskcc.domain.SampleSet.PrimaryRequestNotPartOfSampleSetException;
 
 import java.util.*;
 
@@ -35,22 +37,7 @@ public class SampleSetProjectInfoConverterTest {
 
     @Test
     public void whenNotAllRequestsHaveLabHeadSet_shouldThrowAnException() {
-        assertExceptionThrownOnMissingRequiredRequestProperty(Constants.ProjectInfo.LAB_HEAD);
-    }
-
-    @Test
-    public void whenRequestsInSampleSetHaveDifferentLabHead_shouldThrowAnException() {
-        assertAmbiguousPropertyThrowsAnException(Constants.ProjectInfo.LAB_HEAD);
-    }
-
-    @Test
-    public void whenNotAllRequestsHaveLabHeadEmailSet_shouldThrowAnException() {
-        assertExceptionThrownOnMissingRequiredRequestProperty(Constants.ProjectInfo.LAB_HEAD_E_MAIL);
-    }
-
-    @Test
-    public void whenRequestsInSampleSetHaveDifferentLabHeadEmail_shouldThrowAnException() {
-        assertAmbiguousPropertyThrowsAnException(Constants.ProjectInfo.LAB_HEAD_E_MAIL);
+        assertExceptionThrownOnMissingPrimaryRequestProperty(Constants.ProjectInfo.LAB_HEAD);
     }
 
     @Test
@@ -199,7 +186,7 @@ public class SampleSetProjectInfoConverterTest {
         Optional<Exception> exception = TestUtils.assertThrown(() -> sampleSetProjectInfoConverter.convert(sampleSet));
 
         assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSetProjectInfoConverter
+        assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(SampleSet
                 .PrimaryRequestNotPartOfSampleSetException.class));
     }
 

@@ -49,13 +49,11 @@ public class SampleSetProjectInfoConverter {
     }
 
     private String getLabHead(KickoffSampleSet sampleSet) {
-        return ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getProjectInfo().get(Constants
-                .ProjectInfo.LAB_HEAD), Constants.ProjectInfo.LAB_HEAD);
+        return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.LAB_HEAD);
     }
 
     private String getLabHeadEmail(KickoffSampleSet sampleSet) {
-        return ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getProjectInfo().get(Constants
-                .ProjectInfo.LAB_HEAD_E_MAIL), Constants.ProjectInfo.LAB_HEAD_E_MAIL);
+        return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.LAB_HEAD_E_MAIL);
     }
 
     private String getRequestor(KickoffSampleSet sampleSet) {
@@ -99,26 +97,13 @@ public class SampleSetProjectInfoConverter {
     }
 
     private String getPropertyFromPrimaryRequest(KickoffSampleSet sampleSet, String propertyName) {
-        String primaryRequestId = sampleSet.getPrimaryRequestId();
-        validatePrimaryRequest(sampleSet);
+        KickoffRequest primeKickoffRequest = sampleSet.getPrimaryRequest();
 
-        KickoffRequest primeKickoffRequest = sampleSet.getRequestIdToKickoffRequest().get(primaryRequestId);
         if (!primeKickoffRequest.getProjectInfo().containsKey(propertyName))
             throw new PropertyInPrimaryRequestNotSetException(String.format("Primary request: %s of project: %s has " +
                     "no property: %s set", primeKickoffRequest.getId(), sampleSet.getName(), propertyName));
 
         return primeKickoffRequest.getProjectInfo().get(propertyName);
-    }
-
-    private void validatePrimaryRequest(KickoffSampleSet sampleSet) {
-        String primaryRequestId = sampleSet.getPrimaryRequestId();
-        if (StringUtils.isEmpty(primaryRequestId))
-            throw new PrimaryRequestNotSetException(String.format("Primary request not set for project: %s",
-                    sampleSet.getName()));
-
-        if (!sampleSet.getRequestIdToKickoffRequest().containsKey(primaryRequestId))
-            throw new PrimaryRequestNotPartOfSampleSetException(String.format("Primary request: %s for project: %s is" +
-                    " not part of this project", primaryRequestId, sampleSet.getName()));
     }
 
     private String getCmoProjectBrief(KickoffSampleSet sampleSet) {
@@ -182,12 +167,6 @@ public class SampleSetProjectInfoConverter {
 
     public static class PrimaryRequestNotSetException extends RuntimeException {
         public PrimaryRequestNotSetException(String message) {
-            super(message);
-        }
-    }
-
-    public static class PrimaryRequestNotPartOfSampleSetException extends RuntimeException {
-        public PrimaryRequestNotPartOfSampleSetException(String message) {
             super(message);
         }
     }
