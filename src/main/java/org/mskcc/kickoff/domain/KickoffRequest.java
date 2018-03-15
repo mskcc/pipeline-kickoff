@@ -59,10 +59,7 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     }
 
     public Map<String, Sample> getAllValidSamples() {
-        if (allValidSamples == null)
-            allValidSamples = getAllValidSamples(s -> true);
-
-        return allValidSamples;
+        return getAllValidSamples(s -> true);
     }
 
     public Map<String, Sample> getAllValidSamples(Predicate<Sample> samplePredicate) {

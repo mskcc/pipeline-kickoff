@@ -104,28 +104,28 @@ public class Constants {
     }
 
     public static class ProjectInfo {
-        public static final String REQUESTOR = "Requestor";
+        public static final String ALTERNATE_EMAILS = "Alternate_E-mails";
+        public static final String ASSAY = "Assay";
+        public static final String BIOINFORMATIC_REQUEST = "Bioinformatic_Request";
+        public static final String CMO_PROJECT_BRIEF = "CMO_Project_Brief";
+        public static final String CMO_PROJECT_ID = "CMO_Project_ID";
+        public static final String DATA_ANALYST = "Data_Analyst";
+        public static final String DATA_ANALYST_EMAIL = "Data_Analyst_E-mail";
+        public static final String DESIGN_FILE = "DesignFile";
+        public static final String FINAL_PROJECT_TITLE = "Final_Project_Title";
+        public static final String IGO_PROJECT_ID = "IGO_Project_ID";
         public static final String LAB_HEAD = "Lab_Head";
-        public static final String REQUESTOR_E_MAIL = "Requestor_E-mail";
         public static final String LAB_HEAD_E_MAIL = "Lab_Head_E-mail";
         public static final String NUMBER_OF_SAMPLES = "NumberOfSamples";
-        public static final String DESIGN_FILE = "DesignFile";
-        public static final String SPIKEIN_DESIGN_FILE = "SpikeinDesignFile";
-        public static final String TUMOR_TYPE = "TumorType";
         public static final String PLATFORM = "Platform";
-        public static final String SAMPLE_TYPE = "Sample_Type";
-        public static final String IGO_PROJECT_ID = "IGO_Project_ID";
-        public static final String FINAL_PROJECT_TITLE = "Final_Project_Title";
-        public static final String CMO_PROJECT_ID = "CMO_Project_ID";
-        public static final String CMO_PROJECT_BRIEF = "CMO_Project_Brief";
         public static final String PROJECT_MANAGER = "Project_Manager";
         public static final String PROJECT_MANAGER_EMAIL = "Project_Manager_Email";
         public static final String README_INFO = "Readme_Info";
-        public static final String BIOINFORMATIC_REQUEST = "Bioinformatic_Request";
-        public static final String DATA_ANALYST = "Data_Analyst";
-        public static final String ALTERNATE_EMAILS = "Alternate_E-mails";
-        public static final String DATA_ANALYST_EMAIL = "Data_Analyst_E-mail";
+        public static final String REQUESTOR = "Requestor";
+        public static final String REQUESTOR_E_MAIL = "Requestor_E-mail";
+        public static final String SAMPLE_TYPE = "Sample_Type";
         public static final String SPECIES = "Species";
-        public static final String ASSAY = "Assay";
+        public static final String SPIKEIN_DESIGN_FILE = "SpikeinDesignFile";
+        public static final String TUMOR_TYPE = "TumorType";
     }
 }
