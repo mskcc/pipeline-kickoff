@@ -3,6 +3,7 @@ package org.mskcc.kickoff.domain;
 import org.mskcc.domain.PairingInfo;
 import org.mskcc.domain.Recipe;
 import org.mskcc.domain.external.ExternalSample;
+import org.mskcc.kickoff.converter.SampleSetProjectInfoConverter;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -74,6 +75,11 @@ public class SampleSet {
     }
 
     public KickoffRequest getPrimaryRequest() {
+        if (!requestIdToRequest.containsKey(primaryRequestId))
+            throw new SampleSetProjectInfoConverter.PrimaryRequestNotPartOfSampleSetException(String.format("Primary " +
+                    "request: %s for project: %s is" +
+                    " not part of this project", primaryRequestId, name));
+
         return requestIdToRequest.get(primaryRequestId);
     }
 

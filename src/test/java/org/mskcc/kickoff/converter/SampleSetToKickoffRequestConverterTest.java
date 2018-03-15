@@ -43,12 +43,14 @@ public class SampleSetToKickoffRequestConverterTest {
     @Before
     public void setUp() throws Exception {
         sampleSet = new SampleSet("3243");
+        sampleSet.setPrimaryRequestId(String.format("request_%d", id));
     }
 
     @Test
     public void whenOneRequestIsForced_shouldProjectBeForced() {
         sampleSet.setRequests(Arrays.asList(getForcedImpactRequest(), getNormalImpactHumanPiRequest(),
                 getNormalImpactHumanPiRequest()));
+
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
         assertThat(request.getProcessingType().getClass(), typeCompatibleWith(ForcedProcessingType.class));
@@ -58,6 +60,7 @@ public class SampleSetToKickoffRequestConverterTest {
     public void whenAllRequestsAreNormal_shouldProjectBeNormal() {
         sampleSet.setRequests(Arrays.asList(getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest(),
                 getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest()));
+
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
         assertThat(request.getProcessingType().getClass(), typeCompatibleWith(NormalProcessingType.class));
@@ -67,6 +70,7 @@ public class SampleSetToKickoffRequestConverterTest {
     public void whenAllRequestsAreForced_shouldProjectBeForced() {
         sampleSet.setRequests(Arrays.asList(getForcedImpactRequest(), getForcedImpactRequest(),
                 getForcedImpactRequest()));
+
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
         assertThat(request.getProcessingType().getClass(), typeCompatibleWith(ForcedProcessingType.class));
@@ -118,6 +122,7 @@ public class SampleSetToKickoffRequestConverterTest {
     @Test
     public void whenTwoRequestsHaveNoLibTypes_shouldProjectContainNoLibTypes() {
         sampleSet.setRequests(Arrays.asList(getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest()));
+
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
 
         assertProjectList(request.getLibTypes(), Arrays.asList());
@@ -326,7 +331,9 @@ public class SampleSetToKickoffRequestConverterTest {
     public void whenAllRequestAreNotBicAutorunnable_shouldProjectBeNotBicAutorunnable() {
         sampleSet.setRequests(Arrays.asList(getNormalImpactHumanPiRequest(), getNormalImpactHumanPiRequest(),
                 getForcedImpactRequest()));
+
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
+
         assertThat(request.isBicAutorunnable(), is(false));
     }
 
@@ -334,7 +341,9 @@ public class SampleSetToKickoffRequestConverterTest {
     public void whenAllRequestBicAutorunnable_shouldProjectBeBicAutorunnable() {
         sampleSet.setRequests(Arrays.asList(getBicAutorunnableRequest(), getBicAutorunnableRequest(),
                 getBicAutorunnableRequest()));
+
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
+
         assertThat(request.isBicAutorunnable(), is(true));
     }
 
@@ -542,40 +551,18 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
+
         assertThat(request.getPi(), is(kingJulianInvestigator));
-    }
-
-    @Test
-    public void whenRequestsHaveDifferentProjectInvestigator_shouldThrowAnException() {
-        KickoffRequest kickoffRequest = getNormalImpactHumanRequest();
-        KickoffRequest kickoffRequest1 = getNormalImpactHumanRequest();
-
-        kickoffRequest.setPi("King Julian");
-        kickoffRequest1.setPi("Mort");
-
-        sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
-        Optional<Exception> exception = assertThrown(() -> sampleSetToRequestConverter.convert(sampleSet));
-        assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter
-                .AmbiguousPropertyException.class));
-    }
-
-    @Test
-    public void whenRequestsHaveNoProjectInvestigator_shouldThrowAnException() {
-        sampleSet.setRequests(Arrays.asList(getNormalImpactHumanRequest(), getNormalImpactHumanRequest()));
-        Optional<Exception> exception = assertThrown(() -> sampleSetToRequestConverter.convert(sampleSet));
-        assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter.NoPropertySetException
-                .class));
     }
 
     @Test
     public void whenRequestsHaveNoInvest_shouldProjectHaveNoInvest() {
         KickoffRequest kickoffRequest = getNormalImpactHumanPiRequest();
         KickoffRequest kickoffRequest1 = getNormalImpactHumanPiRequest();
-
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
+
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
+
         assertThat(request.getInvest(), is(StringUtils.EMPTY));
     }
 
@@ -589,6 +576,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
         sampleSet.setRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
+
         assertThat(request.getInvest(), is(kickoffRequest.getId() + ": " + invest));
     }
 
