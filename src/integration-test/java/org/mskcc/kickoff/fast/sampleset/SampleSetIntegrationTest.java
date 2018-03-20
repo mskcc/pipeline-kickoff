@@ -14,6 +14,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mskcc.domain.Recipe;
+import org.mskcc.domain.SampleSet;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.converter.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.converter.SampleSetToRequestConverter;

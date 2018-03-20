@@ -5,6 +5,7 @@ import org.hamcrest.object.IsCompatibleType;
 import org.junit.Before;
 import org.junit.Test;
 import org.mskcc.domain.RequestSpecies;
+import org.mskcc.domain.SampleSet;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ProcessingType;
