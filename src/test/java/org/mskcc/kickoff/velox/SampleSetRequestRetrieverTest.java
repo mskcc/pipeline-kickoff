@@ -6,7 +6,7 @@ import org.junit.Test;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.domain.SampleSet;
+import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.NormalProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
@@ -33,7 +33,7 @@ public class SampleSetRequestRetrieverTest {
     @Test
     public void whenSampleSetRequestIsRetrieved_shouldReturnKickoffRequest() throws Exception {
         //given
-        SampleSet sampleSet = getSampleSet();
+        KickoffSampleSet sampleSet = getSampleSet();
         when(sampleSetRetriever.retrieve(projId, normalProcessingType)).thenReturn(sampleSet);
         KickoffRequest kickoffReq = getKickoffReq();
         when(sampleSetToReqConv.convert(sampleSet)).thenReturn(kickoffReq);
@@ -45,8 +45,8 @@ public class SampleSetRequestRetrieverTest {
         assertThat(request, is(kickoffReq));
     }
 
-    private SampleSet getSampleSet() {
-        SampleSet sampleSet = new SampleSet("sampleSetId");
+    private KickoffSampleSet getSampleSet() {
+        KickoffSampleSet sampleSet = new KickoffSampleSet("sampleSetId");
 
         return sampleSet;
     }

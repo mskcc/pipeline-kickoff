@@ -3,7 +3,7 @@ package org.mskcc.kickoff.converter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.domain.SampleSet;
+import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.util.Constants;
 
 import java.util.*;
@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 public class SampleSetProjectInfoConverter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
-    public Map<String, String> convert(SampleSet sampleSet) {
+    public Map<String, String> convert(KickoffSampleSet sampleSet) {
         Map<String, String> projectInfo = new LinkedHashMap<>();
 
         projectInfo.put(Constants.ProjectInfo.LAB_HEAD, getLabHead(sampleSet));
@@ -43,50 +43,50 @@ public class SampleSetProjectInfoConverter {
         return projectInfo;
     }
 
-    private void setPropertyFromPrimaryRequest(SampleSet sampleSet, Map<String, String> projectInfo, String
+    private void setPropertyFromPrimaryRequest(KickoffSampleSet sampleSet, Map<String, String> projectInfo, String
             propertyName) {
         projectInfo.put(propertyName, getPropertyFromPrimaryRequest(sampleSet, propertyName));
     }
 
-    private String getLabHead(SampleSet sampleSet) {
+    private String getLabHead(KickoffSampleSet sampleSet) {
         return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.LAB_HEAD);
     }
 
-    private String getLabHeadEmail(SampleSet sampleSet) {
+    private String getLabHeadEmail(KickoffSampleSet sampleSet) {
         return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.LAB_HEAD_E_MAIL);
     }
 
-    private String getRequestor(SampleSet sampleSet) {
+    private String getRequestor(KickoffSampleSet sampleSet) {
         return ConverterUtils.getArbitraryPropertyValue(sampleSet, Constants.ProjectInfo.REQUESTOR);
     }
 
-    private String getRequestorEmail(SampleSet sampleSet) {
+    private String getRequestorEmail(KickoffSampleSet sampleSet) {
         return ConverterUtils.getArbitraryPropertyValue(sampleSet, Constants.ProjectInfo.REQUESTOR_E_MAIL);
     }
 
-    private String getPlatform(SampleSet sampleSet) {
+    private String getPlatform(KickoffSampleSet sampleSet) {
         return sampleSet.getBaitSet();
     }
 
-    private String getAlternateEmails(SampleSet sampleSet) {
+    private String getAlternateEmails(KickoffSampleSet sampleSet) {
         return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo
                 .ALTERNATE_EMAILS), ",");
     }
 
-    private String getIgoProjectId(SampleSet sampleSet) {
+    private String getIgoProjectId(KickoffSampleSet sampleSet) {
         return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.IGO_PROJECT_ID);
     }
 
-    private String getFinalProjectTitle(SampleSet sampleSet) {
+    private String getFinalProjectTitle(KickoffSampleSet sampleSet) {
         return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.FINAL_PROJECT_TITLE);
     }
 
-    private String getCmoProjectId(SampleSet sampleSet) {
+    private String getCmoProjectId(KickoffSampleSet sampleSet) {
         return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.CMO_PROJECT_ID);
     }
 
-    private void setTumorType(Map<String, String> projectInfo, SampleSet sampleSet) {
-        Set<String> tumorTypes = sampleSet.getRequests().stream()
+    private void setTumorType(Map<String, String> projectInfo, KickoffSampleSet sampleSet) {
+        Set<String> tumorTypes = sampleSet.getKickoffRequests().stream()
                 .map(r -> r.getProjectInfo().get(Constants.ProjectInfo.TUMOR_TYPE))
                 .collect(Collectors.toSet());
 
@@ -96,8 +96,8 @@ public class SampleSetProjectInfoConverter {
             setPropertyFromPrimaryRequest(sampleSet, projectInfo, Constants.ProjectInfo.TUMOR_TYPE);
     }
 
-    private String getPropertyFromPrimaryRequest(SampleSet sampleSet, String propertyName) {
-        KickoffRequest primeKickoffRequest = getPrimaryRequest(sampleSet);
+    private String getPropertyFromPrimaryRequest(KickoffSampleSet sampleSet, String propertyName) {
+        KickoffRequest primeKickoffRequest = sampleSet.getPrimaryRequest();
 
         if (!primeKickoffRequest.getProjectInfo().containsKey(propertyName))
             throw new PropertyInPrimaryRequestNotSetException(String.format("Primary request: %s of project: %s has " +
@@ -106,44 +106,35 @@ public class SampleSetProjectInfoConverter {
         return primeKickoffRequest.getProjectInfo().get(propertyName);
     }
 
-    private KickoffRequest getPrimaryRequest(SampleSet sampleSet) {
-        String primaryRequestId = sampleSet.getPrimaryRequestId();
-        if (StringUtils.isEmpty(primaryRequestId))
-            throw new PrimaryRequestNotSetException(String.format("Primary request not set for project: %s",
-                    sampleSet.getName()));
-
-        return sampleSet.getPrimaryRequest();
-    }
-
-    private String getCmoProjectBrief(SampleSet sampleSet) {
+    private String getCmoProjectBrief(KickoffSampleSet sampleSet) {
         return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.CMO_PROJECT_BRIEF);
     }
 
-    private String getProjectManager(SampleSet sampleSet) {
+    private String getProjectManager(KickoffSampleSet sampleSet) {
         return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.PROJECT_MANAGER);
     }
 
-    private String getProjectManagerEmail(SampleSet sampleSet) {
+    private String getProjectManagerEmail(KickoffSampleSet sampleSet) {
         return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.PROJECT_MANAGER_EMAIL);
     }
 
-    private String getReadmeInfo(SampleSet sampleSet) {
+    private String getReadmeInfo(KickoffSampleSet sampleSet) {
         return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo
                 .README_INFO), ",");
     }
 
-    private String getDataAnalyst(SampleSet sampleSet) {
+    private String getDataAnalyst(KickoffSampleSet sampleSet) {
         return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo
                 .DATA_ANALYST), ",");
     }
 
-    private String getDataAnalystEmail(SampleSet sampleSet) {
+    private String getDataAnalystEmail(KickoffSampleSet sampleSet) {
         return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo
                 .DATA_ANALYST_EMAIL), ",");
     }
 
-    private String getNumberOfSamples(SampleSet sampleSet) {
-        List<KickoffRequest> nonEmpty = sampleSet.getRequests().stream()
+    private String getNumberOfSamples(KickoffSampleSet sampleSet) {
+        List<KickoffRequest> nonEmpty = sampleSet.getKickoffRequests().stream()
                 .filter(r -> !StringUtils.isEmpty(r.getProjectInfo().get(Constants.ProjectInfo.NUMBER_OF_SAMPLES)))
                 .collect(Collectors.toList());
 
@@ -156,16 +147,17 @@ public class SampleSetProjectInfoConverter {
         return String.valueOf(totalNumberOfSamples);
     }
 
-    private String getSpecies(SampleSet sampleSet) {
+    private String getSpecies(KickoffSampleSet sampleSet) {
         return ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getProjectInfo().get(Constants
                 .ProjectInfo.SPECIES), Constants.ProjectInfo.SPECIES);
     }
 
-    private String getBioinformaticRequest(SampleSet sampleSet) {
+    private String getBioinformaticRequest(KickoffSampleSet sampleSet) {
         return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.BIOINFORMATIC_REQUEST);
     }
 
-    private void setOptionalProjectProperty(Map<String, String> projectInfo, SampleSet sampleSet, String propertyName) {
+    private void setOptionalProjectProperty(Map<String, String> projectInfo, KickoffSampleSet sampleSet, String
+            propertyName) {
         Optional<String> optionalProperty = ConverterUtils.getOptionalProperty(sampleSet, r -> r.getProjectInfo().get
                 (propertyName), propertyName);
 
@@ -175,12 +167,6 @@ public class SampleSetProjectInfoConverter {
 
     public static class PrimaryRequestNotSetException extends RuntimeException {
         public PrimaryRequestNotSetException(String message) {
-            super(message);
-        }
-    }
-
-    public static class PrimaryRequestNotPartOfSampleSetException extends RuntimeException {
-        public PrimaryRequestNotPartOfSampleSetException(String message) {
             super(message);
         }
     }

@@ -316,7 +316,11 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                             -> p.getKey().contains(pooledNormalPool)).findFirst();
                     if (pool.isPresent()) {
                         Collection<Run> poolRuns = pool.get().getValue().getRuns().values();
-                        poolRuns.forEach(r -> r.setValid(true));
+
+                        for (Run r : poolRuns) {
+                            r.setValid(true);
+                        }
+
                         runs.addAll(poolRuns);
                     }
                 }
