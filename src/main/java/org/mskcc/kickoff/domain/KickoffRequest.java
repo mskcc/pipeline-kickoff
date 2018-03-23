@@ -31,7 +31,7 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     private String rerunReason;
     private RequestTypeStrategy requestTypeStrategy;
     private RequestTypeStrategyFactory requestTypeStrategyFactory = new RequestTypeStrategyFactory();
-    private Map<String, Sample> allValidSamples;
+    private Set<String> pairingSampleIds = new HashSet<>();
 
     public KickoffRequest(String id, ProcessingType processingType) {
         super(id);
@@ -203,6 +203,18 @@ public class KickoffRequest extends org.mskcc.domain.Request {
         Set<String> validSampleIds = new TreeSet<>(getAllValidSamples().keySet());
         DEV_LOGGER.info(String.format("Found %d valid samples: [%s]", getAllValidSamples().size(), Utils
                 .getJoinedCollection(validSampleIds, ",")));
+    }
+
+    public Set<String> getPairingSampleIds() {
+        return pairingSampleIds;
+    }
+
+    public void addPairingSampleId(String sampleId) {
+        pairingSampleIds.add(sampleId);
+    }
+
+    public void addPairingSampleIds(Collection<String> sampleIds) {
+        pairingSampleIds.addAll(sampleIds);
     }
 
     public static class NoValidSamplesException extends RuntimeException {

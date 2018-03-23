@@ -45,9 +45,12 @@ public class GroupingFilePrinter extends FilePrinter {
 
         for (Patient patient : getPatientsListSortedByGroup(kickoffRequest)) {
             for (Sample sample : getUniqueSamples(patient)) {
-                outputText.append(String.format("%s\tGroup_%s\n", sampleNormalization(sample.get(Constants.CORRECTED_CMO_ID)), groupNumberFormat.format(patient.getGroupNumber())));
+                if (kickoffRequest.getPairingSampleIds().contains(sample.getCorrectedCmoSampleId()))
+                    outputText.append(String.format("%s\tGroup_%s\n", sampleNormalization(sample.get(Constants
+                            .CORRECTED_CMO_ID)), groupNumberFormat.format(patient.getGroupNumber())));
             }
         }
+
         if (outputText.length() > 0) {
             try {
                 //@TODO create Printer to deal with printing, closing, etc

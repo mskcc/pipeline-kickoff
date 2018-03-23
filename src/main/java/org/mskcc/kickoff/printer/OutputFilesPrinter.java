@@ -23,7 +23,7 @@ public class OutputFilesPrinter {
                 if (filePrinter.shouldPrint(kickoffRequest))
                     filePrinter.print(kickoffRequest);
             } catch (Exception e) {
-                DEV_LOGGER.warn(String.format("Unable to save file: %s", filePrinter.getFilePath(kickoffRequest)));
+                DEV_LOGGER.warn(String.format("Unable to save file: %s", filePrinter.getFilePath(kickoffRequest)), e);
             }
         }
     }
