@@ -2,6 +2,7 @@ package org.mskcc.kickoff.printer;
 
 import org.apache.log4j.Logger;
 import org.mskcc.domain.RequestType;
+import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.PairingsResolver;
 import org.mskcc.kickoff.manifest.ManifestFile;
@@ -40,13 +41,14 @@ public class PairingFilePrinter extends FilePrinter {
         DEV_LOGGER.info(String.format("Starting to create file: %s", filename));
 
         Map<String, String> pairingInfo = getPairingInfo(request);
+        populatePairingSampleIds(request, pairingInfo);
 
         Set<String> normalCMOids = request.getAllValidSamples(s -> !s.isTumor()).values().stream()
-                .map(s -> s.getCorrectedCmoSampleId())
+                .map(Sample::getCorrectedCmoSampleId)
                 .collect(Collectors.toSet());
 
         try {
-            if (pairingInfo != null && pairingInfo.size() > 0) {
+            if (pairingInfo.size() > 0) {
                 File pairing_file = new File(filename);
                 PrintWriter pW = new PrintWriter(new FileWriter(pairing_file, false), false);
                 for (String tumorCorrectedCmoId : pairingInfo.keySet()) {
@@ -61,8 +63,18 @@ public class PairingFilePrinter extends FilePrinter {
                 observerManager.notifyObserversOfFileCreated(ManifestFile.PAIRING);
             }
         } catch (Exception e) {
-            DEV_LOGGER.warn("Exception thrown: ", e);
+            DEV_LOGGER.warn(String.format("Error while generating pairing file: %s", e.getMessage()), e);
         }
+    }
+
+    private void populatePairingSampleIds(KickoffRequest request, Map<String, String> pairingInfo) {
+        request.addPairingSampleIds(pairingInfo.keySet().stream()
+                .filter(pi -> !Constants.NA_LOWER_CASE.equals(pi))
+                .collect(Collectors.toSet()));
+
+        request.addPairingSampleIds(pairingInfo.values().stream()
+                .filter(pi -> !Constants.NA_LOWER_CASE.equals(pi))
+                .collect(Collectors.toSet()));
     }
 
     private void notifyNormalUnmatched(String unmatchedNorm) {
@@ -85,8 +97,11 @@ public class PairingFilePrinter extends FilePrinter {
             Set<String> pairedNormals = new HashSet<>(pairingInfo.values());
             Set<String> missingNormalsToBeAdded = new HashSet<>(normalCMOids);
             missingNormalsToBeAdded.removeAll(pairedNormals);
+
             for (String unmatchedNorm : missingNormalsToBeAdded) {
                 pW.write(String.format("%s\t%s\n", sampleNormalization(unmatchedNorm), Constants.NA_LOWER_CASE));
+                if (!unmatchedNorm.matches("%POOLEDNORMAL%"))
+                    request.addPairingSampleId(unmatchedNorm);
                 notifyNormalUnmatched(unmatchedNorm);
             }
         }

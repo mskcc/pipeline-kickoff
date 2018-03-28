@@ -67,14 +67,14 @@ public class PairingInfoRetriever {
             pairings.put(sample.getCorrectedCmoSampleId(), normalCmoId);
         }
 
-        if (isPairingInfo(request) && Objects.equals(request.getRequestType(), Constants.EXOME)) {
+        if (Objects.equals(request.getRequestType(), Constants.EXOME)) {
             Set<String> normals = new HashSet<>(pairings.values());
             if (normals.size() == 1 && normals.contains(Constants.NA_LOWER_CASE)) {
                 return Collections.emptyMap();
             }
         }
 
-        if (isPairingInfo(request) && pairings.size() > 0) {
+        if (pairings.size() > 0) {
             Set<String> temp1 = new HashSet<>(tumorIgoToCmoId.values());
             Set<String> temp2 = new HashSet<>(pairings.keySet());
             temp1.removeAll(temp2);
@@ -107,11 +107,5 @@ public class PairingInfoRetriever {
 
     private String getNormalCmoId(KickoffRequest request, Sample pairingSample) {
         return request.getSample(pairingSample.getIgoId()).get(Constants.CORRECTED_CMO_ID);
-    }
-
-    private boolean isPairingInfo(KickoffRequest request) {
-        return request.getSamples().values().stream()
-                .allMatch(s -> s.getPairing() == null || (s.getPairing() != null && Objects.equals(s.getPairing()
-                        .getCmoSampleId(), org.mskcc.util.Constants.UNDEFINED)));
     }
 }
