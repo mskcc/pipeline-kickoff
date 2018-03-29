@@ -289,11 +289,11 @@ public class SampleInfoImpact extends SampleInfo {
             } else if (this.LIBRARY_YIELD.startsWith("#")) {
                 this.LIBRARY_YIELD = "-2";
             }
-            processNimbInfo(drm, rec, apiUser, libVol, libConc, sample.isPooledNormal(), afterDate, sample);
+            processNimbInfo(drm, rec, apiUser, libVol, libConc, sample.isPooledNormal(), afterDate, sample, request);
         } else {
             // Here I can just be simple like the good old times and pull stuff from the
             // Nimb protocol
-            processNimbInfo(drm, rec, apiUser, -1, -1, sample.isPooledNormal(), afterDate, sample);
+            processNimbInfo(drm, rec, apiUser, -1, -1, sample.isPooledNormal(), afterDate, sample, request);
         }
     }
 
@@ -772,7 +772,8 @@ public class SampleInfoImpact extends SampleInfo {
     /*
      Nimblgen Pulling
      */
-    private void processNimbInfo(DataRecordManager drm, DataRecord rec, User apiUser, double libVol, double libConc, boolean poolNormal, boolean afterDate, Sample sample) {
+    private void processNimbInfo(DataRecordManager drm, DataRecord rec, User apiUser, double libVol, double libConc,
+                                 boolean poolNormal, boolean afterDate, Sample sample, Request request) {
         // This should set Lib Yield, Capt Input, Capt Name, Bait Set, Spike ins
         List<DataRecord> nimbProtocols = new ArrayList<>();
         List<Object> valid = new ArrayList<>();
@@ -855,6 +856,7 @@ public class SampleInfoImpact extends SampleInfo {
         sample.setHasNimbleGen(true);
 
         populatePoolNormals(chosenRec, apiUser);
+        populatePoolNormals(apiUser, drm, request);
 
         try {
             nimbRec = chosenRec.getFields(apiUser);
@@ -940,6 +942,100 @@ public class SampleInfoImpact extends SampleInfo {
             }
         } catch (Exception e) {
             DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
+        }
+    }
+
+    private void populatePoolNormals(User apiUser, DataRecordManager dataRecordManager, Request request) {
+        try {
+            String query = String.format("%s LIKE '%s'", VeloxConstants.OTHER_SAMPLE_ID,
+                    "%POOLEDNORMAL%", VeloxConstants.SEQUENCER_RUN_FOLDER);
+
+            DEV_LOGGER.info(String.format("Query used to look for pooled normals: %s", query));
+
+            List<DataRecord> potentialPooledNormalsQcs = dataRecordManager.queryDataRecords(VeloxConstants
+                    .SEQ_ANALYSIS_SAMPLE_QC, query, apiUser);
+
+            for (DataRecord potentialPooledNormalQc : potentialPooledNormalsQcs) {
+                if (!isSampleRun(potentialPooledNormalQc, apiUser, request))
+                    continue;
+
+                List<DataRecord> parentSamples = potentialPooledNormalQc.getParentsOfType(VeloxConstants.SAMPLE,
+                        apiUser);
+
+                if (parentSamples.size() == 0) {
+                    DEV_LOGGER.warn(String.format("No parent sample for Sample Level Qc %s. This Pooled normal won't " +
+                                    "be added.",
+                            potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser)));
+                    return;
+                }
+
+                if (parentSamples.size() > 1) {
+                    DEV_LOGGER.warn(String.format("Multiple parent samples for Sample Level Qc %s. This Pooled normal" +
+                                    " won't be " +
+                                    "added.",
+                            potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser)));
+                    return;
+                }
+
+                DataRecord parentSample = parentSamples.get(0);
+
+                String pooledNormalRecipe = parentSample.getStringVal(VeloxConstants.RECIPE, apiUser);
+
+                boolean isSameRecipe = Objects.equals(pooledNormalRecipe, request.getRecipe().get(0).getValue());
+
+                if (!isSameRecipe)
+                    continue;
+
+                String otherSampleId = parentSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
+
+                Set<String> samplesPreservations = request.getSamples().values().stream()
+                        .map(s -> s.get("Preservation"))
+                        .collect(Collectors.toSet());
+
+                boolean isSamePreservation = samplesPreservations.stream()
+                        .anyMatch(s -> otherSampleId.toLowerCase().startsWith(SPECIMEN_PRESERVATION_TYPE.toLowerCase
+                                ()));
+
+                if (!isSamePreservation)
+                    continue;
+
+                if (isPooledNormal(apiUser, parentSample)) {
+                    String pooledNormalId = parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
+                    if (!pooledNormals.containsKey(parentSample))
+                        DEV_LOGGER.info(String.format("Adding pooled normal: %s", pooledNormalId));
+
+                    if (!pooledNormals.containsKey(parentSample))
+                        pooledNormals.put(parentSample, new HashSet<>());
+
+                    Set<String> samplePooledNormals = pooledNormals.get(parentSample);
+                    samplePooledNormals.add(pooledNormalId);
+                }
+            }
+        } catch (Exception e) {
+            DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
+        }
+    }
+
+    private boolean isPooledNormal(User apiUser, DataRecord parentSample) throws Exception {
+        return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL");
+    }
+
+    private boolean isSampleRun(DataRecord potentialPooledNormalQc, User apiUser, Request request)
+            throws Exception {
+        String sampleId = potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
+
+        try {
+            String runFolder = potentialPooledNormalQc.getStringVal(VeloxConstants.SEQUENCER_RUN_FOLDER, apiUser);
+
+            boolean isSampleRun = request.getAllValidSamples().values().stream()
+                    .flatMap(s -> s.getValidRunIds().stream())
+                    .anyMatch(r -> runFolder.startsWith(r));
+
+            return isSampleRun;
+        } catch (Exception e) {
+            DEV_LOGGER.warn(String.format("Error while trying to get pooled normal run id: %s. This pooled normal " +
+                    "won't be added.", sampleId), e);
+            return false;
         }
     }
 
