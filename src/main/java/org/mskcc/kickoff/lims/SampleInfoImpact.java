@@ -1024,6 +1024,8 @@ public class SampleInfoImpact extends SampleInfo {
 
                 boolean isSameRecipe = Objects.equals(pooledNormalRecipe, kickoffRequest.getRecipe().getValue());
 
+                if (StringUtils.isEmpty(pooledNormalRecipe))
+                    DEV_LOGGER.warn("empty recipe: " + parentSample.getRecordId());
                 if (!isSameRecipe)
                     continue;
 

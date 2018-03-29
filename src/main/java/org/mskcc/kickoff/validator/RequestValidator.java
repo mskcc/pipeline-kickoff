@@ -167,9 +167,7 @@ public class RequestValidator {
 
     private void validateBarcodeInfo(KickoffRequest kickoffRequest) {
         for (Sample sample : kickoffRequest.getValidNonPooledNormalSamples().values()) {
-            if ((kickoffRequest.getRequestType() == RequestType.EXOME || kickoffRequest.getRequestType() ==
-                    RequestType.IMPACT)
-                    && sample.getRuns().values().stream().allMatch(r -> r.getSampleLevelQcStatus() == null)) {
+            if ((kickoffRequest.isExome() || kickoffRequest.isImpact()) && !sample.hasBarcode()) {
                 Utils.setExitLater(true);
                 String message = String.format("Unable to get barcode for %s AKA: %s", sample.getIgoId(), sample
                         .getCmoSampleId());
@@ -332,8 +330,10 @@ public class RequestValidator {
         }
 
         for (Sample sample : kickoffRequest.getSamples(s -> !s.isPooledNormal()).values()) {
-            Set<Run> runsWithoutPostQc = sample.getRuns().values().stream().filter(r -> r.getPostQcStatus() == null)
+            Set<Run> runsWithoutPostQc = sample.getRuns().values().stream()
+                    .filter(r -> r.getPostQcStatus() == null)
                     .collect(Collectors.toSet());
+
             if (runsWithoutPostQc.size() > 0) {
                 String message = String.format("Sample %s has runs that do not have POST Sequencing QC. We won't be " +
                                 "able to tell if they are failed or not: %s. They will still be added to the sample " +

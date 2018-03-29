@@ -4,6 +4,7 @@ import org.apache.log4j.Logger;
 import org.mskcc.domain.PairingInfo;
 import org.mskcc.domain.RequestType;
 import org.mskcc.domain.Run;
+import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.util.Constants;
@@ -32,6 +33,7 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     private RequestTypeStrategy requestTypeStrategy;
     private RequestTypeStrategyFactory requestTypeStrategyFactory = new RequestTypeStrategyFactory();
     private Set<String> pairingSampleIds = new HashSet<>();
+    private List<ExternalSample> externalSamples = new ArrayList<>();
 
     public KickoffRequest(String id, ProcessingType processingType) {
         super(id);
@@ -215,6 +217,22 @@ public class KickoffRequest extends org.mskcc.domain.Request {
 
     public void addPairingSampleIds(Collection<String> sampleIds) {
         pairingSampleIds.addAll(sampleIds);
+    }
+
+    public boolean isExome() {
+        return getRequestType() == RequestType.EXOME;
+    }
+
+    public boolean isImpact() {
+        return getRequestType() == RequestType.IMPACT;
+    }
+
+    public List<ExternalSample> getExternalSamples() {
+        return externalSamples;
+    }
+
+    public void setExternalSamples(List<ExternalSample> externalSamples) {
+        this.externalSamples = externalSamples;
     }
 
     public static class NoValidSamplesException extends RuntimeException {
