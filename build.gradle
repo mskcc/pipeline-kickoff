@@ -1,5 +1,5 @@
 group 'org.mskcc.kickoff.lims'
-version '1.12.0'
+version '1.13.0-SNAPSHOT'
 
 apply plugin: 'application'
 apply plugin: 'maven'
@@ -42,7 +42,7 @@ dependencies {
     compile group: 'com.google.guava', name: 'guava', version: '11.0.2'
     compile group: 'com.github.spullara.cli-parser', name:'cli-parser', version: '1.1'
 
-    compile group: 'org.mskcc.common', name:'common-domain', version: '2.3.0'
+    compile group: 'org.mskcc.common', name:'common-domain', version: '2.4.0-SNAPSHOT'
 
     compile group: 'com.atlassian.jira', name: 'jira-rest-java-client-core', version: '2.0.0-m25'
     compile 'com.atlassian.httpclient:atlassian-httpclient-spi:0.17.0-m01'

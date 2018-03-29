@@ -6,6 +6,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.Pairedness;
 import org.mskcc.domain.RequestType;
+import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.SampleInfo;
@@ -72,40 +73,9 @@ public class MappingFilePrinter extends FilePrinter {
 
             Set<Pairedness> pairednesses = new HashSet<>();
             StringBuilder mappingFileContents = new StringBuilder();
-            for (KickoffRequest singleRequest : request.getRequests()) {
-                for (SampleRun sampleRun : getSampleRuns(singleRequest)) {
-                    Sample sample = sampleRun.getSample();
-                    String sampleId = sample.getCmoSampleId();
-                    final String runId = sampleRun.getRunId();
 
-                    File dir = new File(String.format("%s/hiseq/FASTQ/", fastq_path));
-
-                    Optional<String> optionalRunIDFull = getRunId(request, runsWithMultipleFolders, singleRequest,
-                            runId, dir);
-                    if (!optionalRunIDFull.isPresent()) continue;
-
-                    String runIdFull = optionalRunIDFull.get();
-
-                    request.addRunID(runIdFull);
-
-                    for (String samplePattern : getSamplePatterns(sample, sampleId)) {
-                        for (String path : getPaths(request, sample, dir, runIdFull, samplePattern)) {
-                            if (isPooledNormal(sampleId) && !fastqExist(path, request.getBaitVersion()))
-                                continue;
-
-                            Pairedness pairedness = getPairedness(path);
-                            DEV_LOGGER.trace(String.format("Pairedness for sample: %s - %s", sampleId, pairedness));
-                            pairednesses.add(pairedness);
-
-                            validateSampleSheetExists(request, sample, runIdFull, path);
-                            String sampleName = sampleNormalization(sampleRenamesAndSwaps.getOrDefault(sampleId,
-                                    sampleId));
-                            mappingFileContents.append(String.format("_1\t%s\t%s\t%s\t%s\n", sampleName, runIdFull,
-                                    path, pairedness));
-                        }
-                    }
-                }
-            }
+            printIgoSamples(request, sampleRenamesAndSwaps, runsWithMultipleFolders, pairednesses, mappingFileContents);
+            printExternalSamples(request, mappingFileContents);
 
             validatePairedness(pairednesses, request.getId(), request);
 
@@ -113,6 +83,53 @@ public class MappingFilePrinter extends FilePrinter {
         } catch (Exception e) {
             throw new RuntimeException(String.format("Unable to retrieve sample mappings for request: %s", request
                     .getId()), e);
+        }
+    }
+
+    private void printExternalSamples(KickoffRequest request, StringBuilder mappingFileContents) {
+        for (ExternalSample externalSample : request.getExternalSamples()) {
+            mappingFileContents.append(String.format("_1\t%s\t%s\t%s\t%s\n", externalSample.getCmoId(),
+                    externalSample.getRunId(),
+                    externalSample.getFilePath(), Constants.PAIRED_END));
+        }
+    }
+
+    private void printIgoSamples(KickoffRequest request, Map<String, String> sampleRenamesAndSwaps, HashSet<String>
+            runsWithMultipleFolders, Set<Pairedness> pairednesses, StringBuilder mappingFileContents) throws
+            IOException, InterruptedException {
+        for (KickoffRequest singleRequest : request.getRequests()) {
+            for (SampleRun sampleRun : getSampleRuns(singleRequest)) {
+                Sample sample = sampleRun.getSample();
+                String sampleId = sample.getCmoSampleId();
+                final String runId = sampleRun.getRunId();
+
+                File dir = new File(String.format("%s/hiseq/FASTQ/", fastq_path));
+
+                Optional<String> optionalRunIDFull = getRunId(request, runsWithMultipleFolders, singleRequest,
+                        runId, dir);
+                if (!optionalRunIDFull.isPresent()) continue;
+
+                String runIdFull = optionalRunIDFull.get();
+
+                request.addRunID(runIdFull);
+
+                for (String samplePattern : getSamplePatterns(sample, sampleId)) {
+                    for (String path : getPaths(request, sample, dir, runIdFull, samplePattern)) {
+                        if (isPooledNormal(sampleId) && !fastqExist(path, request.getBaitVersion()))
+                            continue;
+
+                        Pairedness pairedness = getPairedness(path);
+                        DEV_LOGGER.trace(String.format("Pairedness for sample: %s - %s", sampleId, pairedness));
+                        pairednesses.add(pairedness);
+
+                        validateSampleSheetExists(request, sample, runIdFull, path);
+                        String sampleName = sampleNormalization(sampleRenamesAndSwaps.getOrDefault(sampleId,
+                                sampleId));
+                        mappingFileContents.append(String.format("_1\t%s\t%s\t%s\t%s\n", sampleName, runIdFull,
+                                path, pairedness));
+                    }
+                }
+            }
         }
     }
 

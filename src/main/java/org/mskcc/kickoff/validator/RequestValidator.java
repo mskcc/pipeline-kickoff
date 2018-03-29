@@ -138,21 +138,12 @@ public class RequestValidator {
 
     private void validateBarcodeInfo(KickoffRequest kickoffRequest) {
         for (Sample sample : kickoffRequest.getValidNonPooledNormalSamples().values()) {
-            if ((kickoffRequest.getRequestType() == RequestType.EXOME || kickoffRequest.getRequestType() ==
-                    RequestType.IMPACT)
-                    && sample.getRuns().values().stream().allMatch(r -> r.getSampleLevelQcStatus() == null)) {
+            if ((kickoffRequest.isExome() || kickoffRequest.isImpact()) && !sample.hasBarcode()) {
                 Utils.setExitLater(true);
                 String message = String.format("Unable to get barcode for %s AKA: %s", sample.getIgoId(), sample
                         .getCmoSampleId());
                 DEV_LOGGER.error(message);
                 PM_LOGGER.error(message);
-
-                //@TODO I think barcode ID should be checked but done as above to have same results as prod version
-/*
-                String barcodeId = sample.getProperties().get(Constants.BARCODE_ID);
-                if (StringUtils.isEmpty(barcodeId) || Objects.equals(barcodeId, Constants.EMPTY))
-                    logError(String.format("Unable to get barcode for %s AKA: %s", sample.getProperties().get(Constants.IGO_ID), sample.getProperties().get(Constants.CMO_SAMPLE_ID))); //" there must be a sample specific QC data record that I can search up from");
-*/
             }
         }
     }
@@ -285,7 +276,10 @@ public class RequestValidator {
         }
 
         for (Sample sample : kickoffRequest.getSamples(s -> !s.isPooledNormal()).values()) {
-            Set<Run> runsWithoutPostQc = sample.getRuns().values().stream().filter(r -> r.getPostQcStatus() == null).collect(Collectors.toSet());
+            Set<Run> runsWithoutPostQc = sample.getRuns().values().stream()
+                    .filter(r -> r.getPostQcStatus() == null)
+                    .collect(Collectors.toSet());
+
             if (runsWithoutPostQc.size() > 0) {
                 String message = String.format("Sample %s has runs that do not have POST Sequencing QC. We won't be " +
                                 "able to tell if they are failed or not: %s. They will still be added to the sample " +

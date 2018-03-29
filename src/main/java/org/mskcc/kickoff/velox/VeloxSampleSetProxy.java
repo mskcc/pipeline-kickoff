@@ -106,6 +106,8 @@ public class VeloxSampleSetProxy implements SampleSetProxy {
                 try {
                     externalId = externalSampleRecord.getStringVal(EXTERNAL_ID, user);
                     ExternalSample externalSample = externalSamplesRepository.getByExternalId(externalId);
+                    externalSample.putRunIfAbsent(externalSample.getRunId());
+
                     externalSamples.add(externalSample);
                 } catch (Exception e) {
                     throw new RuntimeException(String.format("Error while retrieving external sample %s", externalId)

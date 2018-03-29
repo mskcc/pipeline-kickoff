@@ -145,6 +145,8 @@ public class VeloxProjectProxy implements RequestProxy {
                 PM_LOGGER.info(message);
             }
         }
+
+        InstrumentType.mapNameToType("DMPSample", InstrumentType.DMP_SAMPLE);
     }
 
     private void resolvePairings(KickoffRequest kickoffRequest) {

@@ -78,17 +78,31 @@ public class SampleSetToRequestConverter {
 
     private void setPatients(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         Patient.resetGroupCounter();
-        List<Patient> allRequestsPatients = sampleSet.getKickoffRequests().stream().flatMap(r -> r.getPatients()
-                .values()
-                .stream()).collect(Collectors.toList());
+
+        putIgoPatients(kickoffRequest, sampleSet);
+        putExternalPatients(kickoffRequest);
+
+        DEV_LOGGER.info(String.format("Sample set: %s has %d patients [%s]", sampleSet.getName(), kickoffRequest
+                .getPatients().size(), Utils.getJoinedCollection(kickoffRequest.getPatients().keySet())));
+    }
+
+    private void putIgoPatients(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        List<Patient> allRequestsPatients = sampleSet.getKickoffRequests().stream()
+                .flatMap(r -> r.getPatients().values().stream())
+                .collect(Collectors.toList());
 
         for (Patient originalPatient : allRequestsPatients) {
             Patient patient = kickoffRequest.putPatientIfAbsent(originalPatient.getPatientId());
             patient.addSamples(originalPatient.getSamples());
         }
+    }
 
-        DEV_LOGGER.info(String.format("Sample set: %s has %d patients [%s]", sampleSet.getName(), kickoffRequest
-                .getPatients().size(), Utils.getJoinedCollection(kickoffRequest.getPatients().keySet())));
+    private void putExternalPatients(KickoffRequest kickoffRequest) {
+        for (ExternalSample externalSample : kickoffRequest.getExternalSamples()) {
+            String patientCmoId = externalSample.getPatientCmoId();
+            Patient patient = kickoffRequest.putPatientIfAbsent(patientCmoId);
+            patient.addSample(externalSample);
+        }
     }
 
     private void setAmplificationType(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
@@ -163,6 +177,7 @@ public class SampleSetToRequestConverter {
             sampleSetSamples.put(externalSample.getIgoId(), externalSample);
         }
 
+        kickoffRequest.setExternalSamples(sampleSet.getExternalSamples());
         kickoffRequest.setSamples(sampleSetSamples);
 
         kickoffRequest.validateHasSamples();

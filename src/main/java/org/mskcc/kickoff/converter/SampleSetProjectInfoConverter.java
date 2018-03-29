@@ -144,6 +144,9 @@ public class SampleSetProjectInfoConverter {
         int totalNumberOfSamples = nonEmpty.stream()
                 .mapToInt(r -> Integer.valueOf(r.getProjectInfo().get(Constants.ProjectInfo.NUMBER_OF_SAMPLES)))
                 .sum();
+
+        totalNumberOfSamples += sampleSet.getExternalSamples().size();
+
         return String.valueOf(totalNumberOfSamples);
     }
 
