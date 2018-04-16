@@ -38,7 +38,7 @@ public class PairingInfoRetriever {
                     normalCmoId = Constants.NA_LOWER_CASE;
                 else continue;
             } else {
-                if (!isSampleFromRequest(request, pairingSample)) {
+                if (!request.isSampleFromRequest(pairingSample.getIgoId())) {
                     String message = String.format("Normal: %s (%s) matching with tumor: %s (%s) does NOT belong to " +
                                     "request: %s. The normal will be changed to na.", pairingSample.getCmoSampleId(),
                             pairingSample.getIgoId(),
@@ -90,7 +90,10 @@ public class PairingInfoRetriever {
     }
 
     private Collection<Sample> getValidTumorSamples(KickoffRequest request) {
-        return request.getAllValidSamples(s -> s.isTumor()).values();
+        Set<Sample> validTumorSamples = new HashSet<>(request.getAllValidSamples(s -> s.isTumor()).values());
+        validTumorSamples.addAll(request.getTumorExternalSamples());
+
+        return validTumorSamples;
     }
 
     private String getInitialNormalId(Sample pairingSample) {
@@ -99,10 +102,6 @@ public class PairingInfoRetriever {
         if (!StringUtils.isEmpty(pairingSample.getIgoId()))
             return pairingSample.getIgoId();
         return Constants.NA_LOWER_CASE;
-    }
-
-    private boolean isSampleFromRequest(KickoffRequest request, Sample pairingSample) {
-        return request.getSamples().containsKey(pairingSample.getIgoId());
     }
 
     private String getNormalCmoId(KickoffRequest request, Sample pairingSample) {

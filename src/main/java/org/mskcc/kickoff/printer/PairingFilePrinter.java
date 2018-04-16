@@ -125,11 +125,6 @@ public class PairingFilePrinter extends FilePrinter {
         return pairingsResolver.resolve(request);
     }
 
-    private void printPairingExcel(KickoffRequest request, String pairing_filename, Map<String, String> pair_Info,
-                                   Set<String> missingNormalsToBeAdded) {
-        new PairingXlsxPrinter(pairing_filename, pair_Info, missingNormalsToBeAdded, observerManager).print(request);
-    }
-
     public void register(ManifestFileObserver manifestFileObserver) {
         observerManager.register(manifestFileObserver);
     }

@@ -77,6 +77,7 @@ public class Constants {
     public static final String SAMPLE_SET_PREFIX = "set_";
     public static final String SAMPLE_TYPE = "SAMPLE_TYPE";
     public static final String SEQ_IGO_ID = "SEQ_IGO_ID";
+    public static final String SEX = "SEX";
     public static final String SPECIES = "SPECIES";
     public static final String SPECIMEN_PRESERVATION_TYPE = "SPECIMEN_PRESERVATION_TYPE";
     public static final String SPIKE_IN_GENES = "SPIKE_IN_GENES";

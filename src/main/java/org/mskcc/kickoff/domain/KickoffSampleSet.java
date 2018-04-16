@@ -11,6 +11,7 @@ import java.util.Map;
 
 public class KickoffSampleSet extends SampleSet {
     private Map<String, KickoffRequest> requestIdToKickoffRequest = new LinkedHashMap<>();
+    private List<KickoffExternalSample> externalSamples = new ArrayList<>();
 
     public KickoffSampleSet(String name) {
         super(name);
@@ -45,5 +46,13 @@ public class KickoffSampleSet extends SampleSet {
                     getPrimaryRequestId(), getName()));
 
         return requestIdToKickoffRequest.get(getPrimaryRequestId());
+    }
+
+    public List<KickoffExternalSample> getExternalSamples() {
+        return externalSamples;
+    }
+
+    public void setExternalSamples(List<KickoffExternalSample> externalSamples) {
+        this.externalSamples = externalSamples;
     }
 }

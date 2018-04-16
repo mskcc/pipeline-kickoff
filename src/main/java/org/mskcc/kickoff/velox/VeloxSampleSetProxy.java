@@ -4,6 +4,7 @@ import com.velox.api.datarecord.DataRecord;
 import com.velox.api.user.User;
 import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.KickoffExternalSample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
@@ -94,8 +95,8 @@ public class VeloxSampleSetProxy implements SampleSetProxy {
     }
 
     @Override
-    public List<ExternalSample> getExternalSamples() {
-        List<ExternalSample> externalSamples = new LinkedList<>();
+    public List<KickoffExternalSample> getExternalSamples() {
+        List<KickoffExternalSample> externalSamples = new LinkedList<>();
 
         try {
             List<DataRecord> externalSampleRecords = new LinkedList<>(Arrays.asList(sampleSetRecord.getChildrenOfType
@@ -106,12 +107,13 @@ public class VeloxSampleSetProxy implements SampleSetProxy {
                 try {
                     externalId = externalSampleRecord.getStringVal(EXTERNAL_ID, user);
                     ExternalSample externalSample = externalSamplesRepository.getByExternalId(externalId);
-                    externalSample.putRunIfAbsent(externalSample.getRunId());
 
-                    externalSamples.add(externalSample);
+                    KickoffExternalSample kickoffExternalSample = convert(externalSample);
+                    kickoffExternalSample.putRunIfAbsent(externalSample.getRunId());
+                    externalSamples.add(kickoffExternalSample);
                 } catch (Exception e) {
-                    throw new RuntimeException(String.format("Error while retrieving external sample %s", externalId)
-                            , e);
+                    throw new RuntimeException(String.format("Error while retrieving external sample %s. Cause: %s",
+                            externalId, e.getMessage()), e);
                 }
             }
         } catch (Exception e) {
@@ -119,5 +121,28 @@ public class VeloxSampleSetProxy implements SampleSetProxy {
         }
 
         return externalSamples;
+    }
+
+    private KickoffExternalSample convert(ExternalSample externalSample) {
+        KickoffExternalSample kickoffExternalSample = new KickoffExternalSample(externalSample.getCounter(),
+                externalSample.getExternalId(), externalSample.getExternalPatientId(), externalSample.getFilePath(),
+                externalSample.getRunId(), externalSample.getSampleClass(), externalSample.getSampleOrigin(),
+                externalSample.getTumorNormal());
+
+        kickoffExternalSample.setBaitVersion(externalSample.getBaitVersion());
+        kickoffExternalSample.setCmoId(externalSample.getCmoId());
+        kickoffExternalSample.setPatientCmoId(externalSample.getPatientCmoId());
+        kickoffExternalSample.setPreservationType(externalSample.getPreservationType());
+        kickoffExternalSample.setOncotreeCode(externalSample.getOncotreeCode());
+        kickoffExternalSample.setSex(externalSample.getSex());
+        kickoffExternalSample.setTissueSite(externalSample.getTissueSite());
+        kickoffExternalSample.setCounter(externalSample.getCounter());
+        kickoffExternalSample.setNucleidAcid(externalSample.getNucleidAcid());
+        kickoffExternalSample.setSpecimenType(externalSample.getSpecimenType());
+
+        DEV_LOGGER.info(String.format("Converted external sample %s to kickoff external sample", externalSample,
+                kickoffExternalSample));
+
+        return kickoffExternalSample;
     }
 }

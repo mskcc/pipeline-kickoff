@@ -7,11 +7,26 @@ import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Predicate;
 
 @Component
 public class PatientFilePrinter extends ClinicalPatientFilePrinter {
-    private final String manualMappingPatientHeader = "Pool:REQ_ID,Sample_ID:CORRECTED_CMO_ID,Collab_ID:INVESTIGATOR_SAMPLE_ID,Patient_ID:CMO_PATIENT_ID,Class:SAMPLE_CLASS,Sample_type:SPECIMEN_PRESERVATION_TYPE,Input_ng:LIBRARY_INPUT,Library_yield:LIBRARY_YIELD,Pool_input:CAPTURE_INPUT,Bait_version:BAIT_VERSION,Sex:SEX";
+    private final Map<String, String> manualMappingPatientHeader = new HashMap<>();
+
+    {
+        manualMappingPatientHeader.put("Pool", "REQ_ID");
+        manualMappingPatientHeader.put("Sample_ID", "CORRECTED_CMO_ID");
+        manualMappingPatientHeader.put("Collab_ID", "INVESTIGATOR_SAMPLE_ID");
+        manualMappingPatientHeader.put("Patient_ID", "CMO_PATIENT_ID");
+        manualMappingPatientHeader.put("Class", "SAMPLE_CLASS");
+        manualMappingPatientHeader.put("Sample_type", "SPECIMEN_PRESERVATION_TYPE");
+        manualMappingPatientHeader.put("Input_ng", "LIBRARY_INPUT");
+        manualMappingPatientHeader.put("Library_yield", "LIBRARY_YIELD");
+        manualMappingPatientHeader.put("Pool_input", "CAPTURE_INPUT");
+        manualMappingPatientHeader.put("Bait_version", "BAIT_VERSION,Sex:SEX");
+    }
 
     @Autowired
     public PatientFilePrinter(ObserverManager observerManager) {
@@ -24,7 +39,7 @@ public class PatientFilePrinter extends ClinicalPatientFilePrinter {
     }
 
     @Override
-    protected String getManualHeader() {
+    protected Map<String, String> getManualHeader() {
         return manualMappingPatientHeader;
     }
 

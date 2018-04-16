@@ -22,7 +22,7 @@ import org.mskcc.kickoff.fast.endtoend.ManifestFilesGeneratorTestConfiguration;
 import org.mskcc.kickoff.generator.FileManifestGenerator;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.notify.GenerationError;
-import org.mskcc.kickoff.printer.ClinicalFilePrinter;
+import org.mskcc.kickoff.printer.DataClinicalFilePrinter;
 import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.printer.FilePrinter;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
@@ -102,7 +102,7 @@ public class ManifestFilesGeneratorTest {
     private MappingFilePrinter mappingFilePrinter;
 
     @Autowired
-    private ClinicalFilePrinter clinicalFilePrinter;
+    private DataClinicalFilePrinter dataClinicalFilePrinter;
 
     @Autowired
     private ManifestFilesGeneratorTestConfiguration.MockJiraFileUploader fileUploader;
@@ -121,7 +121,7 @@ public class ManifestFilesGeneratorTest {
 
         fileUploader.setThrowExceptionOnDelete(false);
         ManifestFile.MAPPING.setFilePrinter(mappingFilePrinter);
-        ManifestFile.CLINICAL.setFilePrinter(clinicalFilePrinter);
+        ManifestFile.CLINICAL.setFilePrinter(dataClinicalFilePrinter);
     }
 
     private void clearFileGeneratedStatus() {
@@ -357,11 +357,11 @@ public class ManifestFilesGeneratorTest {
     }
 
     private FilePrinter getNotPrintingClinicalFilePrinter() {
-        ClinicalFilePrinter clinicalFilePrinter = mock(ClinicalFilePrinter.class);
-        Mockito.doCallRealMethod().when(clinicalFilePrinter).getFilePath(any());
-        Mockito.doReturn(false).when(clinicalFilePrinter).shouldPrint(any());
+        DataClinicalFilePrinter dataClinicalFilePrinter = mock(DataClinicalFilePrinter.class);
+        Mockito.doCallRealMethod().when(dataClinicalFilePrinter).getFilePath(any());
+        Mockito.doReturn(false).when(dataClinicalFilePrinter).shouldPrint(any());
 
-        return clinicalFilePrinter;
+        return dataClinicalFilePrinter;
     }
 
     private void assertFilesUploadedToJira(String projectId, List<ManifestFile> expectedFiles) throws Exception {

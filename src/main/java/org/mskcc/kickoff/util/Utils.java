@@ -171,4 +171,12 @@ public class Utils {
         else
             return new ClassPathResource(propertiesPath);
     }
+
+    public static String patientNormalization(String sample) {
+        sample = sample.replace("-", "_");
+        if (!sample.equals(Constants.NA_LOWER_CASE)) {
+            sample = "p_" + sample;
+        }
+        return sample;
+    }
 }

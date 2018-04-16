@@ -15,6 +15,7 @@ import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.notify.NewLineNotificationFormatter;
 import org.mskcc.kickoff.notify.NotificationFormatter;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
@@ -141,6 +142,9 @@ public class AppConfiguration {
 
     @Autowired
     private HoldIssueStatus holdJiraIssueState;
+
+    @Autowired
+    private ObserverManager observerManager;
 
     private String regeneratedStatus = "Files Regenerated";
 
@@ -277,7 +281,7 @@ public class AppConfiguration {
     @Bean
     public ReadOnlyExternalSamplesRepository readOnlyExternalSamplesRepository() {
         return new ServiceReadOnlyExternalSamplesRepository(externalRestUrl, externalRestEndpoint,
-                externalRestTemplate());
+                externalRestTemplate(), observerManager);
     }
 
     @Bean

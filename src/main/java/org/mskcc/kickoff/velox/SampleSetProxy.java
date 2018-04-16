@@ -2,8 +2,8 @@ package org.mskcc.kickoff.velox;
 
 import com.velox.api.datarecord.IoError;
 import com.velox.api.datarecord.NotFound;
-import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.KickoffExternalSample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.process.ProcessingType;
 
@@ -22,5 +22,5 @@ public interface SampleSetProxy {
 
     Collection<Sample> getIgoSamples() throws Exception;
 
-    List<ExternalSample> getExternalSamples() throws IoError, RemoteException, NotFound;
+    List<KickoffExternalSample> getExternalSamples() throws IoError, RemoteException, NotFound;
 }
