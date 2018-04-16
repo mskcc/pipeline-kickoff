@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.*;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.KickoffExternalSample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ForcedProcessingType;
@@ -98,7 +99,7 @@ public class SampleSetToRequestConverter {
     }
 
     private void putExternalPatients(KickoffRequest kickoffRequest) {
-        for (ExternalSample externalSample : kickoffRequest.getExternalSamples()) {
+        for (KickoffExternalSample externalSample : kickoffRequest.getExternalSamples().values()) {
             String patientCmoId = externalSample.getPatientCmoId();
             Patient patient = kickoffRequest.putPatientIfAbsent(patientCmoId);
             patient.addSample(externalSample);
@@ -173,11 +174,14 @@ public class SampleSetToRequestConverter {
         DEV_LOGGER.info(String.format("Samples found for sample set: %s [%s]", sampleSet.getName(), Utils
                 .getJoinedCollection(sampleSetSamples.keySet())));
 
-        for (ExternalSample externalSample : sampleSet.getExternalSamples()) {
-            sampleSetSamples.put(externalSample.getIgoId(), externalSample);
-        }
+//        for (KickoffExternalSample externalSample : sampleSet.getExternalSamples()) {
+//            sampleSetSamples.put(externalSample.getIgoId(), externalSample);
+//        }
 
-        kickoffRequest.setExternalSamples(sampleSet.getExternalSamples());
+        Map<String, KickoffExternalSample> externalSampleMap = sampleSet.getExternalSamples().stream()
+                .collect(Collectors.toMap(s -> s.getIgoId(), s -> s));
+
+        kickoffRequest.setExternalSamples(externalSampleMap);
         kickoffRequest.setSamples(sampleSetSamples);
 
         kickoffRequest.validateHasSamples();

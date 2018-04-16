@@ -100,7 +100,7 @@ public enum ManifestFile {
         private SampleKeyPrinter sampleKeyPrinter;
 
         @Autowired
-        private ClinicalFilePrinter clinicalFilePrinter;
+        private DataClinicalFilePrinter dataClinicalFilePrinter;
 
         @Autowired
         private PatientFilePrinter patientFilePrinter;
@@ -125,7 +125,7 @@ public enum ManifestFile {
             ManifestFile.PAIRING.setFilePrinter(pairingFilePrinter);
             ManifestFile.REQUEST.setFilePrinter(requestFilePrinter);
             ManifestFile.SAMPLE_KEY.setFilePrinter(sampleKeyPrinter);
-            ManifestFile.CLINICAL.setFilePrinter(clinicalFilePrinter);
+            ManifestFile.CLINICAL.setFilePrinter(dataClinicalFilePrinter);
             ManifestFile.PATIENT.setFilePrinter(patientFilePrinter);
             ManifestFile.README.setFilePrinter(readMePrinter);
             ManifestFile.C_TO_P_MAPPING.setFilePrinter(cidToPidMappingPrinter);
@@ -137,7 +137,7 @@ public enum ManifestFile {
             mappingFilePrinter.register(fileGenerationStatusObserver);
             pairingFilePrinter.register(fileGenerationStatusObserver);
             requestFilePrinter.register(fileGenerationStatusObserver);
-            clinicalFilePrinter.register(fileGenerationStatusObserver);
+            dataClinicalFilePrinter.register(fileGenerationStatusObserver);
             patientFilePrinter.register(fileGenerationStatusObserver);
             readMePrinter.register(fileGenerationStatusObserver);
             cidToPidMappingPrinter.register(fileGenerationStatusObserver);

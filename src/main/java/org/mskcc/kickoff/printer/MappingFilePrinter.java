@@ -6,8 +6,8 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.Pairedness;
 import org.mskcc.domain.RequestType;
-import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.KickoffExternalSample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.SampleInfo;
 import org.mskcc.kickoff.logger.PmLogPriority;
@@ -87,8 +87,9 @@ public class MappingFilePrinter extends FilePrinter {
     }
 
     private void printExternalSamples(KickoffRequest request, StringBuilder mappingFileContents) {
-        for (ExternalSample externalSample : request.getExternalSamples()) {
-            mappingFileContents.append(String.format("_1\t%s\t%s\t%s\t%s\n", externalSample.getCmoId(),
+        for (KickoffExternalSample externalSample : request.getExternalSamples().values()) {
+            mappingFileContents.append(String.format("_1\t%s\t%s\t%s\t%s\n", sampleNormalization(externalSample
+                            .getCmoId()),
                     externalSample.getRunId(),
                     externalSample.getFilePath(), Constants.PAIRED_END));
         }

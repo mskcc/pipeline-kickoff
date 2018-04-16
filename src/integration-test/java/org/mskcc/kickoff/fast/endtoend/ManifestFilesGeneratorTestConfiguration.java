@@ -166,8 +166,8 @@ public class ManifestFilesGeneratorTestConfiguration {
     }
 
     @Bean
-    public ClinicalFilePrinter clinicalFilePrinter() {
-        return new ClinicalFilePrinter(observerManager());
+    public DataClinicalFilePrinter clinicalFilePrinter() {
+        return new DataClinicalFilePrinter(observerManager());
     }
 
     @Bean

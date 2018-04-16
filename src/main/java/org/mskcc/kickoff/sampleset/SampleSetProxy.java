@@ -1,7 +1,7 @@
 package org.mskcc.kickoff.sampleset;
 
-import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.KickoffExternalSample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.process.ProcessingType;
 
@@ -19,5 +19,5 @@ public interface SampleSetProxy {
 
     Collection<Sample> getIgoSamples() throws Exception;
 
-    List<ExternalSample> getExternalSamples();
+    List<KickoffExternalSample> getExternalSamples() throws Exception;
 }
