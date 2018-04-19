@@ -7,7 +7,7 @@ import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.xssf.usermodel.*;
 import org.mskcc.domain.LibType;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.*;
+import org.mskcc.kickoff.domain.Request;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Value;
@@ -160,7 +160,8 @@ public class SampleKeyPrinter implements FilePrinter  {
     @Override
     public boolean shouldPrint(Request request) {
         return !(Utils.isExitLater() && !krista && !request.isInnovationProject() && !request.getRequestType().equals(Constants.OTHER) && !request.getRequestType().equals(Constants.RNASEQ))
-                && (request.getRequestType().equals(Constants.RNASEQ) && !request.getLibTypes().contains(LibType.TRU_SEQ_FUSION_DISCOVERY) && request.getAllValidSamples().size() > 1);
+                && (request.getRequestType().equals(Constants.RNASEQ) && !request.getLibTypes().contains(LibType
+                .TRU_SEQ_FUSION_DISCOVERY) && request.getAllValidSamples().size() > 0);
     }
 
     private XSSFSheet addRowToSheet(XSSFWorkbook wb, XSSFSheet sheet, ArrayList<String> list, int rowNum, String type) {
