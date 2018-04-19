@@ -23,7 +23,7 @@ public class FileGenerationFailureEmailNofiticator extends EmailNotificator {
 
     @Override
     protected String getTitle(String requestId) {
-        return String.format("Hello, \n\nmanifest file(s) not generated for request %s:", requestId);
+        return String.format("Hello, \n\nmanifest file(s) errors for request %s:", requestId);
     }
 
     @Override

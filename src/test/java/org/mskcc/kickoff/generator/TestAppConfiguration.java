@@ -9,6 +9,8 @@ import org.mskcc.kickoff.notify.NotificationFormatter;
 import org.mskcc.kickoff.printer.OutputFilesPrinter;
 import org.mskcc.kickoff.printer.observer.SpyFileUploader;
 import org.mskcc.kickoff.proxy.RequestProxy;
+import org.mskcc.kickoff.validator.ErrorRepository;
+import org.mskcc.kickoff.validator.InMemoryErrorRepository;
 import org.mskcc.kickoff.validator.ProjectNameValidator;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
@@ -82,5 +84,10 @@ public class TestAppConfiguration {
     @Bean
     public ProjectFilesArchiver projectFilesArchiver() {
         return mock(ProjectFilesArchiver.class);
+    }
+
+    @Bean
+    public ErrorRepository errorRepository() {
+        return new InMemoryErrorRepository();
     }
 }

@@ -19,6 +19,9 @@ import org.mskcc.kickoff.upload.jira.*;
 import org.mskcc.kickoff.upload.jira.state.BadInputsIssueStatus;
 import org.mskcc.kickoff.upload.jira.state.HoldIssueStatus;
 import org.mskcc.kickoff.upload.jira.state.StatusFactory;
+import org.mskcc.kickoff.validator.ErrorRepository;
+import org.mskcc.kickoff.validator.InMemoryErrorRepository;
+import org.mskcc.kickoff.validator.MaxSamplesValidator;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,9 +65,12 @@ public class ManifestFilesGeneratorTestConfiguration {
     @Autowired
     private StatusFactory statusFactory;
 
+    @Autowired
+    private ErrorRepository errorRepository;
+
     @Bean
     public FilesValidator filesValidator() {
-        return new RequiredFilesValidator();
+        return new RequiredFilesValidator(errorRepository);
     }
 
     @Bean
@@ -133,8 +139,18 @@ public class ManifestFilesGeneratorTestConfiguration {
     }
 
     @Bean
+    public GroupingFilePrinter groupingFilePrinter() {
+        return new GroupingFilePrinter(observerManager(), maxSamplesValidator());
+    }
+
+    @Bean
+    public MaxSamplesValidator maxSamplesValidator() {
+        return new MaxSamplesValidator(errorRepository);
+    }
+
+    @Bean
     public FileGenerationStatusManifestFileObserver fileGenerationStatusManifestFileObserver() {
-        return new FileGenerationStatusManifestFileObserver();
+        return new FileGenerationStatusManifestFileObserver(errorRepository);
     }
 
     @Bean
@@ -144,8 +160,8 @@ public class ManifestFilesGeneratorTestConfiguration {
     }
 
     @Bean
-    public GroupingFilePrinter groupingFilePrinter() {
-        return new GroupingFilePrinter(observerManager());
+    public ErrorRepository errorRepository() {
+        return new InMemoryErrorRepository();
     }
 
     @Bean

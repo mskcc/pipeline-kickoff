@@ -11,6 +11,7 @@ import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.validator.MaxSamplesValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
@@ -31,10 +33,14 @@ public class GroupingFilePrinter extends FilePrinter {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private final DecimalFormat groupNumberFormat = new DecimalFormat("000");
+    private final MaxSamplesValidator maxSamplesValidator;
+
 
     @Autowired
-    public GroupingFilePrinter(ObserverManager observerManager) {
+    public GroupingFilePrinter(ObserverManager observerManager,
+                               MaxSamplesValidator maxSamplesValidator) {
         super(observerManager);
+        this.maxSamplesValidator = maxSamplesValidator;
     }
 
     public void print(KickoffRequest kickoffRequest) {
@@ -43,13 +49,18 @@ public class GroupingFilePrinter extends FilePrinter {
 
         StringBuilder outputText = new StringBuilder();
 
+        List<Sample> samples = new ArrayList<>();
         for (Patient patient : getPatientsListSortedByGroup(kickoffRequest)) {
             for (Sample sample : getUniqueSamples(patient)) {
-                if (kickoffRequest.getPairingSampleIds().contains(sample.getCorrectedCmoSampleId()))
+                if (kickoffRequest.getPairingSampleIds().contains(sample.getCorrectedCmoSampleId())) {
+                    samples.add(sample);
                     outputText.append(String.format("%s\tGroup_%s\n", sampleNormalization(sample.get(Constants
                             .CORRECTED_CMO_ID)), groupNumberFormat.format(patient.getGroupNumber())));
+                }
             }
         }
+
+        validateNumberOfSamples(samples);
 
         if (outputText.length() > 0) {
             try {
@@ -66,6 +77,14 @@ public class GroupingFilePrinter extends FilePrinter {
         }
     }
 
+    private List<Sample> getUniqueSamples(Patient patient) {
+        return Utils.getUniqueSamplesByCmoIdLastWin(new LinkedList<>(patient.getSamples()));
+    }
+
+    private void validateNumberOfSamples(List<Sample> samples) {
+        maxSamplesValidator.validate(samples);
+    }
+
     @Override
     public String getFilePath(KickoffRequest request) {
         return String.format("%s/%s_sample_grouping.txt", request.getOutputPath(), Utils
@@ -76,10 +95,6 @@ public class GroupingFilePrinter extends FilePrinter {
         return kickoffRequest.getPatients().values().stream()
                 .sorted(Comparator.comparingInt(Patient::getGroupNumber))
                 .collect(Collectors.toList());
-    }
-
-    private List<Sample> getUniqueSamples(Patient patient) {
-        return Utils.getUniqueSamplesByCmoIdLastWin(new LinkedList<>(patient.getSamples()));
     }
 
     private boolean doPatientsExist(KickoffRequest kickoffRequest) {

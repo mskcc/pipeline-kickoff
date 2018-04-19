@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.generator;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.RequestType;
 import org.mskcc.kickoff.archive.FilesArchiver;
@@ -9,11 +10,13 @@ import org.mskcc.kickoff.config.LogConfigurator;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.notify.NotificationFormatter;
 import org.mskcc.kickoff.printer.OutputFilesPrinter;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.validator.ProjectNameValidator;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
@@ -61,6 +64,9 @@ public class FileManifestGenerator implements ManifestGenerator {
     @Autowired
     private NotificationFormatter notificationFormatter;
 
+    @Autowired
+    private ErrorRepository errorRepository;
+
     @Override
     public void generate(String projectId) throws Exception {
         KickoffRequest kickoffRequest = null;
@@ -94,12 +100,16 @@ public class FileManifestGenerator implements ManifestGenerator {
                 .filter(f -> !f.isFileGenerated())
                 .collect(Collectors.toList());
 
+        String errorMessage = getGeneralErrors();
         if (notGenerated.size() > 0) {
-            try {
-                DEV_LOGGER.info(String.format("Sending email notification about manifest files not generated for " +
-                        "request: %s", projectId));
+            DEV_LOGGER.info(String.format("Sending email notification about manifest files not generated for " +
+                    "request: %s", projectId));
 
-                String errorMessage = notificationFormatter.format(notGenerated);
+            errorMessage += notificationFormatter.format(notGenerated);
+        }
+
+        if (!StringUtils.isEmpty(errorMessage)) {
+            try {
                 emailNotificator.notifyMessage(projectId, errorMessage);
             } catch (Exception e) {
                 DEV_LOGGER.warn(String.format("Unable to send email notification about not generated manifest files " +
@@ -107,6 +117,19 @@ public class FileManifestGenerator implements ManifestGenerator {
                         projectId), e);
             }
         }
+    }
+
+    private String getGeneralErrors() {
+        StringBuilder generalErrors = new StringBuilder();
+
+        if (errorRepository.getErrors().size() > 0)
+            generalErrors.append("General request errors: \n");
+
+        for (GenerationError generationError : errorRepository.getErrors()) {
+            generalErrors.append(generationError.getMessage()).append("\n");
+        }
+
+        return generalErrors.toString();
     }
 
     private void setFilePermissions(KickoffRequest kickoffRequest) {

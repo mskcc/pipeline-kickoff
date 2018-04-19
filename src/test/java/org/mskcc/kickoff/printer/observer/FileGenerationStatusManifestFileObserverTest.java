@@ -4,6 +4,8 @@ import org.junit.Test;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.ErrorCode;
+import org.mskcc.kickoff.validator.ErrorRepository;
+import org.mskcc.kickoff.validator.InMemoryErrorRepository;
 
 import java.util.Arrays;
 
@@ -11,8 +13,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 public class FileGenerationStatusManifestFileObserverTest {
+    private ErrorRepository errorRepository = new InMemoryErrorRepository();
+
     private FileGenerationStatusManifestFileObserver fileGenerationStatusManifestFileObserver = new
-            FileGenerationStatusManifestFileObserver();
+            FileGenerationStatusManifestFileObserver(errorRepository);
 
     @Test
     public void whenUpdateIfInvokeWithFileGeneratedEvent_shouldSetManifestFileIsGeneratedToTrue() {

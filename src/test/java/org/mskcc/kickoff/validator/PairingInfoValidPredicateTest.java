@@ -7,10 +7,12 @@ import org.mskcc.domain.sample.Sample;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.mockito.Mockito.mock;
 
 public class PairingInfoValidPredicateTest {
     private static int id = 0;
-    private final PairingInfoValidPredicate pairingInfoValidPredicate = new PairingInfoValidPredicate();
+    private final PairingInfoValidPredicate pairingInfoValidPredicate = new PairingInfoValidPredicate(mock
+            (ErrorRepository.class));
 
     @Before
     public void setUp() throws Exception {
