@@ -13,7 +13,11 @@ import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.regex.Pattern;
 
 import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.config.Arguments.shiny;
@@ -65,7 +69,8 @@ public class MappingFilePrinter implements FilePrinter {
                     sample_pattern.add(sampleId.replaceAll("[_-]", "[-_]"));
                 }
 
-                // Here Find the RUN ID. Iterate through each directory in fastq_path so I can search through each FASTQ directory
+                // Here Find the RUN ID. Iterate through each directory in fastq_path so I can search through each
+                // FASTQ directory
                 // Search each /FASTQ/ directory for directories that start with "RUN_ID"
                 // Take the newest one?
 
@@ -107,7 +112,8 @@ public class MappingFilePrinter implements FilePrinter {
                         continue;
                     }
                     if (files.length == 0) {
-                        String message = String.format("Could not find sequencing run folder that also contains request %s for Run ID: %s", requestID, runId);
+                        String message = String.format("Could not find sequencing run folder that also contains " +
+                                "request %s for Run ID: %s", requestID, runId);
                         Utils.setExitLater(true);
                         PM_LOGGER.log(Level.ERROR, message);
                         DEV_LOGGER.log(Level.ERROR, message);
@@ -137,7 +143,8 @@ public class MappingFilePrinter implements FilePrinter {
                 for (String S_Pattern : sample_pattern) {
                     String pattern;
                     if (!isPooledNormalSample(sample)) {
-                        pattern = dir.toString() + "/" + RunIDFull + "*/Proj*" + requestID.replaceFirst("^0+(?!$)", "") + "/Sample_" + S_Pattern;
+                        pattern = dir.toString() + "/" + RunIDFull + "*/Proj*" + requestID.replaceFirst("^0+(?!$)",
+                                "") + "/Sample_" + S_Pattern;
                     } else {
                         pattern = dir.toString() + "/" + RunIDFull + "*/Proj*" + "/Sample_" + S_Pattern + "*";
                     }
@@ -147,7 +154,8 @@ public class MappingFilePrinter implements FilePrinter {
                     Process pr = new ProcessBuilder("/bin/bash", "-c", cmd).start();
                     pr.waitFor();
 
-                    //@TODO move to atnoher place, manifest file depends on new mapping so it has to be done before printing any files
+                    //@TODO move to atnoher place, manifest file depends on new mapping so it has to be done before
+                    // printing any files
                     int exit = pr.exitValue();
                     if (exit != 0) {
                         String igoID = sample.get(Constants.IGO_ID);
@@ -167,7 +175,8 @@ public class MappingFilePrinter implements FilePrinter {
                             exit = pr.exitValue();
 
                             if (exit != 0) {
-                                String message = String.format("Error while trying to find fastq Directory for %s it is probably mispelled, or has an alias.", sample);
+                                String message = String.format("Error while trying to find fastq Directory for %s it " +
+                                        "is probably mispelled, or has an alias.", sample);
                                 Utils.setExitLater(true);
                                 PM_LOGGER.log(Level.ERROR, message);
                                 DEV_LOGGER.log(Level.ERROR, message);
@@ -183,7 +192,8 @@ public class MappingFilePrinter implements FilePrinter {
                         } else {
                             // this working means that I have to change the cmo sample id to have the seq iD.
                             if (!seqID.equals(igoID)) {
-                                String manifestSampleID = sample.get(Constants.MANIFEST_SAMPLE_ID).replace("IGO_" + igoID, "IGO_" + seqID);
+                                String manifestSampleID = sample.get(Constants.MANIFEST_SAMPLE_ID).replace("IGO_" +
+                                        igoID, "IGO_" + seqID);
                                 sample.put(Constants.MANIFEST_SAMPLE_ID, manifestSampleID);
                             }
                             request.setNewMappingScheme(1);
@@ -197,9 +207,12 @@ public class MappingFilePrinter implements FilePrinter {
 
                     String[] paths = sampleFqPath.split("\n");
 
-                    // Find out if this is single end or paired end by looking inside the directory for a R2_001.fastq.gz
+                    // Find out if this is single end or paired end by looking inside the directory for a
+                    // R2_001.fastq.gz
                     for (String path : paths) {
-                        if ((sampleId.contains("POOLEDNORMAL") && (sampleId.contains("FFPE") || sampleId.contains("FROZEN"))) && !path.matches("(.*)IGO_" + request.getBaitVersion().toUpperCase() + "_[ATCG](.*)")) {
+                        if ((sampleId.contains("POOLEDNORMAL") && (sampleId.contains("FFPE") || sampleId.contains
+                                ("FROZEN"))) && !path.matches("(.*)IGO_" + request.getBaitVersion().toUpperCase() +
+                                "_[ATCG](.*)")) {
                             continue;
                         }
 
@@ -216,7 +229,8 @@ public class MappingFilePrinter implements FilePrinter {
                         // Confirm there is a SampleSheet.csv in the path:
                         File samp_sheet = new File(path + "/SampleSheet.csv");
                         if (!samp_sheet.isFile() && request.getRequestType().equals(Constants.IMPACT)) {
-                            String message = String.format("Sample %s from run %s does not have a sample sheet in the sample directory. This will not pass the validator.", sample, RunIDFull);
+                            String message = String.format("Sample %s from run %s does not have a sample sheet in the" +
+                                    " sample directory. This will not pass the validator.", sample, RunIDFull);
                             if (shiny) {
                                 PM_LOGGER.error(message);
                             } else {
@@ -232,15 +246,22 @@ public class MappingFilePrinter implements FilePrinter {
                             sampleName = sampleNormalization(sampleRenamesAndSwaps.get(sampleId));
                         }
 
-                        mappingFileContents += String.format("_1\t%s\t%s\t%s\t%s\n", sampleName, RunIDFull, path, paired);
+                        mappingFileContents += String.format("_1\t%s\t%s\t%s\t%s\n", sampleName, RunIDFull, path,
+                                paired);
                     }
                 }
             }
 
             if (mappingFileContents.length() > 0) {
                 mappingFileContents = filterToAscii(mappingFileContents);
-                String mappingFileName = shouldOutputErrorFile(request) ? ERROR_MAPPING_FILE_NAME : NORMAL_MAPPING_FILE_NAME;
-                mappingFile = new File(String.format("%s/%s_%s", request.getOutputPath(), Utils.getFullProjectNameWithPrefix(requestID), mappingFileName));
+                String mappingFileName = String.format("%s_%s", Utils.getFullProjectNameWithPrefix
+                        (requestID), shouldOutputErrorFile(request) ? ERROR_MAPPING_FILE_NAME :
+                        NORMAL_MAPPING_FILE_NAME);
+                String mappingFilePath = String.format("%s/%s", request.getOutputPath(), mappingFileName);
+
+                backupOldMapping(request, mappingFileName, mappingFilePath);
+
+                mappingFile = new File(mappingFilePath);
                 PrintWriter pW = new PrintWriter(new FileWriter(mappingFile, false), false);
                 filesCreated.add(mappingFile);
                 pW.write(mappingFileContents);
@@ -250,6 +271,60 @@ public class MappingFilePrinter implements FilePrinter {
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Exception thrown while creating mapping file: %s", mappingFile), e);
         }
+    }
+
+    private void backupOldMapping(Request request, String mappingFileName, String mappingFilePath) {
+        try {
+            if (outputDirContains(mappingFilePath)) {
+                copyFileToBackup(request.getOutputPath(), mappingFileName);
+                sendNotification();
+            }
+        } catch (Exception e) {
+            DEV_LOGGER.warn(String.format("Old mapping file %s couldn't be backed up", mappingFilePath), e);
+        }
+    }
+
+    private boolean outputDirContains(String filePath) {
+        return Files.exists(Paths.get(filePath));
+    }
+
+    private void copyFileToBackup(String outputPath, String mappingFileName) {
+        int maxCount = getMaxCount(outputPath, mappingFileName);
+        int nextCount = maxCount + 1;
+
+        Path oldMappingFilePath = Paths.get(String.format("%s/%s", outputPath, mappingFileName));
+        Path newMappingFilePath = Paths.get(String.format("%s/%s.%s", outputPath, mappingFileName, nextCount));
+
+        try {
+            Files.move(oldMappingFilePath, newMappingFilePath);
+        } catch (IOException e) {
+            DEV_LOGGER.warn(String.format("File %s couldn't be moved to %s", oldMappingFilePath, newMappingFilePath),
+                    e);
+        }
+
+    }
+
+    private int getMaxCount(String outputPath, String mappingFileName) {
+        Pattern pattern = Pattern.compile(mappingFileName + ".([0-9]+)");
+
+        try {
+            OptionalInt max = Files.list(Paths.get(outputPath))
+                    .filter(p -> pattern.matcher(p.getFileName().toString()).matches())
+                    .mapToInt(p -> Integer.parseInt(pattern.matcher(p.getFileName().toString()).group(1)))
+                    .max();
+            if (max.isPresent())
+                return max.getAsInt();
+        } catch (IOException e) {
+            throw new RuntimeException(String.format("Cannot retrieve current max value for backup file: %s",
+                    mappingFileName));
+        }
+
+        throw new RuntimeException(String.format("Cannot retrieve current max value for backup file: %s",
+                mappingFileName));
+    }
+
+    private void sendNotification() {
+
     }
 
     private boolean shouldOutputErrorFile(Request request) {
