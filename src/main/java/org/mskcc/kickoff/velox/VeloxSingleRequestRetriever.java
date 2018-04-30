@@ -117,7 +117,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private List<DataRecord> getOriginalSampleRecords(DataRecord dataRecordRequest) throws RemoteException, IoError {
         ArrayList<DataRecord> originalSampRec = new ArrayList<>();
-        ArrayList<DataRecord> samples = new ArrayList<>(dataRecordRequest.getDescendantsOfType(VeloxConstants.SAMPLE, user));
+        ArrayList<DataRecord> samples = new ArrayList<>(dataRecordRequest.getDescendantsOfType(VeloxConstants.SAMPLE,
+                user));
         for (DataRecord sample : samples) {
             ArrayList<DataRecord> requests = new ArrayList<>(sample.getParentsOfType(VeloxConstants.REQUEST, user));
             ArrayList<DataRecord> plates = new ArrayList<>(sample.getParentsOfType(VeloxConstants.PLATE, user));
@@ -250,7 +251,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     // If include run ID is 'null' skip.
                     // This could mess up some older projects, so I may have to change this
                     if (tempHashMap.get(Constants.INCLUDE_RUN_ID) == null) {
-                        logWarning("Skipping adding pooled normal info from " + tempHashMap.get(Constants.IGO_ID) + " because I cannot find include run id. ");
+                        logWarning("Skipping adding pooled normal info from " + tempHashMap.get(Constants.IGO_ID) + "" +
+                                " because I cannot find include run id. ");
                         continue;
                     }
 
@@ -263,13 +265,17 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
                         Map<String, String> originalPooledNormalSample = getPooledNormal(kickoffRequest, cmoNormalId)
                                 .getProperties();
-                        Set<String> currIncludeRuns = new TreeSet<>(Arrays.asList(originalPooledNormalSample.get(Constants.INCLUDE_RUN_ID).split(";")));
+                        Set<String> currIncludeRuns = new TreeSet<>(Arrays.asList(originalPooledNormalSample.get
+                                (Constants.INCLUDE_RUN_ID).split(";")));
 
-                        DEV_LOGGER.info(String.format("OLD include runs: %s", originalPooledNormalSample.get(Constants.INCLUDE_RUN_ID)));
-                        Set<String> currExcludeRuns = new TreeSet<>(Arrays.asList(originalPooledNormalSample.get(Constants.EXCLUDE_RUN_ID).split(";")));
+                        DEV_LOGGER.info(String.format("OLD include runs: %s", originalPooledNormalSample.get
+                                (Constants.INCLUDE_RUN_ID)));
+                        Set<String> currExcludeRuns = new TreeSet<>(Arrays.asList(originalPooledNormalSample.get
+                                (Constants.EXCLUDE_RUN_ID).split(";")));
 
                         currIncludeRuns.addAll(Arrays.asList(tempHashMap.get(Constants.INCLUDE_RUN_ID).split(";")));
-                        currExcludeRuns.addAll(Arrays.asList(originalPooledNormalSample.get(Constants.EXCLUDE_RUN_ID).split(";")));
+                        currExcludeRuns.addAll(Arrays.asList(originalPooledNormalSample.get(Constants.EXCLUDE_RUN_ID)
+                                .split(";")));
 
                         tempHashMap.put(Constants.INCLUDE_RUN_ID, StringUtils.join(currIncludeRuns, ";"));
                         tempHashMap.put(Constants.EXCLUDE_RUN_ID, StringUtils.join(currExcludeRuns, ";"));
@@ -277,12 +283,14 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
                     // Make sure samplesAndRuns has the corrected RUN IDs
                     List<String> runs = Arrays.asList(tempHashMap.get(Constants.INCLUDE_RUN_ID).split(";"));
-                    Set<Run> runSet = runs.stream().map((Run::new)).filter(r -> !StringUtils.isEmpty(r.getId())).collect(Collectors.toSet());
+                    Set<Run> runSet = runs.stream().map((Run::new)).filter(r -> !StringUtils.isEmpty(r.getId()))
+                            .collect(Collectors.toSet());
                     //@TODO check
                     sample.addRuns(runSet);
 
                     //@TODO put anyway and check on app side
-                    // If bait set does not contain comma, the add. Comma means that the pooled normal has two different bait sets. This shouldn't happen, So I'm not adding them.
+                    // If bait set does not contain comma, the add. Comma means that the pooled normal has two
+                    // different bait sets. This shouldn't happen, So I'm not adding them.
                     String thisBait = tempHashMap.get(Constants.CAPTURE_BAIT_SET);
                     if (!thisBait.contains(",")) {
                         sample.setProperties(tempHashMap);
@@ -388,7 +396,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         String cmoSampleId = dataRecordSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
         String igoSampleId = dataRecordSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
 
-        // Added because we were getting samples that had the same name as a sequenced sample, but then it was failed so it shouldn't be used (as per Aaron).
+        // Added because we were getting samples that had the same name as a sequenced sample, but then it was failed
+        // so it shouldn't be used (as per Aaron).
         String status = dataRecordSample.getSelectionVal(VeloxConstants.EXEMPLAR_SAMPLE_STATUS, user);
         if (!Objects.equals(status, Constants.FAILED_COMPLETED)) {
             Sample sample;
@@ -407,27 +416,19 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
             setIsTransfer(dataRecordSample, sample);
             sampleToDataRecord.put(sample, dataRecordSample);
-            setSeqName(dataRecordSample, sample);
+            setSeqName(sample);
         } else {
             DEV_LOGGER.warn(String.format("Skipping %s because the sample is failed: %s", cmoSampleId, status));
         }
     }
 
-    private void setSeqName(DataRecord dataRecordSample, Sample sample) throws Exception {
-        DataRecord[] sampleLevelQcs = getSampleLevelQcs(dataRecordSample);
-        for (DataRecord sampleLevelQc : sampleLevelQcs) {
-            if (isPassed(sampleLevelQc))
-                sample.setSeqName(getSeqName(sampleLevelQc));
-        }
-
-        if (sampleLevelQcFound(sampleLevelQcs))
-            return;
-
-        DataRecord[] aliquots = getAliquots(dataRecordSample);
-        for (DataRecord aliquot : aliquots) {
-            if (isFromSameRequest(aliquot))
-                setSeqName(aliquot, sample);
-        }
+    private void setSeqName(Sample sample) throws Exception {
+        sample.getValidRuns().stream()
+                .findFirst()
+                .ifPresent(r -> {
+                    String seqName = getSeqName(r.getRunFolder());
+                    sample.setSeqName(seqName);
+                });
     }
 
     private DataRecord[] getAliquots(DataRecord dataRecordSample) throws IoError, RemoteException {
@@ -442,9 +443,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         return sampleLevelQcs.length > 0;
     }
 
-    private String getSeqName(DataRecord sampleLevelQc) throws NotFound, RemoteException {
-        String runFolder = sampleLevelQc.getStringVal(VeloxConstants.SEQUENCER_RUN_FOLDER, user);
-
+    private String getSeqName(String runFolder) {
         return sequencerIdentifierRetriever.retrieve(runFolder);
     }
 
@@ -492,9 +491,12 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             if (sampleQCList.size() > 0) {
                 for (DataRecord sampleQc : sampleQCList) {
                     String runStatus = String.valueOf(sampleQc.getPickListVal(VeloxConstants.SEQ_QC_STATUS, user));
-                    String runID = getRunIdFromQcRecord(sampleQc);
+
+                    String runFolder = getRunFolder(sampleQc);
+                    String runID = getRunIdFromRunFolder(runFolder);
 
                     Run run = sample.putRunIfAbsent(runID);
+                    run.setRunFolder(runFolder);
                     run.setRecordId(sampleQc.getRecordId());
                     QcStatus sampleLevelQcStatus = QcStatus.getByValue(runStatus);
                     run.setSampleLevelQcStatus(sampleLevelQcStatus);
@@ -532,14 +534,19 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         try {
             totalReads = sampleQc.getLongVal(VeloxConstants.TOTAL_READS, user);
         } catch (NullPointerException skipped) {
-            DEV_LOGGER.warn(String.format("NPE thrown while retrieving Total Reads for record sample qc: %d", sampleQc.getRecordId()));
+            DEV_LOGGER.warn(String.format("NPE thrown while retrieving Total Reads for record sample qc: %d",
+                    sampleQc.getRecordId()));
         }
 
         return totalReads;
     }
 
-    private String getRunIdFromQcRecord(DataRecord sampleQc) throws NotFound, RemoteException {
-        String[] runParts = sampleQc.getStringVal(VeloxConstants.SEQUENCER_RUN_FOLDER, user).split("_");
+    private String getRunFolder(DataRecord sampleQc) throws NotFound, RemoteException {
+        return sampleQc.getStringVal(VeloxConstants.SEQUENCER_RUN_FOLDER, user);
+    }
+
+    private String getRunIdFromRunFolder(String runFolder) throws NotFound, RemoteException {
+        String[] runParts = runFolder.split("_");
         return String.format("%s_%s", runParts[0], runParts[1]);
     }
 
@@ -547,15 +554,20 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         try {
             List<DataRecord> postQCs = dataRecordSample.getDescendantsOfType(VeloxConstants.POST_SEQ_ANALYSIS_QC, user);
             for (DataRecord postQc : postQCs) {
-                String runID = getRunIdFromQcRecord(postQc);
+                String runID = getRunIdFromSampleQc(postQc);
                 Run run = sample.putRunIfAbsent(runID);
-                run.setPostQcStatus(QcStatus.getByValue(postQc.getPickListVal(VeloxConstants.POST_SEQ_QC_STATUS, user)));
+                run.setPostQcStatus(QcStatus.getByValue(postQc.getPickListVal(VeloxConstants.POST_SEQ_QC_STATUS,
+                        user)));
                 run.setNote(getRunNote(postQc));
                 run.setRecordId(postQc.getRecordId());
             }
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
         }
+    }
+
+    private String getRunIdFromSampleQc(DataRecord postQc) throws NotFound, RemoteException {
+        return getRunIdFromRunFolder(getRunFolder(postQc));
     }
 
     private String getRunNote(DataRecord postQc) throws NotFound, RemoteException {
@@ -567,7 +579,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private void addPoolSeqQc(KickoffRequest kickoffRequest, DataRecord dataRecordRequest, Collection<DataRecord>
             samplesToAddPoolQc) {
         try {
-            ArrayList<DataRecord> sequencingRuns = new ArrayList<>(dataRecordRequest.getDescendantsOfType(VeloxConstants.SEQ_ANALYSIS_QC, user));
+            ArrayList<DataRecord> sequencingRuns = new ArrayList<>(dataRecordRequest.getDescendantsOfType
+                    (VeloxConstants.SEQ_ANALYSIS_QC, user));
             for (DataRecord seqrun : sequencingRuns) {
                 if (!verifySeqRun(seqrun, kickoffRequest.getId()))
                     continue;
@@ -599,7 +612,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                 linkPoolToRunID(runId, poolName);
             }
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about Pool specific QC for request id: %s", Arguments.project), e);
+            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about Pool specific QC for " +
+                    "request id: %s", Arguments.project), e);
         }
     }
 
@@ -618,7 +632,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                 sameReq = requests.contains(requestId);
             }
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while verifying sequence run for request id: %s", Arguments.project), e);
+            DEV_LOGGER.warn(String.format("Exception thrown while verifying sequence run for request id: %s",
+                    Arguments.project), e);
         }
         return sameReq;
     }
@@ -642,7 +657,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         try {
             // ONE: Get ancestors of type sample from the passing seq Runs.
             List<Long> passingSeqRuns = getPassingSeqRuns(kickoffRequest, dataRecordRequest);
-            List<List<DataRecord>> samplesFromSeqRun = dataRecordManager.getAncestorsOfTypeById(passingSeqRuns, VeloxConstants.SAMPLE, user);
+            List<List<DataRecord>> samplesFromSeqRun = dataRecordManager.getAncestorsOfTypeById(passingSeqRuns,
+                    VeloxConstants.SAMPLE, user);
 
             // TWO: Get decendants of type sample from the request
             List<DataRecord> samplesFromRequest = dataRecordRequest.getDescendantsOfType(VeloxConstants.SAMPLE, user);
@@ -751,7 +767,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             DEV_LOGGER.warn(message);
             PM_LOGGER.warn(message);
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while looking for valid for Library Types for request id: %s", Arguments.project), e);
+            DEV_LOGGER.warn(String.format("Exception thrown while looking for valid for Library Types for request id:" +
+                    " %s", Arguments.project), e);
         }
     }
 
@@ -792,7 +809,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             for (DataRecord sampleQc : sampleQCList)
                 passingRuns.add(sampleQc.getRecordId());
 
-            ArrayList<DataRecord> sequencingRuns = new ArrayList<>(dataRecordRequest.getDescendantsOfType(VeloxConstants.SEQ_ANALYSIS_QC, user));
+            ArrayList<DataRecord> sequencingRuns = new ArrayList<>(dataRecordRequest.getDescendantsOfType
+                    (VeloxConstants.SEQ_ANALYSIS_QC, user));
             for (DataRecord seqrun : sequencingRuns)
                 passingRuns.add(seqrun.getRecordId());
         } catch (Exception e) {

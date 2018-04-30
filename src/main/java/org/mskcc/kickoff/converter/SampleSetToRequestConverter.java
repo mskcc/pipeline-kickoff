@@ -3,7 +3,6 @@ package org.mskcc.kickoff.converter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.*;
-import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
@@ -158,10 +157,6 @@ public class SampleSetToRequestConverter {
 
         DEV_LOGGER.info(String.format("Samples found for sample set: %s [%s]", sampleSet.getName(), Utils
                 .getJoinedCollection(sampleSetSamples.keySet())));
-
-        for (ExternalSample externalSample : sampleSet.getExternalSamples()) {
-            sampleSetSamples.put(externalSample.getIgoId(), externalSample);
-        }
 
         kickoffRequest.setSamples(sampleSetSamples);
 

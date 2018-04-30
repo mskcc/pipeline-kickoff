@@ -1,7 +1,6 @@
 package org.mskcc.kickoff.velox;
 
 import org.mskcc.domain.Recipe;
-import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
@@ -29,11 +28,6 @@ class SampleSetRetriever {
             sampleSet.setPrimaryRequestId(sampleSetProxy.getPrimaryRequestId());
             sampleSet.setBaitSet(sampleSetProxy.getBaitVersion());
             sampleSet.setRecipe(getRecipe());
-            List<ExternalSample> externalSamples = sampleSetProxy.getExternalSamples();
-            DEV_LOGGER.info(String.format("Found %d external samples for sample set %s: %s", externalSamples.size(),
-                    projectId, externalSamples));
-
-            sampleSet.setExternalSamples(externalSamples);
 
             return sampleSet;
         } catch (Exception e) {
