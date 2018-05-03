@@ -252,7 +252,12 @@ public class AppConfiguration {
 
     @Bean
     public SmartPairingRetriever smartPairingRetriever() {
-        return new SmartPairingRetriever();
+        return new SmartPairingRetriever(pairingInfoValidPredicate());
+    }
+
+    @Bean
+    public PairingInfoValidPredicate pairingInfoValidPredicate() {
+        return new PairingInfoValidPredicate();
     }
 
     @Bean

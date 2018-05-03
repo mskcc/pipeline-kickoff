@@ -9,14 +9,19 @@ import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class PairingInfoRetriever {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
-    public Map<String, String> retrieve(Map<String, String> tumorIgoToCmoId, KickoffRequest request) {
+    public Map<String, String> retrieve(KickoffRequest request) {
+        List<Sample> tumors = request.getAllValidSamples().values().stream()
+                .filter(Sample::isTumor)
+                .collect(Collectors.toList());
+
         Map<String, String> pairings = new LinkedHashMap<>();
-        for (Sample sample : getValidTumorSamples(request)) {
+        for (Sample sample : tumors) {
             if (sample.getCmoSampleId().startsWith("CTRL-")) {
                 String message = String.format("A sample with id: %s cannot be tumor sample", sample.getCmoSampleId());
                 Utils.setExitLater(true);
@@ -42,7 +47,7 @@ public class PairingInfoRetriever {
                     String message = String.format("Normal: %s (%s) matching with tumor: %s (%s) does NOT belong to " +
                                     "request: %s. The normal will be changed to na.", pairingSample.getCmoSampleId(),
                             pairingSample.getIgoId(),
-                            tumorIgoToCmoId.get(tumorIgoId), tumorIgoId, request.getId());
+                            sample.getCmoSampleId(), tumorIgoId, request.getId());
                     PM_LOGGER.log(PmLogPriority.WARNING, message);
                     DEV_LOGGER.warn(message);
                     normalCmoId = Constants.NA_LOWER_CASE;
@@ -75,7 +80,10 @@ public class PairingInfoRetriever {
         }
 
         if (pairings.size() > 0) {
-            Set<String> temp1 = new HashSet<>(tumorIgoToCmoId.values());
+            Set<String> temp1 = new HashSet<>(tumors.stream()
+                    .map(Sample::getCmoSampleId)
+                    .collect(Collectors.toList()));
+
             Set<String> temp2 = new HashSet<>(pairings.keySet());
             temp1.removeAll(temp2);
             if (temp1.size() > 0) {
