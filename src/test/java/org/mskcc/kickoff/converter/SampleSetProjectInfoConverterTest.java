@@ -11,8 +11,6 @@ import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.util.TestUtils;
-import org.mskcc.domain.SampleSet;
-import org.mskcc.domain.SampleSet.PrimaryRequestNotPartOfSampleSetException;
 
 import java.util.*;
 
@@ -321,8 +319,8 @@ public class SampleSetProjectInfoConverterTest {
         return kickoffRequest;
     }
 
+
     private String getRandomValue() {
         return String.valueOf(random.nextInt());
     }
-
 }
