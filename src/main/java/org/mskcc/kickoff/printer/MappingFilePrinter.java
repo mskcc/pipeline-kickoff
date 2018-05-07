@@ -10,6 +10,8 @@ import org.mskcc.kickoff.lims.SampleInfo;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.mskcc.util.BasicMail;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.io.*;
@@ -34,8 +36,24 @@ public class MappingFilePrinter implements FilePrinter {
 
     private final Set<SampleRun> sampleRuns = new LinkedHashSet<>();
 
+    private final BasicMail basicMail;
+
     @Value("${fastq_path}")
     private String fastq_path;
+
+    @Value("${mapping.file.notification.recipients}")
+    private String recipients;
+
+    @Value("${mapping.file.notification.from}")
+    private String from;
+
+    @Value("${mapping.file.notification.host}")
+    private String host;
+
+    @Autowired
+    public MappingFilePrinter(BasicMail basicMail) {
+        this.basicMail = basicMail;
+    }
 
     @Override
     public void print(Request request) {
@@ -259,7 +277,7 @@ public class MappingFilePrinter implements FilePrinter {
                         NORMAL_MAPPING_FILE_NAME);
                 String mappingFilePath = String.format("%s/%s", request.getOutputPath(), mappingFileName);
 
-                backupOldMapping(request, mappingFileName, mappingFilePath);
+                backupOldMapping(request, mappingFileName, mappingFilePath, mappingFileContents);
 
                 mappingFile = new File(mappingFilePath);
                 PrintWriter pW = new PrintWriter(new FileWriter(mappingFile, false), false);
@@ -273,11 +291,25 @@ public class MappingFilePrinter implements FilePrinter {
         }
     }
 
-    private void backupOldMapping(Request request, String mappingFileName, String mappingFilePath) {
+    private void backupOldMapping(Request request, String mappingFileName, String mappingFilePath, String
+            mappingFileContents) {
         try {
             if (outputDirContains(mappingFilePath)) {
-                copyFileToBackup(request.getOutputPath(), mappingFileName);
-                sendNotification();
+                Path oldMappingFilePath = Paths.get(String.format("%s/%s", request.getOutputPath(), mappingFileName));
+
+                byte[] lastMapping = Files.readAllBytes(oldMappingFilePath);
+                byte[] currentMapping = mappingFileContents.getBytes();
+                boolean contentEquals = Arrays.equals(lastMapping, currentMapping);
+
+                if (contentEquals) {
+                    DEV_LOGGER.info(String.format("Latest mapping file: %s and new mapping file are the same. This " +
+                            "version won't be saved and notification won't be sent.", oldMappingFilePath));
+                    return;
+                }
+
+                Path newMappingFilePath = getNewMappingFilePath(request.getOutputPath(), mappingFileName);
+                copyFileToBackup(oldMappingFilePath, newMappingFilePath);
+                sendNotification(request.getId(), newMappingFilePath);
             }
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Old mapping file %s couldn't be backed up", mappingFilePath), e);
@@ -288,43 +320,64 @@ public class MappingFilePrinter implements FilePrinter {
         return Files.exists(Paths.get(filePath));
     }
 
-    private void copyFileToBackup(String outputPath, String mappingFileName) {
+    private Path getNewMappingFilePath(String outputPath, String mappingFileName) {
         int maxCount = getMaxCount(outputPath, mappingFileName);
         int nextCount = maxCount + 1;
 
-        Path oldMappingFilePath = Paths.get(String.format("%s/%s", outputPath, mappingFileName));
-        Path newMappingFilePath = Paths.get(String.format("%s/%s.%s", outputPath, mappingFileName, nextCount));
+        DEV_LOGGER.info(String.format("Current max mapping file counter found: %d. Next counter to be used: %s",
+                maxCount, nextCount));
 
+        return Paths.get(String.format("%s/%s.%s", outputPath, mappingFileName, nextCount));
+    }
+
+    private void copyFileToBackup(Path oldMappingFilePath, Path newMappingFilePath) {
         try {
             Files.move(oldMappingFilePath, newMappingFilePath);
         } catch (IOException e) {
             DEV_LOGGER.warn(String.format("File %s couldn't be moved to %s", oldMappingFilePath, newMappingFilePath),
                     e);
         }
-
     }
 
     private int getMaxCount(String outputPath, String mappingFileName) {
-        Pattern pattern = Pattern.compile(mappingFileName + ".([0-9]+)");
+        Pattern pattern = Pattern.compile(mappingFileName.replace(".", "\\.") + "\\.([0-9]+)");
 
         try {
             OptionalInt max = Files.list(Paths.get(outputPath))
-                    .filter(p -> pattern.matcher(p.getFileName().toString()).matches())
-                    .mapToInt(p -> Integer.parseInt(pattern.matcher(p.getFileName().toString()).group(1)))
+                    .map(f -> f.getFileName().toString())
+                    .map(p -> pattern.matcher(p))
+                    .filter(m -> m.matches())
+                    .mapToInt(m -> Integer.parseInt(m.group(1)))
                     .max();
             if (max.isPresent())
                 return max.getAsInt();
+            return 0;
         } catch (IOException e) {
             throw new RuntimeException(String.format("Cannot retrieve current max value for backup file: %s",
-                    mappingFileName));
+                    mappingFileName), e);
         }
-
-        throw new RuntimeException(String.format("Cannot retrieve current max value for backup file: %s",
-                mappingFileName));
     }
 
-    private void sendNotification() {
+    private void sendNotification(String requestId, Path newMappingFilePath) {
+        String message = String.format("Hi, \n\nNew mapping file has been generated for request %s: %s\n", requestId,
+                newMappingFilePath.toString());
 
+        String footer = "\nBest,\n" +
+                "Platform Informatics Group\n" +
+                "Integrated Genomics Operations, CMO";
+
+        message += footer;
+
+        try {
+            String subject = "New Mapping file generated for request: " + requestId;
+            DEV_LOGGER.info(String.format("Sending notification to: %s with subject: %s, message: %s", recipients,
+                    subject, message));
+
+            basicMail.send(from, recipients, host, subject, message);
+        } catch (Exception e) {
+            DEV_LOGGER.warn(String.format("Sending notification from %s to %s with message: %s was not successful",
+                    from, recipients, message));
+        }
     }
 
     private boolean shouldOutputErrorFile(Request request) {
