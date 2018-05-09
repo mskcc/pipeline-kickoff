@@ -239,6 +239,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     String igoNormalId = pooledNormalRecord.getStringVal(VeloxConstants.SAMPLE_ID, user);
 
                     Sample sample = kickoffRequest.putPooledNormalIfAbsent(igoNormalId);
+
+                    addPooledNormalSeqNames(sample, pooledNormalRecord);
                     sample.setCmoSampleId(cmoNormalId);
                     sample.setPooledNormal(true);
                     sample.setTransfer(false);
@@ -301,6 +303,20 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             }
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
+        }
+    }
+
+    private void addPooledNormalSeqNames(Sample sample, DataRecord pooledNormalRecord) {
+        try {
+            List<DataRecord> sampleQcs = pooledNormalRecord.getDescendantsOfType(VeloxConstants
+                    .SEQ_ANALYSIS_SAMPLE_QC, user);
+            for (DataRecord sampleQc : sampleQcs) {
+                String runFolder = getRunFolder(sampleQc);
+                sample.addSeqName(getSeqName(runFolder));
+            }
+        } catch (Exception e) {
+            DEV_LOGGER.warn(String.format("Error while retrieving sequencer type for Pooled normal sample: %s",
+                    sample.getIgoId()), e);
         }
     }
 
@@ -426,7 +442,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                 .findFirst()
                 .ifPresent(r -> {
                     String seqName = getSeqName(r.getRunFolder());
-                    sample.setSeqName(seqName);
+                    sample.addSeqName(seqName);
                 });
     }
 
