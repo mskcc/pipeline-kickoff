@@ -58,7 +58,7 @@ public class PairingInfoValidPredicateTest {
 
     private Sample getSampleWithSeqName(String seqName) {
         Sample sample = new Sample(String.valueOf(id++));
-        sample.setSeqName(seqName);
+        sample.addSeqName(seqName);
 
         return sample;
     }

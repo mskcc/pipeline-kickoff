@@ -29,8 +29,8 @@ public class SmartPairingRetrieverTest {
     private static final String PATIEND_ID_1 = "pat1";
     private static final String PATIEND_ID_2 = "pat2";
     private static final String PATIEND_ID_3 = "pat3";
-    private BiPredicate<Sample, Sample> pairingInfoValidPredicate = (s1, s2) -> Objects.equals(s1.getSeqName(),
-            s2.getSeqName());
+    private BiPredicate<Sample, Sample> pairingInfoValidPredicate = (s1, s2) -> Objects.equals(s1.getSeqNames(),
+            s2.getSeqNames());
 
     private SmartPairingRetriever smartPairingRetriever = new SmartPairingRetriever(pairingInfoValidPredicate);
     private KickoffRequest request;
@@ -363,7 +363,7 @@ public class SmartPairingRetrieverTest {
         PooledNormalSample pooledNormalSample = new PooledNormalSample(getId());
         pooledNormalSample.setCmoSampleId(pooledNormalCorrectedId);
         pooledNormalSample.put(Constants.SPECIMEN_PRESERVATION_TYPE, preservationType.toString());
-        pooledNormalSample.setSeqName(instrumentType.getValue());
+        pooledNormalSample.addSeqName(instrumentType.getValue());
 
         return pooledNormalSample;
     }
@@ -387,7 +387,7 @@ public class SmartPairingRetrieverTest {
     private Sample getSample(InstrumentType instrumentType, SpecimenPreservationType preservationType, String
             tissueSite, String correctedCmoId) {
         Sample sample = new Sample(getId());
-        sample.setSeqName(instrumentType.getValue());
+        sample.addSeqName(instrumentType.getValue());
         sample.setCorrectedCmoId(correctedCmoId);
         sample.put(Constants.SPECIMEN_PRESERVATION_TYPE, preservationType.toString());
         sample.put(Constants.TISSUE_SITE, tissueSite);

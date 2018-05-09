@@ -17,10 +17,9 @@ buildscript {
 
 repositories {
     mavenCentral()
+    maven { url "https://maven.atlassian.com/maven-external/" }
+    maven { url "http://bale:8081/service/local/repositories/snapshots/content" }
     mavenLocal()
-    maven {
-        url "https://maven.atlassian.com/maven-external/"
-    }
 }
 
 dependencies {
@@ -42,7 +41,7 @@ dependencies {
     compile group: 'com.google.guava', name: 'guava', version: '11.0.2'
     compile group: 'com.github.spullara.cli-parser', name:'cli-parser', version: '1.1'
 
-    compile group: 'org.mskcc.common', name:'common-domain', version: '2.8.0-SNAPSHOT'
+    compile group: 'org.mskcc.common', name:'common-domain', version: '2.9.0-SNAPSHOT'
 
     compile group: 'com.atlassian.jira', name: 'jira-rest-java-client-core', version: '2.0.0-m25'
     compile 'com.atlassian.httpclient:atlassian-httpclient-spi:0.17.0-m01'
@@ -68,6 +67,11 @@ dependencies {
 
     testCompile 'org.assertj:assertj-core:3.9.0'
 }
+
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
 
 tasks.withType(Test) {
     testLogging {

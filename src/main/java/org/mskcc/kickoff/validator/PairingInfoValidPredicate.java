@@ -7,6 +7,9 @@ import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.util.Constants;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.BiPredicate;
 
@@ -25,31 +28,35 @@ public class PairingInfoValidPredicate implements BiPredicate<Sample, Sample> {
     }
 
     private boolean isCompatible(Sample tumor, Sample normal) {
-        InstrumentType normalInstrumentType = getInstrumentType(normal);
-        InstrumentType tumorInstrumentType = getInstrumentType(tumor);
+        List<InstrumentType> normalInstrumentTypes = getInstrumentTypes(normal);
+        List<InstrumentType> tumorInstrumentTypes = getInstrumentTypes(tumor);
 
-        boolean isCompatible = normalInstrumentType.isCompatibleWith(tumorInstrumentType);
+        boolean isCompatible = InstrumentType.isCompatible(normalInstrumentTypes, tumorInstrumentTypes);
 
         if (!isCompatible) {
-            String message = String.format("Different instruments type in pairing [normal sample %s: %s - tumor " +
-                    "sample" +
-                    " %s: %s]", normal.getIgoId(), normalInstrumentType, tumor.getIgoId(), tumorInstrumentType);
-            DEV_LOGGER.warn(message);
+            DEV_LOGGER.warn(String.format("Different instruments type in pairing [normal sample %s: %s - tumor sample" +
+                    " %s: %s]", normal.getIgoId(), normalInstrumentTypes, tumor.getIgoId(), tumorInstrumentTypes));
             errorRepository.add(new GenerationError(message, ErrorCode.INCOMPATIBLE_INSTRUMENT_TYPES));
-        } else {
+        } else
             DEV_LOGGER.info(String.format("Instruments type in pairing [normal sample %s: %s - tumor sample %s: " +
-                    "%s]", normal.getIgoId(), normalInstrumentType, tumor.getIgoId(), tumorInstrumentType));
-        }
+                    "%s]", normal.getIgoId(), normalInstrumentTypes, tumor.getIgoId(), tumorInstrumentTypes));
 
         return isCompatible;
     }
 
-    private InstrumentType getInstrumentType(Sample sample) {
+    private List<InstrumentType> getInstrumentTypes(Sample sample) {
         if (isNaNormal(sample))
-            return InstrumentType.ALL_COMPATIBLE_NA_NORMAL;
+            return Arrays.asList(InstrumentType.ALL_COMPATIBLE_NA_NORMAL);
 
-        String seqName = sample.getSeqName();
-        return InstrumentType.getInstrumentTypeByName(seqName);
+        List<InstrumentType> instrumentTypes = new ArrayList<>();
+
+        List<String> seqNames = sample.getSeqNames();
+        for (String seqName : seqNames) {
+            InstrumentType instrumentTypeByName = InstrumentType.getInstrumentTypeByName(seqName);
+            instrumentTypes.add(instrumentTypeByName);
+        }
+
+        return instrumentTypes;
     }
 
     private boolean isNaNormal(Sample sample) {
