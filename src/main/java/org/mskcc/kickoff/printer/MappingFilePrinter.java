@@ -309,7 +309,7 @@ public class MappingFilePrinter implements FilePrinter {
 
                 Path newMappingFilePath = getNewMappingFilePath(request.getOutputPath(), mappingFileName);
                 copyFileToBackup(oldMappingFilePath, newMappingFilePath);
-                sendNotification(request.getId(), newMappingFilePath);
+                sendNotification(request.getId(), mappingFilePath);
             }
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Old mapping file %s couldn't be backed up", mappingFilePath), e);
@@ -358,9 +358,9 @@ public class MappingFilePrinter implements FilePrinter {
         }
     }
 
-    private void sendNotification(String requestId, Path newMappingFilePath) {
+    private void sendNotification(String requestId, Path mappingFilePath) {
         String message = String.format("Hi, \n\nNew mapping file has been generated for request %s: %s\n", requestId,
-                newMappingFilePath.toString());
+                mappingFilePath.toString());
 
         String footer = "\nBest,\n" +
                 "Platform Informatics Group\n" +
