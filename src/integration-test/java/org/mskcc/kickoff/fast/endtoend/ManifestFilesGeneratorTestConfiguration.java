@@ -7,7 +7,9 @@ import org.mskcc.kickoff.config.AppConfiguration;
 import org.mskcc.kickoff.config.LogConfigurator;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.FileManifestGenerator;
-import org.mskcc.kickoff.generator.PairingsResolver;
+import org.mskcc.kickoff.pairing.PairingInfoRetriever;
+import org.mskcc.kickoff.pairing.PairingsResolver;
+import org.mskcc.kickoff.pairing.SmartPairingRetriever;
 import org.mskcc.kickoff.printer.*;
 import org.mskcc.kickoff.printer.observer.FileGenerationStatusManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
@@ -22,6 +24,7 @@ import org.mskcc.kickoff.upload.jira.state.StatusFactory;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.validator.InMemoryErrorRepository;
 import org.mskcc.kickoff.validator.MaxSamplesValidator;
+import org.mskcc.kickoff.validator.PairingInfoValidPredicate;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,9 +55,6 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Value("${jira.roslin.project.name}")
     private String jiraRoslinProjectName;
-
-    @Autowired
-    private PairingsResolver pairingsResolver;
 
     @Autowired
     private Predicate<Set<Pairedness>> pairednessValidPredicate;
@@ -176,7 +176,7 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Bean
     public PairingFilePrinter pairingFilePrinter() {
-        return new PairingFilePrinter(pairingsResolver, observerManager());
+        return new PairingFilePrinter(pairingsResolver(), observerManager());
     }
 
     @Bean
@@ -212,6 +212,26 @@ public class ManifestFilesGeneratorTestConfiguration {
     @Bean
     public ClientHttpRequestInterceptor clientHttpRequestInterceptor() {
         return new LoggingClientHttpRequestInterceptor();
+    }
+
+    @Bean
+    public PairingsResolver pairingsResolver() {
+        return new PairingsResolver(pairingInfoRetriever(), smartPairingRetriever());
+    }
+
+    @Bean
+    public PairingInfoRetriever pairingInfoRetriever() {
+        return new PairingInfoRetriever(pairingInfoValidPredicate(), observerManager());
+    }
+
+    @Bean
+    public SmartPairingRetriever smartPairingRetriever() {
+        return new SmartPairingRetriever(pairingInfoValidPredicate());
+    }
+
+    @Bean
+    public PairingInfoValidPredicate pairingInfoValidPredicate() {
+        return new PairingInfoValidPredicate(observerManager());
     }
 
     public class MockJiraFileUploader extends JiraFileUploader {

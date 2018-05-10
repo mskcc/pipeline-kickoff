@@ -3,33 +3,37 @@ package org.mskcc.kickoff.validator;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.instrument.InstrumentType;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.GenerationError;
+import org.mskcc.kickoff.printer.ErrorCode;
+import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.util.Constants;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.BiPredicate;
 
+@Component
+@Qualifier("pairingInfoValidPredicate")
 public class PairingInfoValidPredicate implements BiPredicate<Sample, Sample> {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+    private final ObserverManager observerManager;
+    private final ErrorRepository errorRepository;
 
-    private ErrorRepository errorRepository;
-
-    public PairingInfoValidPredicate(ErrorRepository errorRepository) {
+    public PairingInfoValidPredicate(ErrorRepository errorRepository, ObserverManager observerManager) {
         this.errorRepository = errorRepository;
+        this.observerManager = observerManager;
     }
 
     @Override
     public boolean test(Sample tumor, Sample normal) {
-        return isCompatible(tumor, normal);
-    }
-
-    private boolean isCompatible(Sample tumor, Sample normal) {
-        List<InstrumentType> normalInstrumentTypes = getInstrumentTypes(normal);
-        List<InstrumentType> tumorInstrumentTypes = getInstrumentTypes(tumor);
+        List<InstrumentType> normalInstrumentTypes = normal.getInstrumentTypes();
+        List<InstrumentType> tumorInstrumentTypes = tumor.getInstrumentTypes();
 
         boolean isCompatible = InstrumentType.isCompatible(normalInstrumentTypes, tumorInstrumentTypes);
 
@@ -44,22 +48,7 @@ public class PairingInfoValidPredicate implements BiPredicate<Sample, Sample> {
         return isCompatible;
     }
 
-    private List<InstrumentType> getInstrumentTypes(Sample sample) {
-        if (isNaNormal(sample))
-            return Arrays.asList(InstrumentType.ALL_COMPATIBLE_NA_NORMAL);
-
-        List<InstrumentType> instrumentTypes = new ArrayList<>();
-
-        List<String> seqNames = sample.getSeqNames();
-        for (String seqName : seqNames) {
-            InstrumentType instrumentTypeByName = InstrumentType.getInstrumentTypeByName(seqName);
-            instrumentTypes.add(instrumentTypeByName);
-        }
-
-        return instrumentTypes;
-    }
-
-    private boolean isNaNormal(Sample sample) {
-        return Objects.equals(sample.getIgoId(), Constants.NA_LOWER_CASE);
+    public void register(ManifestFileObserver manifestFileObserver) {
+        observerManager.register(manifestFileObserver);
     }
 }

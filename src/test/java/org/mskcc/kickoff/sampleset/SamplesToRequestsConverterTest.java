@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.velox;
+package org.mskcc.kickoff.sampleset;
 
 import org.junit.Before;
 import org.junit.Test;

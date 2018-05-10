@@ -4,9 +4,9 @@ import org.apache.log4j.Logger;
 import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.generator.PairingsResolver;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.notify.GenerationError;
+import org.mskcc.kickoff.pairing.PairingsResolver;
 import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
@@ -123,11 +123,6 @@ public class PairingFilePrinter extends FilePrinter {
 
     private Map<String, String> getPairingInfo(KickoffRequest request) {
         return pairingsResolver.resolve(request);
-    }
-
-    private void printPairingExcel(KickoffRequest request, String pairing_filename, Map<String, String> pair_Info,
-                                   Set<String> missingNormalsToBeAdded) {
-        new PairingXlsxPrinter(pairing_filename, pair_Info, missingNormalsToBeAdded, observerManager).print(request);
     }
 
     public void register(ManifestFileObserver manifestFileObserver) {

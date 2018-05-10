@@ -4,12 +4,13 @@ import com.velox.api.datarecord.DataRecord;
 import org.junit.Before;
 import org.junit.Test;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
-import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.NormalProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
+import org.mskcc.kickoff.sampleset.SampleSetRetriever;
+import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;

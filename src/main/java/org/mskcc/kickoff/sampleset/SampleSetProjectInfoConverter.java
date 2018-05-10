@@ -1,10 +1,11 @@
-package org.mskcc.kickoff.converter;
+package org.mskcc.kickoff.sampleset;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.util.ConverterUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;

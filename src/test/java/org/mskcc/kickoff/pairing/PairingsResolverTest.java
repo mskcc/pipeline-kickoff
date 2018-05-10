@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.generator;
+package org.mskcc.kickoff.pairing;
 
 import org.junit.Before;
 import org.junit.Test;

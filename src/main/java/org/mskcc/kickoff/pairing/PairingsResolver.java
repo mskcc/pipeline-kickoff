@@ -1,18 +1,22 @@
-package org.mskcc.kickoff.generator;
+package org.mskcc.kickoff.pairing;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
+@Component
 public class PairingsResolver {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     private final PairingInfoRetriever pairingInfoRetriever;
     private final SmartPairingRetriever smartPairingRetriever;
 
+    @Autowired
     public PairingsResolver(PairingInfoRetriever pairingInfoRetriever, SmartPairingRetriever smartPairingRetriever) {
         this.pairingInfoRetriever = pairingInfoRetriever;
         this.smartPairingRetriever = smartPairingRetriever;

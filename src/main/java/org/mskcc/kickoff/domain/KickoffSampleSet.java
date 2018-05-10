@@ -2,7 +2,7 @@ package org.mskcc.kickoff.domain;
 
 import org.apache.commons.lang3.StringUtils;
 import org.mskcc.domain.SampleSet;
-import org.mskcc.kickoff.converter.SampleSetProjectInfoConverter;
+import org.mskcc.kickoff.sampleset.SampleSetProjectInfoConverter;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
