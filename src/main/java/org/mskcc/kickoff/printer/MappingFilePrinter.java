@@ -309,7 +309,7 @@ public class MappingFilePrinter implements FilePrinter {
 
                 Path newMappingFilePath = getNewMappingFilePath(request.getOutputPath(), mappingFileName);
                 copyFileToBackup(oldMappingFilePath, newMappingFilePath);
-                sendNotification(request.getId(), mappingFilePath);
+                sendNotification(request.getId(), mappingFilePath.toString());
             }
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Old mapping file %s couldn't be backed up", mappingFilePath), e);
