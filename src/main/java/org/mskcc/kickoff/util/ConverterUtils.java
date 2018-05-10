@@ -1,9 +1,9 @@
-package org.mskcc.kickoff.converter;
+package org.mskcc.kickoff.util;
 
 import org.apache.commons.lang3.StringUtils;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
-import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
 
 import java.util.List;
 import java.util.Objects;
@@ -37,8 +37,9 @@ public class ConverterUtils {
                 sampleSet.getName(), propertyName));
     }
 
-    static String getMergedPropertyValue(KickoffSampleSet sampleSet, Function<KickoffRequest, String> requestProperty,
-                                         String delimiter) {
+    public static String getMergedPropertyValue(KickoffSampleSet sampleSet, Function<KickoffRequest, String>
+            requestProperty,
+                                                String delimiter) {
         return sampleSet.getKickoffRequests().stream()
                 .map(requestProperty)
                 .filter(p -> !StringUtils.isEmpty(p))
@@ -46,25 +47,27 @@ public class ConverterUtils {
                 .collect(Collectors.joining(delimiter));
     }
 
-    static String getArbitraryPropertyValue(KickoffSampleSet sampleSet, String projectInfoProperty) {
+    public static String getArbitraryPropertyValue(KickoffSampleSet sampleSet, String projectInfoProperty) {
         return sampleSet.getKickoffRequests().get(0).getProjectInfo().get(projectInfoProperty);
     }
 
-    static String getJoinedRequestProperty(KickoffSampleSet sampleSet, Function<KickoffRequest, String>
+    public static String getJoinedRequestProperty(KickoffSampleSet sampleSet, Function<KickoffRequest, String>
             requestProperty) {
         return getJoinedRequestProperty(sampleSet, requestProperty, Utils.DEFAULT_DELIMITER);
     }
 
-    static String getJoinedRequestProperty(KickoffSampleSet sampleSet, Function<KickoffRequest, String> requestProperty,
-                                           String delimiter) {
+    public static String getJoinedRequestProperty(KickoffSampleSet sampleSet, Function<KickoffRequest, String>
+            requestProperty,
+                                                  String delimiter) {
         return sampleSet.getKickoffRequests().stream()
                 .filter(r -> !StringUtils.isEmpty(requestProperty.apply(r)))
                 .map(r -> String.format("%s: %s", r.getId(), requestProperty.apply(r)))
                 .collect(Collectors.joining(delimiter));
     }
 
-    static <T> Optional<T> getOptionalProperty(KickoffSampleSet sampleSet, Function<KickoffRequest, T> requestProperty,
-                                               String propertyName) {
+    public static <T> Optional<T> getOptionalProperty(KickoffSampleSet sampleSet, Function<KickoffRequest, T>
+            requestProperty,
+                                                      String propertyName) {
         if (anyRequestContainsProperty(sampleSet, propertyName))
             return Optional.of(getSameForAllRequestProperty(sampleSet, requestProperty, propertyName));
         return Optional.empty();
@@ -94,7 +97,7 @@ public class ConverterUtils {
         return getRequiredSameForAllProperty(sampleSet, requestProperty, propertyName, Objects::nonNull);
     }
 
-    static class RequiredPropertyNotSetException extends RuntimeException {
+    public static class RequiredPropertyNotSetException extends RuntimeException {
         public RequiredPropertyNotSetException(String message) {
             super(message);
         }

@@ -8,9 +8,8 @@ import org.apache.log4j.helpers.Loader;
 import org.mskcc.domain.Pairedness;
 import org.mskcc.domain.PassedRunPredicate;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
-import org.mskcc.kickoff.converter.SampleSetProjectInfoConverter;
-import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
-import org.mskcc.kickoff.generator.*;
+import org.mskcc.kickoff.generator.DefaultPathAwareOutputDirRetriever;
+import org.mskcc.kickoff.generator.OutputDirRetriever;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.notify.NewLineNotificationFormatter;
@@ -20,10 +19,12 @@ import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.retriever.ServiceReadOnlyExternalSamplesRepository;
+import org.mskcc.kickoff.sampleset.SampleSetProjectInfoConverter;
+import org.mskcc.kickoff.sampleset.SampleSetProjectPredicate;
+import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
 import org.mskcc.kickoff.upload.jira.state.*;
 import org.mskcc.kickoff.validator.*;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
-import org.mskcc.kickoff.velox.SampleSetProjectPredicate;
 import org.mskcc.kickoff.velox.VeloxConnectionData;
 import org.mskcc.kickoff.velox.VeloxProjectProxy;
 import org.mskcc.util.Constants;
@@ -240,25 +241,6 @@ public class AppConfiguration {
         return new ProjectInfoRetriever();
     }
 
-    @Bean
-    public PairingsResolver pairingsResolver() {
-        return new PairingsResolver(pairingInfoRetriever(), smartPairingRetriever());
-    }
-
-    @Bean
-    public PairingInfoRetriever pairingInfoRetriever() {
-        return new PairingInfoRetriever();
-    }
-
-    @Bean
-    public SmartPairingRetriever smartPairingRetriever() {
-        return new SmartPairingRetriever(pairingInfoValidPredicate());
-    }
-
-    @Bean
-    public PairingInfoValidPredicate pairingInfoValidPredicate() {
-        return new PairingInfoValidPredicate();
-    }
 
     @Bean
     public SampleSetToRequestConverter sampleSetToRequestConverter() {

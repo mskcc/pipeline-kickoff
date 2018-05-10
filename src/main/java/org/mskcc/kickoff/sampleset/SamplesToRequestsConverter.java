@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.velox;
+package org.mskcc.kickoff.sampleset;
 
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;

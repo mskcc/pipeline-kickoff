@@ -3,6 +3,7 @@ package org.mskcc.kickoff.generator;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.mskcc.kickoff.validator.FileExistenceOutputDirValidator;
 
 import java.io.File;
 

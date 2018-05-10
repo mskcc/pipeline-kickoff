@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.generator;
+package org.mskcc.kickoff.pairing;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
@@ -7,6 +7,9 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.util.Constants;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.function.BiPredicate;
@@ -14,12 +17,15 @@ import java.util.stream.Collectors;
 
 import static org.mskcc.domain.sample.SpecimenPreservationType.*;
 
+@Component
 public class SmartPairingRetriever {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private final BiPredicate<Sample, Sample> pairingInfoValidPredicate;
 
-    public SmartPairingRetriever(BiPredicate<Sample, Sample> pairingInfoValidPredicate) {
+    @Autowired
+    public SmartPairingRetriever(@Qualifier("pairingInfoValidPredicate") BiPredicate<Sample, Sample>
+                                         pairingInfoValidPredicate) {
         this.pairingInfoValidPredicate = pairingInfoValidPredicate;
     }
 
@@ -80,15 +86,36 @@ public class SmartPairingRetriever {
     }
 
     private String tryToPairPooledNormal(Sample tumor, Collection<Sample> pooledNormals) {
+        DEV_LOGGER.info(String.format("Trying to pair one of Pooled normals %s to tumor: %s", pooledNormals, tumor
+                .getIgoId()));
         List<Sample> seqTypeCompatiblePooledNormals = getSeqTypeCompatibleNormals(tumor, pooledNormals);
-        if (isFfpe(tumor))
+
+        if (seqTypeCompatiblePooledNormals.isEmpty()) {
+            String message = String.format("There is no pooled normal sample compatible with tumor's %s sequencer " +
+                    "types: %s. Pooled Normals found: %s.", tumor.getIgoId(), tumor
+                    .getInstrumentTypes(), getSampleIdsWithSeqTypes(pooledNormals));
+            DEV_LOGGER.warn(message);
+
+            return Constants.NA_LOWER_CASE;
+        }
+
+        if (isFfpe(tumor)) {
+            DEV_LOGGER.info(String.format("Trying to pair Frozen of Pooled normals %s to tumor: %s", pooledNormals,
+                    tumor.getIgoId()));
             return tryToMathFfpePooledNormal(seqTypeCompatiblePooledNormals);
+        }
+
+        DEV_LOGGER.info(String.format("Trying to pair FFPE Pooled normals %s to tumor: %s", pooledNormals, tumor
+                .getIgoId()));
         return tryToMatchFrozenPooledNormal(seqTypeCompatiblePooledNormals);
     }
 
     private boolean isFfpe(Sample sample) {
         String preservation = sample.get(Constants.SPECIMEN_PRESERVATION_TYPE);
-        return fromString(preservation) == FFPE;
+        boolean isFfpe = fromString(preservation) == FFPE;
+        DEV_LOGGER.info(String.format("Sample %s has preservation type %s", sample.getIgoId(), FFPE));
+
+        return isFfpe;
     }
 
     private String tryToMatchFrozenPooledNormal(Collection<Sample> pooledNormals) {
@@ -122,8 +149,14 @@ public class SmartPairingRetriever {
     private String getNormal(Collection<Sample> normalSamples, Sample tumor) {
         List<Sample> seqTypeCompatibleNormals = getSeqTypeCompatibleNormals(tumor, normalSamples);
 
-        if (seqTypeCompatibleNormals.size() == 0)
+        if (seqTypeCompatibleNormals.size() == 0) {
+            String message = String.format("There is no normal sample compatible with tumor's %s sequencer " +
+                    "types: %s. Normals found: %s.", tumor.getIgoId(), tumor
+                    .getInstrumentTypes(), getSampleIdsWithSeqTypes(normalSamples));
+            DEV_LOGGER.warn(message);
+
             return Constants.NA_LOWER_CASE;
+        }
 
         String tumorPreservation = tumor.get(Constants.SPECIMEN_PRESERVATION_TYPE);
         List<Sample> preservationCompatibleNormals = getPreservationCompatibleNormals(tumorPreservation,
@@ -144,6 +177,12 @@ public class SmartPairingRetriever {
         }
 
         return pairedNormal.getCorrectedCmoSampleId();
+    }
+
+    private String getSampleIdsWithSeqTypes(Collection<Sample> samples) {
+        return samples.stream()
+                .map(s -> String.format("%s - %s", s.getIgoId(), s.getInstrumentTypes()))
+                .collect(Collectors.joining(","));
     }
 
     private List<Sample> getTissueSiteCompatibleNormals(String tumorTissueSite, List<Sample> normals) {

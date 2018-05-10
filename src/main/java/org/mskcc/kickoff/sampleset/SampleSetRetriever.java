@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.velox;
+package org.mskcc.kickoff.sampleset;
 
 import org.mskcc.domain.Recipe;
 import org.mskcc.domain.sample.Sample;
@@ -8,7 +8,7 @@ import org.mskcc.kickoff.process.ProcessingType;
 
 import java.util.*;
 
-class SampleSetRetriever {
+public class SampleSetRetriever {
     private static final org.apache.log4j.Logger DEV_LOGGER = org.apache.log4j.Logger.getLogger(org.mskcc.util
             .Constants.DEV_LOGGER);
 

@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.velox;
+package org.mskcc.kickoff.sampleset;
 
 import org.apache.commons.lang3.StringUtils;
 import org.mskcc.kickoff.util.Constants;

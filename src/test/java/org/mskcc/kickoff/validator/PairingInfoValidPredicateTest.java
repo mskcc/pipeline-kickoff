@@ -4,13 +4,16 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mskcc.domain.instrument.InstrumentType;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.mockito.Mockito.mock;
 
 public class PairingInfoValidPredicateTest {
     private static int id = 0;
-    private final PairingInfoValidPredicate pairingInfoValidPredicate = new PairingInfoValidPredicate();
+    private final PairingInfoValidPredicate pairingInfoValidPredicate = new PairingInfoValidPredicate(mock
+            (ObserverManager.class));
 
     @Before
     public void setUp() throws Exception {
@@ -23,6 +26,8 @@ public class PairingInfoValidPredicateTest {
         InstrumentType.mapNameToType("JOHNSAWYERS", InstrumentType.MISEQ);
         InstrumentType.mapNameToType("MICHELLE", InstrumentType.NOVASEQ);
         InstrumentType.mapNameToType("SCOTT", InstrumentType.NEXT_SEQ);
+
+        InstrumentType.addCompatibility(InstrumentType.MISEQ, InstrumentType.HISEQ);
     }
 
     @Test

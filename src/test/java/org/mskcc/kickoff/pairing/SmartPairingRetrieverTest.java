@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.generator;
+package org.mskcc.kickoff.pairing;
 
 import com.google.common.collect.ImmutableMap;
 import org.assertj.core.util.Maps;

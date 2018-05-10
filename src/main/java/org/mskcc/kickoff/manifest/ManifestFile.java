@@ -4,6 +4,7 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.*;
 import org.mskcc.kickoff.printer.observer.FileGenerationStatusManifestFileObserver;
+import org.mskcc.kickoff.validator.PairingInfoValidPredicate;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.annotation.PostConstruct;
@@ -113,6 +114,9 @@ public enum ManifestFile {
         @Autowired
         private ManifestFilePrinter manifestFilePrinter;
 
+        @Autowired
+        private PairingInfoValidPredicate pairingInfoValidPredicate;
+
         @PostConstruct
         public void init() {
             initObservers();
@@ -138,6 +142,7 @@ public enum ManifestFile {
             readMePrinter.register(fileGenerationStatusObserver);
             cidToPidMappingPrinter.register(fileGenerationStatusObserver);
             manifestFilePrinter.register(fileGenerationStatusObserver);
+            pairingInfoValidPredicate.register(fileGenerationStatusObserver);
         }
     }
 }

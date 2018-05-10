@@ -3,9 +3,9 @@ package org.mskcc.kickoff.velox;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
-import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.retriever.*;
+import org.mskcc.kickoff.sampleset.*;
 
 import java.util.List;
 import java.util.function.Predicate;

@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.converter;
+package org.mskcc.kickoff.sampleset;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
@@ -9,6 +9,7 @@ import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.util.ConverterUtils;
 import org.mskcc.kickoff.util.Utils;
 import org.mskcc.util.CommonUtils;
 
@@ -249,31 +250,31 @@ public class SampleSetToRequestConverter {
                 "species"));
     }
 
-    static class AmbiguousStrandException extends RuntimeException {
+    public static class AmbiguousStrandException extends RuntimeException {
         public AmbiguousStrandException(String message) {
             super(message);
         }
     }
 
-    static class AmbiguousRequestType extends RuntimeException {
+    public static class AmbiguousRequestType extends RuntimeException {
         public AmbiguousRequestType(String message) {
             super(message);
         }
     }
 
-    static class NoRequestType extends RuntimeException {
+    public static class NoRequestType extends RuntimeException {
         public NoRequestType(String message) {
             super(message);
         }
     }
 
-    static class AmbiguousPropertyException extends RuntimeException {
+    public static class AmbiguousPropertyException extends RuntimeException {
         public AmbiguousPropertyException(String message) {
             super(message);
         }
     }
 
-    static class NoPropertySetException extends RuntimeException {
+    public static class NoPropertySetException extends RuntimeException {
         public NoPropertySetException(String message) {
             super(message);
         }

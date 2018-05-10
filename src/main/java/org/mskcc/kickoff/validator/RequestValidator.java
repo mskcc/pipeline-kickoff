@@ -14,6 +14,8 @@ import org.mskcc.kickoff.logger.PriorityAwareLogMessage;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -27,10 +29,17 @@ import static org.mskcc.kickoff.config.Arguments.*;
 public class RequestValidator {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
-    private BiPredicate<Sample, Sample> pairingInfoPredicate = new PairingInfoValidPredicate();
-    private final PairingsValidator pairingsValidator = new PairingsValidator(pairingInfoPredicate);
+    private final BiPredicate<Sample, Sample> pairingInfoPredicate;
+    private final PairingsValidator pairingsValidator;
 
     private List<PriorityAwareLogMessage> poolQCWarnings = new ArrayList<>();
+
+    @Autowired
+    public RequestValidator(@Qualifier("pairingInfoValidPredicate") BiPredicate<Sample, Sample> pairingInfoPredicate,
+                            PairingsValidator pairingsValidator) {
+        this.pairingInfoPredicate = pairingInfoPredicate;
+        this.pairingsValidator = pairingsValidator;
+    }
 
     public void validate(KickoffRequest kickoffRequest) {
         validateAutoGenerability(kickoffRequest);
