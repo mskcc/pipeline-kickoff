@@ -5,10 +5,10 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.helpers.Loader;
+import org.mskcc.domain.PassedRunPredicate;
 import org.mskcc.kickoff.archive.FilesArchiver;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.archive.RunPipelineLogger;
-import org.mskcc.domain.PassedRunPredicate;
 import org.mskcc.kickoff.generator.*;
 import org.mskcc.kickoff.lims.QueryImpactProjectInfo;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
@@ -20,6 +20,7 @@ import org.mskcc.kickoff.validator.ProjectNamePredicate;
 import org.mskcc.kickoff.validator.ProjectNameValidator;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.kickoff.velox.VeloxRequestProxy;
+import org.mskcc.util.BasicMail;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -31,6 +32,8 @@ import java.util.function.Predicate;
 @Configuration
 @Import({ProdConfiguration.class, DevConfiguration.class, TestConfiguration.class})
 public class AppConfiguration {
+
+
     static void configureLogger(String loggerPropertiesPath) {
         LogManager.resetConfiguration();
         try {
@@ -70,7 +73,7 @@ public class AppConfiguration {
 
     @Bean
     public MappingFilePrinter mappingFilePrinter() {
-        return new MappingFilePrinter();
+        return new MappingFilePrinter(basicMail());
     }
 
     @Bean
@@ -126,5 +129,10 @@ public class AppConfiguration {
     @Bean
     public RequestValidator requestValidator() {
         return new RequestValidator();
+    }
+
+    @Bean
+    public BasicMail basicMail() {
+        return new BasicMail();
     }
 }

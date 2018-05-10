@@ -1,19 +1,20 @@
 package org.mskcc.kickoff.config;
 
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.util.Utils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
-import org.springframework.core.io.ClassPathResource;
 
 @Profile(Constants.DEV_PROFILE)
 @Configuration
 public class DevConfiguration {
     @Bean
     public static PropertySourcesPlaceholderConfigurer propertyConfigurer() {
-        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
-        propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/application-dev.properties"));
+        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new
+                PropertySourcesPlaceholderConfigurer();
+        propertySourcesPlaceholderConfigurer.setLocation(Utils.getPropertiesLocation("application-dev.properties"));
 
         AppConfiguration.configureLogger("/log4j-dev.properties");
 
@@ -26,8 +27,9 @@ public class DevConfiguration {
     @Bean
     @Profile(Constants.IGO_PROFILE)
     public static PropertySourcesPlaceholderConfigurer igoPropertyConfigurer() {
-        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
-        propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/lims-igo-dev.properties"));
+        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new
+                PropertySourcesPlaceholderConfigurer();
+        propertySourcesPlaceholderConfigurer.setLocation(Utils.getPropertiesLocation("lims-igo-dev.properties"));
         propertySourcesPlaceholderConfigurer.setOrder(1);
 
         return propertySourcesPlaceholderConfigurer;
@@ -36,8 +38,9 @@ public class DevConfiguration {
     @Bean
     @Profile(Constants.TANGO_PROFILE)
     public static PropertySourcesPlaceholderConfigurer tangoPropertyConfigurer() {
-        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
-        propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("/lims-tango-dev.properties"));
+        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new
+                PropertySourcesPlaceholderConfigurer();
+        propertySourcesPlaceholderConfigurer.setLocation(Utils.getPropertiesLocation("lims-tango-dev.properties"));
         propertySourcesPlaceholderConfigurer.setOrder(1);
 
         return propertySourcesPlaceholderConfigurer;

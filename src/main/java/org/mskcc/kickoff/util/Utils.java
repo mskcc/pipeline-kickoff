@@ -3,8 +3,11 @@ package org.mskcc.kickoff.util;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.*;
-import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.config.Arguments;
+import org.springframework.core.io.AbstractResource;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
 
 import java.io.File;
 import java.io.IOException;
@@ -163,5 +166,12 @@ public class Utils {
         }
 
         return samples;
+    }
+
+    public static AbstractResource getPropertiesLocation(String propertiesPath) {
+        if (new File(propertiesPath).exists())
+            return new FileSystemResource(propertiesPath);
+        else
+            return new ClassPathResource(propertiesPath);
     }
 }
