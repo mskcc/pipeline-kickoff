@@ -27,6 +27,7 @@ import org.mskcc.kickoff.validator.*;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
 import org.mskcc.kickoff.velox.VeloxConnectionData;
 import org.mskcc.kickoff.velox.VeloxProjectProxy;
+import org.mskcc.kickoff.pairing.*;
 import org.mskcc.util.Constants;
 import org.mskcc.util.email.EmailConfiguration;
 import org.mskcc.util.email.EmailSender;
@@ -242,26 +243,6 @@ public class AppConfiguration {
     @Bean
     public ProjectInfoRetriever projectInfoRetriever() {
         return new ProjectInfoRetriever();
-    }
-
-    @Bean
-    public PairingsResolver pairingsResolver() {
-        return new PairingsResolver(pairingInfoRetriever(), smartPairingRetriever());
-    }
-
-    @Bean
-    public PairingInfoRetriever pairingInfoRetriever() {
-        return new PairingInfoRetriever();
-    }
-
-    @Bean
-    public SmartPairingRetriever smartPairingRetriever() {
-        return new SmartPairingRetriever(pairingInfoValidPredicate());
-    }
-
-    @Bean
-    public PairingInfoValidPredicate pairingInfoValidPredicate() {
-        return new PairingInfoValidPredicate(errorRepository);
     }
 
     @Bean

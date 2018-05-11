@@ -38,8 +38,9 @@ public class PairingInfoValidPredicate implements BiPredicate<Sample, Sample> {
         boolean isCompatible = InstrumentType.isCompatible(normalInstrumentTypes, tumorInstrumentTypes);
 
         if (!isCompatible) {
-            DEV_LOGGER.warn(String.format("Different instruments type in pairing [normal sample %s: %s - tumor sample" +
-                    " %s: %s]", normal.getIgoId(), normalInstrumentTypes, tumor.getIgoId(), tumorInstrumentTypes));
+            String message = String.format("Different instruments type in pairing [normal sample %s: %s - tumor sample" +
+                    " %s: %s]", normal.getIgoId(), normalInstrumentTypes, tumor.getIgoId(), tumorInstrumentTypes);
+            DEV_LOGGER.warn(message);
             errorRepository.add(new GenerationError(message, ErrorCode.INCOMPATIBLE_INSTRUMENT_TYPES));
         } else
             DEV_LOGGER.info(String.format("Instruments type in pairing [normal sample %s: %s - tumor sample %s: " +

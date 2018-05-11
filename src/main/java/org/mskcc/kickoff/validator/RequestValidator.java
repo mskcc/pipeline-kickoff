@@ -38,8 +38,6 @@ public class RequestValidator {
     private final ErrorRepository errorRepository;
     private final BiPredicate<Sample, Sample> pairingInfoPredicate;
 
-    private List<PriorityAwareLogMessage> poolQCWarnings = new ArrayList<>();
-
     @Autowired
     public RequestValidator(@Qualifier("pairingInfoValidPredicate") BiPredicate<Sample, Sample> pairingInfoPredicate,
                             PairingsValidator pairingsValidator, ErrorRepository errorRepository) {
