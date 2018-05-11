@@ -25,6 +25,7 @@ import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.validator.InMemoryErrorRepository;
 import org.mskcc.kickoff.validator.MaxSamplesValidator;
 import org.mskcc.kickoff.validator.PairingInfoValidPredicate;
+import org.mskcc.kickoff.validator.PairingInfoValidPredicate;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
