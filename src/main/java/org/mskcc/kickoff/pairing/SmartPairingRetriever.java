@@ -15,7 +15,8 @@ import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
-import static org.mskcc.domain.sample.SpecimenPreservationType.*;
+import static org.mskcc.domain.sample.Preservation.*;
+
 
 @Component
 public class SmartPairingRetriever {

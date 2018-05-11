@@ -7,8 +7,8 @@ import org.junit.Test;
 import org.mskcc.domain.Patient;
 import org.mskcc.domain.instrument.InstrumentType;
 import org.mskcc.domain.sample.PooledNormalSample;
+import org.mskcc.domain.sample.Preservation;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.domain.sample.SpecimenPreservationType;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.process.NormalProcessingType;
@@ -21,7 +21,7 @@ import java.util.function.BiPredicate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mskcc.domain.instrument.InstrumentType.*;
-import static org.mskcc.domain.sample.SpecimenPreservationType.*;
+import static org.mskcc.domain.sample.Preservation.*;
 
 public class SmartPairingRetrieverTest {
     private static final String TISSUE_SITE_1 = "TissueSite1";
@@ -73,7 +73,7 @@ public class SmartPairingRetrieverTest {
         assertThat(smartPairings).containsAllEntriesOf(expected);
     }
 
-    private String addNormalSample(Patient patient, InstrumentType instrumentType, SpecimenPreservationType
+    private String addNormalSample(Patient patient, InstrumentType instrumentType, Preservation
             preservationType, String tissueSite) {
         String id = getId();
         patient.addSample(getNormalSample(instrumentType, preservationType, tissueSite, id));
@@ -102,7 +102,7 @@ public class SmartPairingRetrieverTest {
         //given
         Patient patient = request.putPatientIfAbsent(PATIEND_ID_1);
         String tumorCorrectedCmoId = addTumorSample(patient, HISEQ, FFPE, TISSUE_SITE_1);
-        String normalCorrectedCmoId = addNormalSample(patient, HISEQ, BLOOD, TISSUE_SITE_2);
+        String normalCorrectedCmoId = addNormalSample(patient, HISEQ, TRIZOL, TISSUE_SITE_2);
 
         //when
         Map<String, String> smartPairings = smartPairingRetriever.retrieve(request);
@@ -118,7 +118,7 @@ public class SmartPairingRetrieverTest {
         //given
         Patient patient = request.putPatientIfAbsent(PATIEND_ID_1);
         String tumorCorrectedCmoId = addTumorSample(patient, HISEQ, FFPE, TISSUE_SITE_1);
-        addNormalSample(patient, NOVASEQ, BLOOD, TISSUE_SITE_2);
+        addNormalSample(patient, NOVASEQ, TRIZOL, TISSUE_SITE_2);
 
         //when
         Map<String, String> smartPairings = smartPairingRetriever.retrieve(request);
@@ -133,7 +133,7 @@ public class SmartPairingRetrieverTest {
         //given
         Patient patient = request.putPatientIfAbsent(PATIEND_ID_1);
         String tumorCorrectedCmoId = addTumorSample(patient, HISEQ, FFPE, TISSUE_SITE_1);
-        String normalCorrectedCmoId1 = addNormalSample(patient, HISEQ, BLOOD, TISSUE_SITE_2);
+        String normalCorrectedCmoId1 = addNormalSample(patient, HISEQ, TRIZOL, TISSUE_SITE_2);
         addNormalSample(patient, NOVASEQ, FFPE, TISSUE_SITE_1);
 
         //when
@@ -151,7 +151,7 @@ public class SmartPairingRetrieverTest {
         //given
         Patient patient = request.putPatientIfAbsent(PATIEND_ID_1);
         String tumorCorrectedCmoId = addTumorSample(patient, NOVASEQ, FFPE, TISSUE_SITE_1);
-        addNormalSample(patient, NOVASEQ, BLOOD, TISSUE_SITE_2);
+        addNormalSample(patient, NOVASEQ, TRIZOL, TISSUE_SITE_2);
         String normalCorrectedId2 = addNormalSample(patient, NOVASEQ, FFPE, TISSUE_SITE_2);
 
         //when
@@ -181,7 +181,7 @@ public class SmartPairingRetrieverTest {
         assertThat(smartPairings).containsAllEntriesOf(expected);
     }
 
-    private String addTumorSample(Patient patient, InstrumentType instrumentType, SpecimenPreservationType
+    private String addTumorSample(Patient patient, InstrumentType instrumentType, Preservation
             preservationType, String tissueSite) {
         String id = getId();
         patient.addSample(getTumorSample(instrumentType, preservationType, tissueSite, id));
@@ -225,7 +225,7 @@ public class SmartPairingRetrieverTest {
     public void whenNonFFPETumorAndFrozenPooledNormal_shouldPairThem() throws Exception {
         //given
         Patient patient = request.putPatientIfAbsent(PATIEND_ID_1);
-        String tumorCorrectedCmoId = addTumorSample(patient, HISEQ, BLOOD, TISSUE_SITE_1);
+        String tumorCorrectedCmoId = addTumorSample(patient, HISEQ, TRIZOL, TISSUE_SITE_1);
         String pooledNormalCmoId = addPooledNormal(HISEQ, FROZEN);
 
         //when
@@ -298,18 +298,18 @@ public class SmartPairingRetrieverTest {
         String pat1Tum4 = addTumorSample(patient1, MISEQ, FFPE, TISSUE_SITE_1);
         String pat1Tum5 = addTumorSample(patient1, MISEQ, FFPE, TISSUE_SITE_1);
 
-        String pat1Norm1 = addNormalSample(patient1, NOVASEQ, BLOOD, TISSUE_SITE_1);
+        String pat1Norm1 = addNormalSample(patient1, NOVASEQ, TRIZOL, TISSUE_SITE_1);
         String pat1Norm2 = addNormalSample(patient1, HISEQ, FFPE, TISSUE_SITE_2);
         String pat1Norm3 = addNormalSample(patient1, NOVASEQ, FFPE, TISSUE_SITE_1);
 
 
         Patient patient2 = request.putPatientIfAbsent(PATIEND_ID_2);
-        String pat2Tum1 = addTumorSample(patient2, NOVASEQ, BLOOD, TISSUE_SITE_1);
+        String pat2Tum1 = addTumorSample(patient2, NOVASEQ, TRIZOL, TISSUE_SITE_1);
         String pat2Tum2 = addTumorSample(patient2, HISEQ, FFPE, TISSUE_SITE_1);
         String pat2Tum3 = addTumorSample(patient2, HISEQ, FFPE, TISSUE_SITE_2);
         String pat2Tum4 = addTumorSample(patient2, MISEQ, FFPE, TISSUE_SITE_2);
 
-        String pat2Norm1 = addNormalSample(patient2, NOVASEQ, BLOOD, TISSUE_SITE_1);
+        String pat2Norm1 = addNormalSample(patient2, NOVASEQ, TRIZOL, TISSUE_SITE_1);
         String pat2Norm2 = addNormalSample(patient2, HISEQ, FFPE, TISSUE_SITE_2);
 
 
@@ -351,14 +351,14 @@ public class SmartPairingRetrieverTest {
         assertThat(smartPairings).containsAllEntriesOf(expected);
     }
 
-    private String addPooledNormal(InstrumentType instrumentType, SpecimenPreservationType preservationType) {
+    private String addPooledNormal(InstrumentType instrumentType, Preservation preservationType) {
         String id = getId();
         request.putSampleIfAbsent(getPooledNormalSample(id, preservationType, instrumentType));
 
         return id;
     }
 
-    private PooledNormalSample getPooledNormalSample(String pooledNormalCorrectedId, SpecimenPreservationType
+    private PooledNormalSample getPooledNormalSample(String pooledNormalCorrectedId, Preservation
             preservationType, InstrumentType instrumentType) {
         PooledNormalSample pooledNormalSample = new PooledNormalSample(getId());
         pooledNormalSample.setCmoSampleId(pooledNormalCorrectedId);
@@ -368,7 +368,7 @@ public class SmartPairingRetrieverTest {
         return pooledNormalSample;
     }
 
-    private Sample getNormalSample(InstrumentType instrumentType, SpecimenPreservationType preservationType, String
+    private Sample getNormalSample(InstrumentType instrumentType, Preservation preservationType, String
             tissueSite, String correctedCmoId) {
         Sample sample = getSample(instrumentType, preservationType, tissueSite, correctedCmoId);
         sample.setIsTumor(false);
@@ -376,7 +376,7 @@ public class SmartPairingRetrieverTest {
         return sample;
     }
 
-    private Sample getTumorSample(InstrumentType instrumentType, SpecimenPreservationType preservationType, String
+    private Sample getTumorSample(InstrumentType instrumentType, Preservation preservationType, String
             tissueSite, String correctedCmoId) {
         Sample sample = getSample(instrumentType, preservationType, tissueSite, correctedCmoId);
         sample.setIsTumor(true);
@@ -384,7 +384,7 @@ public class SmartPairingRetrieverTest {
         return sample;
     }
 
-    private Sample getSample(InstrumentType instrumentType, SpecimenPreservationType preservationType, String
+    private Sample getSample(InstrumentType instrumentType, Preservation preservationType, String
             tissueSite, String correctedCmoId) {
         Sample sample = new Sample(getId());
         sample.addSeqName(instrumentType.getValue());
