@@ -239,19 +239,21 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     String igoNormalId = pooledNormalRecord.getStringVal(VeloxConstants.SAMPLE_ID, user);
 
                     Sample sample = kickoffRequest.putPooledNormalIfAbsent(igoNormalId);
+
+                    addPooledNormalSeqNames(sample, pooledNormalRecord);
                     sample.setCmoSampleId(cmoNormalId);
                     sample.setPooledNormal(true);
                     sample.setTransfer(false);
                     sample.setIsTumor(false);
                     sample.addRuns(getPooledNormalRuns(pooledNormalToRuns.getValue(), kickoffRequest));
 
-                    Map<String, String> tempHashMap = getSampleInfoMap(pooledNormalRecord, sample, kickoffRequest);
-                    tempHashMap.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
+                    Map<String, String> sampleInfo = getSampleInfoMap(pooledNormalRecord, sample, kickoffRequest);
+                    sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
 
                     // If include run ID is 'null' skip.
                     // This could mess up some older projects, so I may have to change this
-                    if (tempHashMap.get(Constants.INCLUDE_RUN_ID) == null) {
-                        logWarning("Skipping adding pooled normal info from " + tempHashMap.get(Constants.IGO_ID) + "" +
+                    if (sampleInfo.get(Constants.INCLUDE_RUN_ID) == null) {
+                        logWarning("Skipping adding pooled normal info from " + sampleInfo.get(Constants.IGO_ID) + "" +
                                 " because I cannot find include run id. ");
                         continue;
                     }
@@ -259,7 +261,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     // If the sample pooled normal type (ex: FROZEN POOLED NORMAL) is already in the manfiest list
                     // Concatenate the include/ exclude run ids
                     //@TODO move to app side, combine in file generator
-                    if (hasPooledNormal(kickoffRequest, cmoNormalId) && tempHashMap.get(Constants.INCLUDE_RUN_ID) !=
+                    if (hasPooledNormal(kickoffRequest, cmoNormalId) && sampleInfo.get(Constants.INCLUDE_RUN_ID) !=
                             null) {
                         DEV_LOGGER.info(String.format("Combining Two Pooled Normals: %s", sample));
 
@@ -273,27 +275,26 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                         Set<String> currExcludeRuns = new TreeSet<>(Arrays.asList(originalPooledNormalSample.get
                                 (Constants.EXCLUDE_RUN_ID).split(";")));
 
-                        currIncludeRuns.addAll(Arrays.asList(tempHashMap.get(Constants.INCLUDE_RUN_ID).split(";")));
+                        currIncludeRuns.addAll(Arrays.asList(sampleInfo.get(Constants.INCLUDE_RUN_ID).split(";")));
                         currExcludeRuns.addAll(Arrays.asList(originalPooledNormalSample.get(Constants.EXCLUDE_RUN_ID)
                                 .split(";")));
 
-                        tempHashMap.put(Constants.INCLUDE_RUN_ID, StringUtils.join(currIncludeRuns, ";"));
-                        tempHashMap.put(Constants.EXCLUDE_RUN_ID, StringUtils.join(currExcludeRuns, ";"));
+                        sampleInfo.put(Constants.INCLUDE_RUN_ID, StringUtils.join(currIncludeRuns, ";"));
+                        sampleInfo.put(Constants.EXCLUDE_RUN_ID, StringUtils.join(currExcludeRuns, ";"));
                     }
 
                     // Make sure samplesAndRuns has the corrected RUN IDs
-                    List<String> runs = Arrays.asList(tempHashMap.get(Constants.INCLUDE_RUN_ID).split(";"));
+                    List<String> runs = Arrays.asList(sampleInfo.get(Constants.INCLUDE_RUN_ID).split(";"));
                     Set<Run> runSet = runs.stream().map((Run::new)).filter(r -> !StringUtils.isEmpty(r.getId()))
                             .collect(Collectors.toSet());
-                    //@TODO check
                     sample.addRuns(runSet);
 
                     //@TODO put anyway and check on app side
                     // If bait set does not contain comma, the add. Comma means that the pooled normal has two
                     // different bait sets. This shouldn't happen, So I'm not adding them.
-                    String thisBait = tempHashMap.get(Constants.CAPTURE_BAIT_SET);
+                    String thisBait = sampleInfo.get(Constants.CAPTURE_BAIT_SET);
                     if (!thisBait.contains(",")) {
-                        sample.setProperties(tempHashMap);
+                        sample.setProperties(sampleInfo);
                     }
 
                     addPoolSeqQc(kickoffRequest, dataRecordRequest, Collections.singleton(pooledNormalRecord));
@@ -302,6 +303,20 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             }
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
+        }
+    }
+
+    private void addPooledNormalSeqNames(Sample sample, DataRecord pooledNormalRecord) {
+        try {
+            List<DataRecord> sampleQcs = pooledNormalRecord.getDescendantsOfType(VeloxConstants
+                    .SEQ_ANALYSIS_SAMPLE_QC, user);
+            for (DataRecord sampleQc : sampleQcs) {
+                String runFolder = getRunFolder(sampleQc);
+                sample.addSeqName(getSeqName(runFolder));
+            }
+        } catch (Exception e) {
+            DEV_LOGGER.warn(String.format("Error while retrieving sequencer type for Pooled normal sample: %s",
+                    sample.getIgoId()), e);
         }
     }
 
@@ -427,7 +442,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                 .findFirst()
                 .ifPresent(r -> {
                     String seqName = getSeqName(r.getRunFolder());
-                    sample.setSeqName(seqName);
+                    sample.addSeqName(seqName);
                 });
     }
 
@@ -534,7 +549,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         try {
             totalReads = sampleQc.getLongVal(VeloxConstants.TOTAL_READS, user);
         } catch (NullPointerException skipped) {
-            DEV_LOGGER.warn(String.format("NPE thrown while retrieving Total Reads for record sample qc: %d",
+            DEV_LOGGER.warn(String.format("Total Reads field for record sample qc: %d is empty",
                     sampleQc.getRecordId()));
         }
 

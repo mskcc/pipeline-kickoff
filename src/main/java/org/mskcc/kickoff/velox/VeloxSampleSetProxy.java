@@ -8,6 +8,7 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.retriever.SingleRequestRetriever;
+import org.mskcc.kickoff.sampleset.SampleSetProxy;
 import org.mskcc.util.Constants;
 import org.mskcc.util.VeloxConstants;
 

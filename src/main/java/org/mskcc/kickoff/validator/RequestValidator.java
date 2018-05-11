@@ -17,6 +17,7 @@ import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -34,12 +35,14 @@ public class RequestValidator {
     private final PairingsValidator pairingsValidator;
     private final List<PriorityAwareLogMessage> poolQCWarnings = new ArrayList<>();
     private final ErrorRepository errorRepository;
+    private final BiPredicate<Sample, Sample> pairingInfoPredicate;
 
     @Autowired
-    public RequestValidator(BiPredicate<Sample, Sample> pairingInfoPredicate,
-                            ErrorRepository errorRepository) {
+    public RequestValidator(@Qualifier("pairingInfoValidPredicate") BiPredicate<Sample, Sample> pairingInfoPredicate,
+                            PairingsValidator pairingsValidator, ErrorRepository errorRepository) {
         this.errorRepository = errorRepository;
-        pairingsValidator = new PairingsValidator(pairingInfoPredicate);
+        this.pairingInfoPredicate = pairingInfoPredicate;
+        this.pairingsValidator = pairingsValidator;
     }
 
     public void validate(KickoffRequest kickoffRequest) {

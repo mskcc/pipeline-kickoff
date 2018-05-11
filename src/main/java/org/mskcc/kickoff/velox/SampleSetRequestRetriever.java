@@ -1,12 +1,13 @@
 package org.mskcc.kickoff.velox;
 
 import com.velox.api.datarecord.DataRecord;
-import org.mskcc.kickoff.converter.SampleSetToRequestConverter;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.retriever.RequestsRetriever;
+import org.mskcc.kickoff.sampleset.SampleSetRetriever;
+import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
 
 public class SampleSetRequestRetriever implements RequestsRetriever {
     private final RequestDataPropagator requestDataPropagator;

@@ -221,5 +221,4 @@ public class SampleInfoExome extends SampleInfoImpact {
 
         return baitSetToDesignFile;
     }
-
 }

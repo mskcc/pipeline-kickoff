@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.generator;
+package org.mskcc.kickoff.validator;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;

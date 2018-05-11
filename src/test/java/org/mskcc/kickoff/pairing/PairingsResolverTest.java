@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.generator;
+package org.mskcc.kickoff.pairing;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -89,7 +89,7 @@ public class PairingsResolverTest {
         String tum1 = "tum1";
         String norm1 = "norm1";
         pairingInfos.put(tum1, norm1);
-        when(pairingInfoRetriever.retrieve(any(), any())).thenReturn(pairingInfos);
+        when(pairingInfoRetriever.retrieve(any())).thenReturn(pairingInfos);
 
         //when
         Map<String, String> pairings = pairingsResolver.resolve(request);
@@ -116,7 +116,7 @@ public class PairingsResolverTest {
         String norm3 = "haha";
         pairingInfos.put(tum3, norm3);
 
-        when(pairingInfoRetriever.retrieve(any(), any())).thenReturn(pairingInfos);
+        when(pairingInfoRetriever.retrieve(any())).thenReturn(pairingInfos);
 
         //when
         Map<String, String> pairings = pairingsResolver.resolve(request);
@@ -140,7 +140,7 @@ public class PairingsResolverTest {
         String tum1 = "tum1";
         String norm1 = "norm1";
         pairingInfos.put(tum1, norm1);
-        when(pairingInfoRetriever.retrieve(any(), any())).thenReturn(pairingInfos);
+        when(pairingInfoRetriever.retrieve(any())).thenReturn(pairingInfos);
 
         Map<String, String> smartPairings = new HashMap<>();
         String smartTum1 = "some tumor";
@@ -172,7 +172,7 @@ public class PairingsResolverTest {
         Map<String, String> pairingInfos = new HashMap<>();
         String pairingInfoNormal = "norm1";
         pairingInfos.put(tumor, pairingInfoNormal);
-        when(pairingInfoRetriever.retrieve(any(), any())).thenReturn(pairingInfos);
+        when(pairingInfoRetriever.retrieve(any())).thenReturn(pairingInfos);
 
         //when
         Map<String, String> pairings = pairingsResolver.resolve(request);
@@ -195,7 +195,7 @@ public class PairingsResolverTest {
         Map<String, String> pairingInfos = new HashMap<>();
         String emptyNormal = "";
         pairingInfos.put(tumor, emptyNormal);
-        when(pairingInfoRetriever.retrieve(any(), any())).thenReturn(pairingInfos);
+        when(pairingInfoRetriever.retrieve(any())).thenReturn(pairingInfos);
 
         //when
         Map<String, String> pairings = pairingsResolver.resolve(request);
@@ -218,7 +218,7 @@ public class PairingsResolverTest {
         Map<String, String> pairingInfos = new HashMap<>();
         String pairingInfoNormal = "na";
         pairingInfos.put(tumor, pairingInfoNormal);
-        when(pairingInfoRetriever.retrieve(any(), any())).thenReturn(pairingInfos);
+        when(pairingInfoRetriever.retrieve(any())).thenReturn(pairingInfos);
 
         //when
         Map<String, String> pairings = pairingsResolver.resolve(request);
@@ -256,7 +256,7 @@ public class PairingsResolverTest {
         String pairingInfoTumor = "pairing info tumor";
         String pairingInfoNormal3 = "norm3";
         pairingInfos.put(pairingInfoTumor, pairingInfoNormal3);
-        when(pairingInfoRetriever.retrieve(any(), any())).thenReturn(pairingInfos);
+        when(pairingInfoRetriever.retrieve(any())).thenReturn(pairingInfos);
 
         //when
         Map<String, String> pairings = pairingsResolver.resolve(request);
