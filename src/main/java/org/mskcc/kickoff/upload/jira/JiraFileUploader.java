@@ -13,6 +13,7 @@ import org.apache.commons.lang.text.StrBuilder;
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.upload.FileDeletionException;
 import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
@@ -20,6 +21,7 @@ import org.mskcc.kickoff.upload.jira.domain.JiraUser;
 import org.mskcc.kickoff.upload.jira.state.IssueStatus;
 import org.mskcc.kickoff.upload.jira.state.StatusFactory;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.validator.ErrorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,6 +56,9 @@ public class JiraFileUploader implements FileUploader {
     private StatusFactory statusFactory;
     @Autowired
     private PmJiraUserRetriever pmJiraUserRetriever;
+
+    @Autowired
+    private ErrorRepository errorRepository;
 
     @Autowired
     @Qualifier("jiraRestTemplate")
@@ -137,6 +142,13 @@ public class JiraFileUploader implements FileUploader {
 
     private String getErrorComment() {
         StrBuilder errorComment = new StrBuilder();
+
+        errorComment.append("Errors: \\n");
+        for (GenerationError generationError : errorRepository.getErrors()) {
+            errorComment.append(String.format("    -%s\\n", generationError.getMessage()));
+        }
+
+        errorComment.append("\\n");
 
         for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
             if (!manifestFile.isFileGenerated()) {

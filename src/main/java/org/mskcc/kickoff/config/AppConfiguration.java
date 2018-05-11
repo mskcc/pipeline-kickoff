@@ -142,6 +142,9 @@ public class AppConfiguration {
     @Autowired
     private HoldIssueStatus holdJiraIssueState;
 
+    @Autowired
+    private ErrorRepository errorRepository;
+
     private String regeneratedStatus = "Files Regenerated";
 
     public static void configureLogger(String loggerPropertiesName) {
@@ -252,7 +255,12 @@ public class AppConfiguration {
 
     @Bean
     public SmartPairingRetriever smartPairingRetriever() {
-        return new SmartPairingRetriever();
+        return new SmartPairingRetriever(pairingInfoValidPredicate());
+    }
+
+    @Bean
+    public PairingInfoValidPredicate pairingInfoValidPredicate() {
+        return new PairingInfoValidPredicate(errorRepository);
     }
 
     @Bean

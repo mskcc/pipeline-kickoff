@@ -3,6 +3,8 @@ package org.mskcc.kickoff.validator;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.instrument.InstrumentType;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.notify.GenerationError;
+import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.util.Constants;
 
 import java.util.Objects;
@@ -10,6 +12,12 @@ import java.util.function.BiPredicate;
 
 public class PairingInfoValidPredicate implements BiPredicate<Sample, Sample> {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+
+    private ErrorRepository errorRepository;
+
+    public PairingInfoValidPredicate(ErrorRepository errorRepository) {
+        this.errorRepository = errorRepository;
+    }
 
     @Override
     public boolean test(Sample tumor, Sample normal) {
@@ -22,12 +30,16 @@ public class PairingInfoValidPredicate implements BiPredicate<Sample, Sample> {
 
         boolean isCompatible = normalInstrumentType.isCompatibleWith(tumorInstrumentType);
 
-        if (!isCompatible)
-            DEV_LOGGER.warn(String.format("Different instruments type in pairing [normal sample %s: %s - tumor sample" +
-                    " %s: %s]", normal.getIgoId(), normalInstrumentType, tumor.getIgoId(), tumorInstrumentType));
-        else
+        if (!isCompatible) {
+            String message = String.format("Different instruments type in pairing [normal sample %s: %s - tumor " +
+                    "sample" +
+                    " %s: %s]", normal.getIgoId(), normalInstrumentType, tumor.getIgoId(), tumorInstrumentType);
+            DEV_LOGGER.warn(message);
+            errorRepository.add(new GenerationError(message, ErrorCode.INCOMPATIBLE_INSTRUMENT_TYPES));
+        } else {
             DEV_LOGGER.info(String.format("Instruments type in pairing [normal sample %s: %s - tumor sample %s: " +
                     "%s]", normal.getIgoId(), normalInstrumentType, tumor.getIgoId(), tumorInstrumentType));
+        }
 
         return isCompatible;
     }

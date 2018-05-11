@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.fast.jirauploadfiles;
+package org.mskcc.kickoff.fast.endtoend;
 
 import com.atlassian.jira.rest.client.api.JiraRestClient;
 import com.atlassian.jira.rest.client.api.SearchRestClient;
@@ -18,7 +18,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.fast.endtoend.ManifestFilesGeneratorTestConfiguration;
 import org.mskcc.kickoff.generator.FileManifestGenerator;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.notify.GenerationError;
@@ -29,6 +28,8 @@ import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.validator.ErrorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.ComponentScan;
@@ -105,6 +106,9 @@ public class ManifestFilesGeneratorTest {
     private ClinicalFilePrinter clinicalFilePrinter;
 
     @Autowired
+    private ErrorRepository errorRepository;
+
+    @Autowired
     private ManifestFilesGeneratorTestConfiguration.MockJiraFileUploader fileUploader;
     private String initialTransitionName = "To Do";
     private String regenerateTransition = "Regeneration Requested";
@@ -143,6 +147,8 @@ public class ManifestFilesGeneratorTest {
         for (ManifestFile manifestFile : ManifestFile.values()) {
             manifestFile.getGenerationErrors().clear();
         }
+
+        Utils.setExitLater(false);
     }
 
     private void setJiraStatus(String status) {
@@ -310,7 +316,7 @@ public class ManifestFilesGeneratorTest {
     @Test
     public void whenGeneratedFilesContainErrors_shouldTransitionsToBadInputsStatus() throws Exception {
         //given
-        ManifestFile.REQUEST.addGenerationError(new GenerationError("terribel eror", ErrorCode.UNMATCHED_NORMAL));
+        ManifestFile.REQUEST.addGenerationError(new GenerationError("terrible errVor", ErrorCode.UNMATCHED_NORMAL));
 
         //when
         fileManifestGenerator.generate(projectId);
@@ -322,8 +328,7 @@ public class ManifestFilesGeneratorTest {
     @Test
     public void whenPairingFileHasError_shouldSetStatusBadInputs() throws Exception {
         //given
-        KickoffRequest request = new KickoffRequest(projectId, mock(ProcessingType.class));
-        ManifestFile.PAIRING.addGenerationError(new GenerationError("some eror", ErrorCode.UNMATCHED_NORMAL));
+        ManifestFile.PAIRING.addGenerationError(new GenerationError("some error", ErrorCode.UNMATCHED_NORMAL));
 
         //when
         fileManifestGenerator.generate(projectId);

@@ -7,7 +7,6 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.util.Constants;
-import org.mskcc.kickoff.validator.PairingInfoValidPredicate;
 
 import java.util.*;
 import java.util.function.BiPredicate;
@@ -16,7 +15,12 @@ import java.util.stream.Collectors;
 public class SmartPairingRetriever {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
-    private final BiPredicate<Sample, Sample> pairingInfoValidPredicate = new PairingInfoValidPredicate();
+
+    private final BiPredicate<Sample, Sample> pairingInfoValidPredicate;
+
+    public SmartPairingRetriever(BiPredicate<Sample, Sample> pairingInfoValidPredicate) {
+        this.pairingInfoValidPredicate = pairingInfoValidPredicate;
+    }
 
     public Map<String, String> retrieve(KickoffRequest request) {
         if (request.getPatients().isEmpty()) {

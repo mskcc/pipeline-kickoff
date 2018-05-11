@@ -8,9 +8,14 @@ import java.util.stream.Collectors;
 public class NewLineNotificationFormatter implements NotificationFormatter {
     @Override
     public String format(List<ManifestFile> notGenerated) {
-        String formatted = notGenerated.stream()
+        String formatted = "\nManifest file(s) not generated: \n";
+
+        formatted += notGenerated.stream()
                 .map(f -> f.getName())
                 .collect(Collectors.joining(System.lineSeparator()));
+
+        formatted += "\n\n";
+
         return formatted;
     }
 }
