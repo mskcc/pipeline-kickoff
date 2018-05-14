@@ -15,8 +15,9 @@ import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.ErrorCode;
+import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
+import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
