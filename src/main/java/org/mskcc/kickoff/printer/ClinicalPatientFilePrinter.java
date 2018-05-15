@@ -6,7 +6,6 @@ import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffExternalSample;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
@@ -121,7 +120,7 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
                 pW.write(text);
                 pW.close();
 
-                observerManager.notifyObserversOfFileCreated(ManifestFile.CLINICAL);
+                notifyObservers();
             } catch (Exception e) {
                 DEV_LOGGER.warn(String.format("Exception thrown while creating file: %s", getOutputFilenameEnding()),
                         e);
