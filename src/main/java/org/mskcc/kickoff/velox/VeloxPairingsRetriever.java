@@ -59,13 +59,13 @@ class VeloxPairingsRetriever {
     }
 
     private Sample getSample(KickoffRequest kickoffRequest, String sampleId) {
-        if (!kickoffRequest.getSamples().containsKey(sampleId)) {
-            DEV_LOGGER.warn(String.format("Sample: %s from pairing info is not part of given request: %s", sampleId,
-                    kickoffRequest.getId()));
-            return Sample.getNotAvailableSample();
+        if (kickoffRequest.containsSample(sampleId)) {
+            return kickoffRequest.getSample(sampleId);
         }
 
-        return kickoffRequest.getSample(sampleId);
+        DEV_LOGGER.warn(String.format("Sample: %s from pairing info is not part of given request: %s", sampleId,
+                kickoffRequest.getId()));
+        return Sample.getNotAvailableSample();
     }
 
     private class PairingInfoRetrievalException extends RuntimeException {

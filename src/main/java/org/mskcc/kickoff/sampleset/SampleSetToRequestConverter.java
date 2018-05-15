@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.*;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.KickoffExternalSample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ForcedProcessingType;
@@ -78,17 +79,31 @@ public class SampleSetToRequestConverter {
 
     private void setPatients(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         Patient.resetGroupCounter();
-        List<Patient> allRequestsPatients = sampleSet.getKickoffRequests().stream().flatMap(r -> r.getPatients()
-                .values()
-                .stream()).collect(Collectors.toList());
+
+        putIgoPatients(kickoffRequest, sampleSet);
+        putExternalPatients(kickoffRequest);
+
+        DEV_LOGGER.info(String.format("Sample set: %s has %d patients [%s]", sampleSet.getName(), kickoffRequest
+                .getPatients().size(), Utils.getJoinedCollection(kickoffRequest.getPatients().keySet())));
+    }
+
+    private void putIgoPatients(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
+        List<Patient> allRequestsPatients = sampleSet.getKickoffRequests().stream()
+                .flatMap(r -> r.getPatients().values().stream())
+                .collect(Collectors.toList());
 
         for (Patient originalPatient : allRequestsPatients) {
             Patient patient = kickoffRequest.putPatientIfAbsent(originalPatient.getPatientId());
             patient.addSamples(originalPatient.getSamples());
         }
+    }
 
-        DEV_LOGGER.info(String.format("Sample set: %s has %d patients [%s]", sampleSet.getName(), kickoffRequest
-                .getPatients().size(), Utils.getJoinedCollection(kickoffRequest.getPatients().keySet())));
+    private void putExternalPatients(KickoffRequest kickoffRequest) {
+        for (KickoffExternalSample externalSample : kickoffRequest.getExternalSamples().values()) {
+            String patientCmoId = externalSample.getPatientCmoId();
+            Patient patient = kickoffRequest.putPatientIfAbsent(patientCmoId);
+            patient.addSample(externalSample);
+        }
     }
 
     private void setAmplificationType(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
@@ -159,6 +174,14 @@ public class SampleSetToRequestConverter {
         DEV_LOGGER.info(String.format("Samples found for sample set: %s [%s]", sampleSet.getName(), Utils
                 .getJoinedCollection(sampleSetSamples.keySet())));
 
+//        for (KickoffExternalSample externalSample : sampleSet.getExternalSamples()) {
+//            sampleSetSamples.put(externalSample.getIgoId(), externalSample);
+//        }
+
+        Map<String, KickoffExternalSample> externalSampleMap = sampleSet.getExternalSamples().stream()
+                .collect(Collectors.toMap(s -> s.getIgoId(), s -> s));
+
+        kickoffRequest.setExternalSamples(externalSampleMap);
         kickoffRequest.setSamples(sampleSetSamples);
 
         kickoffRequest.validateHasSamples();

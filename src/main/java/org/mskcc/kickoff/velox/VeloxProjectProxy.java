@@ -120,8 +120,9 @@ public class VeloxProjectProxy implements RequestProxy {
             PM_LOGGER.error(e.getMessage());
             throw e;
         } catch (Exception e) {
-            throw new ProjectRetrievalException(String.format("Error while retrieving information about project: %s",
-                    projectId), e);
+            throw new ProjectRetrievalException(String.format("Error while retrieving information about project: %s. " +
+                            "Cause: %s",
+                    projectId, e.getMessage()), e);
         } finally {
             closeConnection(connection);
         }
@@ -145,6 +146,8 @@ public class VeloxProjectProxy implements RequestProxy {
                 PM_LOGGER.info(message);
             }
         }
+
+        InstrumentType.mapNameToType("DMPSample", InstrumentType.DMP_SAMPLE);
     }
 
     private void resolvePairings(KickoffRequest kickoffRequest) {

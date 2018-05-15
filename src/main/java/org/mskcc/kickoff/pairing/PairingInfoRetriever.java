@@ -58,7 +58,7 @@ public class PairingInfoRetriever {
                 if (!Objects.equals(request.getRequestType(), Constants.EXOME))
                     continue;
             } else {
-                if (!isSampleFromRequest(request, pairingSample)) {
+                if (!request.isSampleFromRequest(pairingSample.getIgoId())) {
                     String message = String.format("Normal: %s (%s) matching with tumor: %s (%s) does NOT belong to " +
                                     "request: %s. The normal will be changed to na.", pairingSample.getCmoSampleId(),
                             pairingSample.getIgoId(), tumor.getCmoSampleId(), tumorIgoId, request.getId());
@@ -122,5 +122,24 @@ public class PairingInfoRetriever {
 
     private Sample getNormal(KickoffRequest request, Sample pairingSample) {
         return request.getSample(pairingSample.getIgoId());
+    }
+
+    private Collection<Sample> getValidTumorSamples(KickoffRequest request) {
+        Set<Sample> validTumorSamples = new HashSet<>(request.getAllValidSamples(s -> s.isTumor()).values());
+        validTumorSamples.addAll(request.getTumorExternalSamples());
+
+        return validTumorSamples;
+    }
+
+    private String getInitialNormalId(Sample pairingSample) {
+        if (!Objects.equals(pairingSample.getCmoSampleId(), org.mskcc.util.Constants.UNDEFINED))
+            return pairingSample.getCmoSampleId();
+        if (!StringUtils.isEmpty(pairingSample.getIgoId()))
+            return pairingSample.getIgoId();
+        return Constants.NA_LOWER_CASE;
+    }
+
+    private String getNormalCmoId(KickoffRequest request, Sample pairingSample) {
+        return request.getSample(pairingSample.getIgoId()).get(Constants.CORRECTED_CMO_ID);
     }
 }

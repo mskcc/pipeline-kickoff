@@ -54,8 +54,7 @@ public class GroupingFilePrinter extends FilePrinter {
             for (Sample sample : getUniqueSamples(patient)) {
                 if (kickoffRequest.getPairingSampleIds().contains(sample.getCorrectedCmoSampleId())) {
                     samples.add(sample);
-                    outputText.append(String.format("%s\tGroup_%s\n", sampleNormalization(sample.get(Constants
-                            .CORRECTED_CMO_ID)), groupNumberFormat.format(patient.getGroupNumber())));
+                    outputText.append(String.format("%s\tGroup_%s\n", sampleNormalization(sample.getCorrectedCmoSampleId()), groupNumberFormat.format(patient.getGroupNumber())));
                 }
             }
         }

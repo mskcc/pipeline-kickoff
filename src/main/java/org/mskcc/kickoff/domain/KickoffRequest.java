@@ -32,6 +32,7 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     private RequestTypeStrategy requestTypeStrategy;
     private RequestTypeStrategyFactory requestTypeStrategyFactory = new RequestTypeStrategyFactory();
     private Set<String> pairingSampleIds = new HashSet<>();
+    private Map<String, KickoffExternalSample> externalSamples = new HashMap<>();
 
     public KickoffRequest(String id, ProcessingType processingType) {
         super(id);
@@ -215,6 +216,55 @@ public class KickoffRequest extends org.mskcc.domain.Request {
 
     public void addPairingSampleIds(Collection<String> sampleIds) {
         pairingSampleIds.addAll(sampleIds);
+    }
+
+    public boolean isExome() {
+        return getRequestType() == RequestType.EXOME;
+    }
+
+    public boolean isImpact() {
+        return getRequestType() == RequestType.IMPACT;
+    }
+
+    public Map<String, KickoffExternalSample> getExternalSamples() {
+        return externalSamples;
+    }
+
+    public void setExternalSamples(Map<String, KickoffExternalSample> externalSamples) {
+        this.externalSamples = externalSamples;
+    }
+
+    public List<KickoffExternalSample> getTumorExternalSamples() {
+        return getExternalSamples().values().stream()
+                .filter(s -> s.isTumor())
+                .collect(Collectors.toList());
+    }
+
+    public boolean isSampleFromRequest(String id) {
+        return containsIgoSample(id) || containsExternalSample(id);
+    }
+
+    public boolean containsExternalSample(String sampleId) {
+        return externalSamples.containsKey(sampleId);
+    }
+
+    public boolean containsIgoSample(String sampleId) {
+        return getSamples().containsKey(sampleId);
+    }
+
+    public boolean containsSample(String sampleId) {
+        return containsIgoSample(sampleId) || containsExternalSample(sampleId);
+    }
+
+    @Override
+    public Sample getSample(String sampleId) {
+        if (getSamples().containsKey(sampleId))
+            return super.getSample(sampleId);
+        if (!externalSamples.containsKey(sampleId))
+            throw new RuntimeException(String.format("Request %s doesn't contain sample with id: %s", getId(),
+                    sampleId));
+
+        return externalSamples.get(sampleId);
     }
 
     public static class NoValidSamplesException extends RuntimeException {
