@@ -143,12 +143,14 @@ public class JiraFileUploader implements FileUploader {
     private String getErrorComment() {
         StrBuilder errorComment = new StrBuilder();
 
-        errorComment.append("Errors: \\n");
-        for (GenerationError generationError : errorRepository.getErrors()) {
-            errorComment.append(String.format("    -%s\\n", generationError.getMessage()));
-        }
+        if (!errorRepository.getErrors().isEmpty()) {
+            errorComment.append("Errors: \\n");
+            for (GenerationError generationError : errorRepository.getErrors()) {
+                errorComment.append(String.format("    -%s\\n", generationError.getMessage()));
+            }
 
-        errorComment.append("\\n");
+            errorComment.append("\\n");
+        }
 
         for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
             if (!manifestFile.isFileGenerated()) {
