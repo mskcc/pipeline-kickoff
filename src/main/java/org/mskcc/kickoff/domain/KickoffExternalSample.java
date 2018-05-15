@@ -5,6 +5,8 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.domain.sample.TumorNormalType;
 import org.mskcc.util.Constants;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -209,8 +211,8 @@ public class KickoffExternalSample extends Sample {
     }
 
     @Override
-    public String getSeqName() {
-        return "DMPSample";
+    public List<String> getSeqNames() {
+        return Arrays.asList("DMPSample");
     }
 
     public String getSex() {
