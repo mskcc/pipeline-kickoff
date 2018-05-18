@@ -41,12 +41,17 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
     @Value("${jira.rest.path}")
     private String jiraRestPath;
 
+    @Value("${default.pm}")
+    private String defaultPm;
+
     @Autowired
     @Qualifier("jiraRestTemplate")
     private RestTemplate restTemplate;
 
     @Override
     public JiraUser retrieve(String projectManagerIgoName) {
+        projectManagerIgoName = getPmIgoName(projectManagerIgoName);
+
         LOGGER.info(String.format("Looking for jira user with IGO name \"%s\"", projectManagerIgoName));
 
         List<JiraUser> pmJiraUsers = getPmJiraUsers();
@@ -66,10 +71,21 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
                 pmGroupName, projectManagerIgoName));
     }
 
+    private String getPmIgoName(String projectManagerIgoName) {
+        if (Constants.NO_PM.equals(projectManagerIgoName)) {
+            LOGGER.warn(String.format("Project manager in LIMS is set to %s. Default PM will be used instead: %s",
+                    Constants.NO_PM, defaultPm));
+
+            projectManagerIgoName = defaultPm;
+        }
+
+        return projectManagerIgoName;
+    }
+
     private boolean userHasProperty(JiraUser pmJiraUser, String igoFormattedNameProperty) {
         String getUserPropertiesUrl = String.format("%s/%s/user/properties?username=%s", jiraUrl, jiraRestPath,
                 pmJiraUser
-                .getUserName());
+                        .getUserName());
 
         UserProperties userProperties = restTemplate.getForObject(getUserPropertiesUrl, UserProperties.class);
 

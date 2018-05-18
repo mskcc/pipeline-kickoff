@@ -91,6 +91,7 @@ public class Constants {
     public static final String UNDER_REVIEW = "Under-Review";
     public static final String UNKNOWN = "Unknown";
     public static final String PAIRED_END = "PE";
+    public static final String NO_PM = "NO PM";
 
     public static class Manifest {
         public static final String SAMPLE_INFO = "SampleInfo";
