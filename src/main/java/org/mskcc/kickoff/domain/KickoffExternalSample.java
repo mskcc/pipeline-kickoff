@@ -1,6 +1,7 @@
 package org.mskcc.kickoff.domain;
 
 import org.mskcc.domain.Run;
+import org.mskcc.domain.instrument.InstrumentType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.domain.sample.TumorNormalType;
 import org.mskcc.util.Constants;
@@ -212,7 +213,12 @@ public class KickoffExternalSample extends Sample {
 
     @Override
     public List<String> getSeqNames() {
-        return Arrays.asList("DMPSample");
+        return Arrays.asList(InstrumentType.DMP_SAMPLE.getValue());
+    }
+
+    @Override
+    public List<InstrumentType> getInstrumentTypes() {
+        return Arrays.asList(InstrumentType.DMP_SAMPLE);
     }
 
     public String getSex() {
