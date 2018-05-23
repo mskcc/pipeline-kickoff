@@ -45,10 +45,14 @@ public class SmartPairingRetriever {
 
     private Map<String, String> getSmartPairings(KickoffRequest request) {
         Collection<Sample> pooledNormals = getPooledNormals(request);
+        DEV_LOGGER.info(String.format("Pooled normal samples found for request %s: %s", request.getId(),
+                pooledNormals));
 
         Map<String, String> smartPairings = new LinkedHashMap<>();
         for (Patient patient : request.getPatients().values()) {
             Set<Sample> normalSamples = getNormalSamples(patient.getSamples());
+            DEV_LOGGER.info(String.format("Normal samples found for request %s: for patient: %s %s", request.getId(),
+                    patient.getPatientId(), normalSamples));
 
             for (Sample tumor : getTumorSamples(patient.getSamples())) {
                 try {
