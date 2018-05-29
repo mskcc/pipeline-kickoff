@@ -39,7 +39,6 @@ public class SampleSetProjectInfoConverter {
 
         setOptionalProjectProperty(projectInfo, sampleSet, Constants.ProjectInfo.DESIGN_FILE);
         setOptionalProjectProperty(projectInfo, sampleSet, Constants.ProjectInfo.SPIKEIN_DESIGN_FILE);
-//        setTumorType(projectInfo, sampleSet);
 
         return projectInfo;
     }
@@ -58,11 +57,11 @@ public class SampleSetProjectInfoConverter {
     }
 
     private String getRequestor(KickoffSampleSet sampleSet) {
-        return ConverterUtils.getArbitraryPropertyValue(sampleSet, Constants.ProjectInfo.REQUESTOR);
+        return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.REQUESTOR);
     }
 
     private String getRequestorEmail(KickoffSampleSet sampleSet) {
-        return ConverterUtils.getArbitraryPropertyValue(sampleSet, Constants.ProjectInfo.REQUESTOR_E_MAIL);
+        return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.REQUESTOR_E_MAIL);
     }
 
     private String getPlatform(KickoffSampleSet sampleSet) {
@@ -70,8 +69,7 @@ public class SampleSetProjectInfoConverter {
     }
 
     private String getAlternateEmails(KickoffSampleSet sampleSet) {
-        return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo
-                .ALTERNATE_EMAILS), ",");
+        return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.ALTERNATE_EMAILS);
     }
 
     private String getIgoProjectId(KickoffSampleSet sampleSet) {
@@ -125,13 +123,11 @@ public class SampleSetProjectInfoConverter {
     }
 
     private String getDataAnalyst(KickoffSampleSet sampleSet) {
-        return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo
-                .DATA_ANALYST), ",");
+        return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.DATA_ANALYST);
     }
 
     private String getDataAnalystEmail(KickoffSampleSet sampleSet) {
-        return ConverterUtils.getMergedPropertyValue(sampleSet, r -> r.getProjectInfo().get(Constants.ProjectInfo
-                .DATA_ANALYST_EMAIL), ",");
+        return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.DATA_ANALYST_EMAIL);
     }
 
     private String getNumberOfSamples(KickoffSampleSet sampleSet) {
