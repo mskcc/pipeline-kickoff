@@ -38,23 +38,23 @@ public class SampleSetProjectInfoConverterTest {
     }
 
     @Test
-    public void whenNotAllRequestsHaveLabHeadSet_shouldThrowAnException() {
+    public void whenPrimeRequestHasNoLabHeadSet_shouldThrowAnException() {
         assertExceptionThrownOnMissingPrimaryRequestProperty(Constants.ProjectInfo.LAB_HEAD);
     }
 
     @Test
-    public void whenRequestsInSampleSetHaveMultipleRequestor_shouldAssignValueFromFirstOne() {
-        assertArbitraryPropertySet(Constants.ProjectInfo.REQUESTOR);
+    public void whenConvertingProjectInfo_shouldAssignRequestorFromPrimeRequest() {
+        assertPropertyIsResolvedFromPrimeRequest(Constants.ProjectInfo.REQUESTOR);
     }
 
     @Test
-    public void whenRequestsInSampleSetHaveMultipleRequestorEmail_shouldAssignValueFromFirstOne() {
-        assertArbitraryPropertySet(Constants.ProjectInfo.REQUESTOR_E_MAIL);
+    public void whenConvertingProjectInfo_shouldAssignRequestorEmailFromPrimeRequest() {
+        assertPropertyIsResolvedFromPrimeRequest(Constants.ProjectInfo.REQUESTOR_E_MAIL);
     }
 
     @Test
-    public void whenSampleSetHasDifferentAlternateEmails_shouldEmailBeMergedInRequest() {
-        assertPropertyIsMerged(Constants.ProjectInfo.ALTERNATE_EMAILS);
+    public void whenConvertingProjectInfo_shouldAssignAlternateEmailsFromPrimeRequest() {
+        assertPropertyIsResolvedFromPrimeRequest(Constants.ProjectInfo.ALTERNATE_EMAILS);
     }
 
     @Test
@@ -88,13 +88,13 @@ public class SampleSetProjectInfoConverterTest {
     }
 
     @Test
-    public void whenSampleSetHasDifferentDataAnalyst_shouldEmailBeMergedInRequest() {
-        assertPropertyIsMerged(Constants.ProjectInfo.DATA_ANALYST);
+    public void whenConvertingProjectInfo_shouldAssignDataAnalystFromPrimeRequest() {
+        assertPropertyIsResolvedFromPrimeRequest(Constants.ProjectInfo.DATA_ANALYST);
     }
 
     @Test
-    public void whenSampleSetHasDifferentDataAnalystEmail_shouldEmailBeMergedInRequest() {
-        assertPropertyIsMerged(Constants.ProjectInfo.DATA_ANALYST_EMAIL);
+    public void whenConvertingProjectInfo_shouldAssignDataAnalystEmailFromPrimeRequest() {
+        assertPropertyIsResolvedFromPrimeRequest(Constants.ProjectInfo.DATA_ANALYST_EMAIL);
     }
 
     @Test
@@ -195,6 +195,19 @@ public class SampleSetProjectInfoConverterTest {
     @Test
     public void whenPrimaryRequestHasNoCmoProjectId_shouldThrowAnException() {
         assertExceptionThrownOnMissingPrimaryRequestProperty(Constants.ProjectInfo.CMO_PROJECT_ID);
+    }
+
+    private void assertPropertyIsResolvedFromPrimeRequest(String property) {
+        String primeRequestValue = "someValue";
+        KickoffRequest request1 = getRequestWithProperty(primaryReqId, property, primeRequestValue);
+        KickoffRequest request2 = getRequestWithProperty("someId", property, "someOtherValue");
+
+        setRequests(Arrays.asList(request1, request2));
+        sampleSet.setPrimaryRequestId(primaryReqId);
+
+        Map<String, String> projectInfo = sampleSetProjectInfoConverter.convert(sampleSet);
+
+        assertThat(projectInfo.get(property), is(primeRequestValue));
     }
 
     private void assertArbitraryPropertySet(String arbitraryProperty) {
@@ -318,6 +331,11 @@ public class SampleSetProjectInfoConverterTest {
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.FINAL_PROJECT_TITLE, getRandomValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.BIOINFORMATIC_REQUEST, getRandomValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.TUMOR_TYPE, "tumorType");
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.REQUESTOR, "requestor");
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.REQUESTOR_E_MAIL, "requestor@example.com");
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.ALTERNATE_EMAILS, "some@example.com");
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.DATA_ANALYST, "Some Analyst");
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.DATA_ANALYST_EMAIL, "analust@example.com");
 
         return kickoffRequest;
     }
