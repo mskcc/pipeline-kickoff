@@ -13,6 +13,7 @@ import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -40,6 +41,9 @@ public class RequestFilePrinter extends FilePrinter {
 
     private final Set<String> requiredProjectInfoFields = new HashSet<>();
 
+    @Value("${pipeline.name}")
+    private String pipelineName;
+
     {
         requiredProjectInfoFields.add(Constants.ASSAY);
     }
@@ -57,8 +61,8 @@ public class RequestFilePrinter extends FilePrinter {
         StringBuilder requestFileContents = new StringBuilder();
 
         if (request.getRequestType() == RequestType.EXOME) {
-            requestFileContents.append("Pipelines: variants\n");
-            requestFileContents.append("Run_Pipeline: variants\n");
+            requestFileContents.append(String.format("Pipelines: %s\n", pipelineName));
+            requestFileContents.append(String.format("Run_Pipeline: %s\n", pipelineName));
         } else if (request.getRequestType() == RequestType.IMPACT) {
             requestFileContents.append("Pipelines: dmp\n");
             requestFileContents.append("Run_Pipeline: dmp\n");

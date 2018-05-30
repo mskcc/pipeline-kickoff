@@ -98,11 +98,16 @@ public class SampleSetProjectInfoConverter {
     private String getPropertyFromPrimaryRequest(KickoffSampleSet sampleSet, String propertyName) {
         KickoffRequest primeKickoffRequest = sampleSet.getPrimaryRequest();
 
-        if (!primeKickoffRequest.getProjectInfo().containsKey(propertyName))
+        if (!primeKickoffRequest.getProjectInfo().containsKey(propertyName)) {
             throw new PropertyInPrimaryRequestNotSetException(String.format("Primary request: %s of project: %s has " +
                     "no property: %s set", primeKickoffRequest.getId(), sampleSet.getName(), propertyName));
+        }
 
-        return primeKickoffRequest.getProjectInfo().get(propertyName);
+        String value = primeKickoffRequest.getProjectInfo().get(propertyName);
+        DEV_LOGGER.debug(String.format("Resolving sample set property %s from prime request %s with value %s",
+                propertyName, primeKickoffRequest.getId(), value));
+
+        return value;
     }
 
     private String getCmoProjectBrief(KickoffSampleSet sampleSet) {
