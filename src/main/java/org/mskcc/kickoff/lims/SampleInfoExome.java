@@ -9,6 +9,7 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.mskcc.util.VeloxConstants.*;
@@ -18,8 +19,8 @@ public class SampleInfoExome extends SampleInfoImpact {
     private Map<String, String> baitSetToDesignFileMapping;
 
     public SampleInfoExome(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample
-            sample) {
-        super(apiUser, drm, rec, kickoffRequest, sample);
+            sample, LocalDateTime kapaProtocolStartDate) {
+        super(apiUser, drm, rec, kickoffRequest, sample, kapaProtocolStartDate);
     }
 
     /*
@@ -49,7 +50,8 @@ public class SampleInfoExome extends SampleInfoImpact {
                 grabLibInputFromPrevSamps(drm, rec, apiUser, sample.isPooledNormal());
             }
             if (this.LIBRARY_INPUT.startsWith("#")) {
-                logWarning(String.format("Unable to find DNA Lib Protocol for Library Input method (sample %s)", this.CMO_SAMPLE_ID));
+                logWarning(String.format("Unable to find DNA Lib Protocol for Library Input method (sample %s)", this
+                        .CMO_SAMPLE_ID));
                 this.LIBRARY_INPUT = "-2";
             }
         }
@@ -81,107 +83,122 @@ public class SampleInfoExome extends SampleInfoImpact {
             if (libVol <= 0 && (this.LIBRARY_YIELD == null || this.LIBRARY_YIELD.startsWith("#"))) {
                 // No matter what I cannot get LIBRARY_YIELD
                 this.LIBRARY_YIELD = "-2";
-                logWarning("Unable to calculate Library Yield because I cannot retrieve either Lib Conc or Lib Output Vol");
+                logWarning("Unable to calculate Library Yield because I cannot retrieve either Lib Conc or Lib Output" +
+                        " Vol");
             } else if (libConc > 0 && (this.LIBRARY_YIELD == null || this.LIBRARY_YIELD.startsWith("#"))) {
                 this.LIBRARY_YIELD = String.valueOf(libVol * libConc);
             }
-            processCaptureInfo(drm, rec, apiUser, libConc, true);
+            processCaptureInfo(drm, rec, apiUser, libConc, true, kickoffRequest);
         } else {
             // Here I can just be simple like the good old times and pull stuff from the
             // Nimb protocol
-            processCaptureInfo(drm, rec, apiUser, -1, false);
+            processCaptureInfo(drm, rec, apiUser, -1, false, kickoffRequest);
         }
         if (this.LIBRARY_YIELD.startsWith("#")) {
             this.LIBRARY_YIELD = "-2";
         }
     }
 
-    private void processCaptureInfo(DataRecordManager drm, DataRecord rec, User apiUser, double libConc, boolean afterDate) {
-        // This should set Lib Yield, Capt Input, Capt Name, Bait Set
-        List<DataRecord> requestAsList = new ArrayList<>();
+    private void processCaptureInfo(DataRecordManager drm, DataRecord rec, User apiUser, double libConc, boolean
+            afterDate, KickoffRequest kickoffRequest) {
 
-        List<List<Map<String, Object>>> kapa1FieldsList = null;
-        List<List<Map<String, Object>>> kapa2FieldsList = null;
-        try {
-            requestAsList.add(rec);
-            kapa1FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, KAPA_AGILENT_CAPTURE_PROTOCOL_1,
-                    apiUser);
-            kapa2FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, KAPA_AGILENT_CAPTURE_PROTOCOL_2,
-                    apiUser);
-        } catch (Exception e) {
-            DEV_LOGGER.error("Exception thrown while retrieving information about process capture", e);
-        }
+        if (shouldValidateKapaProtocols(kickoffRequest)) {
+            // This should set Lib Yield, Capt Input, Capt Name, Bait Set
+            List<DataRecord> requestAsList = new ArrayList<>();
 
-        if (kapa1FieldsList == null || kapa1FieldsList.size() == 0 || kapa1FieldsList.get(0) == null || kapa1FieldsList.get(0).size() == 0) {
-            this.CAPTURE_INPUT = this.CAPTURE_BAIT_SET = "#NoKAPACaptureProtocol1";
-            logError(String.format("No Valid KAPACaptureProtocol for sample %s. The baitset, Capture Input, Library Yield will be unavailable. ", this.CMO_SAMPLE_ID));
-        } else if (kapa2FieldsList == null || kapa2FieldsList.size() == 0 || kapa2FieldsList.get(0) == null || kapa2FieldsList.get(0).size() == 0) {
-            this.CAPTURE_INPUT = this.CAPTURE_BAIT_SET = "#NoKAPACaptureProtocol2";
-            logError(String.format("No Valid KAPACaptureProtocol2 for sample %s(Should be present). The baitset, Capture Input, Library Yield will be unavailable. ", this.CMO_SAMPLE_ID));
-        } else {
-            // there was only one sample in the reqeusts as list so you just need the first list of maps.
-            List<Map<String, Object>> kapa2Fields = kapa2FieldsList.get(0);
-            List<Map<String, Object>> kapa1Fields = kapa1FieldsList.get(0);
-
-            String ExID = "#NONE";
-            // For each KAPA 2, check valid. If valid grab kapa1 that matches it.
-            // Using named block so I can break out of kapa2 loop
-            kapa2Loop:
-            {
-                for (Map<String, Object> kapa2Map : kapa2Fields) {
-                    if (!kapa2Map.containsKey(VALID) || kapa2Map.get(VALID) == null || !(Boolean) kapa2Map.get(VALID)) {
-                        continue;
-                    }
-                    this.CAPTURE_BAIT_SET = (String) kapa2Map.get(AGILENT_CAPTURE_BAIT_SET);
-                    ExID = (String) kapa2Map.get(EXPERIMENT_ID);
-                    break kapa2Loop;
-                }
+            List<List<Map<String, Object>>> kapa1FieldsList = null;
+            List<List<Map<String, Object>>> kapa2FieldsList = null;
+            try {
+                requestAsList.add(rec);
+                kapa1FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, KAPA_AGILENT_CAPTURE_PROTOCOL_1,
+                        apiUser);
+                kapa2FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, KAPA_AGILENT_CAPTURE_PROTOCOL_2,
+                        apiUser);
+            } catch (Exception e) {
+                DEV_LOGGER.error("Exception thrown while retrieving information about process capture", e);
             }
-            // Now cycle through Kapa1 fields and find record with the same Experiment Id. Once you find the experiment ID matches
-            kapa1Loop:
-            {
-                for (Map<String, Object> kapa1Map : kapa1Fields) {
-                    // if kapa2 had valid in one of their records, match the kapa1 exp id with that
-                    if (!ExID.equals("#NONE")) {
-                        String Kapa1ExId = (String) kapa1Map.get(EXPERIMENT_ID);
-                        if (!ExID.equals(Kapa1ExId)) {
-                            continue;
-                        }
-                    } else {
-                        // if KAPA2 isn't being used, make sure KAPA 1 is valid and then pull all the info you need
-                        // from it.
-                        if (!kapa1Map.containsKey(VALID) || kapa1Map.get(VALID) == null || !(Boolean) kapa1Map.get(VALID)) {
-                            continue;
-                        }
-                        this.CAPTURE_BAIT_SET = (String) kapa1Map.get(AGILENT_CAPTURE_BAIT_SET);
-                        if (afterDate) {
-                            String message = "No KAPAAgilentCaptureProtocol2 had a valid key, but it should!";
-                            logWarning(message);
-                        }
-                    }
 
-                    if (afterDate) {
-                        if (libConc > 0) {
-                            Double volumeToUse;
-                            volumeToUse = (Double) kapa1Map.get(ALIQ_1_SOURCE_VOLUME_TO_USE);
-                            if (volumeToUse != null && volumeToUse > 0) {
-                                this.CAPTURE_INPUT = String.valueOf(Math.round(volumeToUse * libConc));
+            if (kapa1FieldsList == null || kapa1FieldsList.size() == 0 || kapa1FieldsList.get(0) == null ||
+                    kapa1FieldsList.get(0).size() == 0) {
+                this.CAPTURE_INPUT = this.CAPTURE_BAIT_SET = "#NoKAPACaptureProtocol1";
+                logError(String.format("No Valid KAPACaptureProtocol for sample %s. The baitset, Capture Input, " +
+                        "Library " +
+
+                        "Yield will be unavailable. ", this.CMO_SAMPLE_ID));
+            } else if (kapa2FieldsList == null || kapa2FieldsList.size() == 0 || kapa2FieldsList.get(0) == null ||
+                    kapa2FieldsList.get(0).size() == 0) {
+                this.CAPTURE_INPUT = this.CAPTURE_BAIT_SET = "#NoKAPACaptureProtocol2";
+                logError(String.format("No Valid KAPACaptureProtocol2 for sample %s(Should be present). The baitset, " +
+                        "Capture Input, Library Yield will be unavailable. ", this.CMO_SAMPLE_ID));
+            } else {
+                // there was only one sample in the reqeusts as list so you just need the first list of maps.
+                List<Map<String, Object>> kapa2Fields = kapa2FieldsList.get(0);
+                List<Map<String, Object>> kapa1Fields = kapa1FieldsList.get(0);
+
+                String ExID = "#NONE";
+                // For each KAPA 2, check valid. If valid grab kapa1 that matches it.
+                // Using named block so I can break out of kapa2 loop
+                kapa2Loop:
+                {
+                    for (Map<String, Object> kapa2Map : kapa2Fields) {
+                        if (!kapa2Map.containsKey(VALID) || kapa2Map.get(VALID) == null || !(Boolean) kapa2Map.get
+                                (VALID)) {
+                            continue;
+                        }
+                        this.CAPTURE_BAIT_SET = (String) kapa2Map.get(AGILENT_CAPTURE_BAIT_SET);
+                        ExID = (String) kapa2Map.get(EXPERIMENT_ID);
+                        break kapa2Loop;
+                    }
+                }
+                // Now cycle through Kapa1 fields and find record with the same Experiment Id. Once you find the
+                // experiment ID matches
+                kapa1Loop:
+                {
+                    for (Map<String, Object> kapa1Map : kapa1Fields) {
+                        // if kapa2 had valid in one of their records, match the kapa1 exp id with that
+                        if (!ExID.equals("#NONE")) {
+                            String Kapa1ExId = (String) kapa1Map.get(EXPERIMENT_ID);
+                            if (!ExID.equals(Kapa1ExId)) {
+                                continue;
                             }
                         } else {
-                            // Ambiguous
-                            this.CAPTURE_INPUT = "-2";
+                            // if KAPA2 isn't being used, make sure KAPA 1 is valid and then pull all the info you need
+                            // from it.
+                            if (!kapa1Map.containsKey(VALID) || kapa1Map.get(VALID) == null || !(Boolean) kapa1Map.get
+                                    (VALID)) {
+                                continue;
+                            }
+                            this.CAPTURE_BAIT_SET = (String) kapa1Map.get(AGILENT_CAPTURE_BAIT_SET);
+                            if (afterDate) {
+                                String message = "No KAPAAgilentCaptureProtocol2 had a valid key, but it should!";
+                                logWarning(message);
+                            }
                         }
-                    } else {
-                        // Before Date -  grab vol and concentration to amek library yield
-                        this.CAPTURE_INPUT = String.valueOf(kapa1Map.get(ALIQ_1_TARGET_MASS));
-                        Double StartVol = (Double) kapa1Map.get(ALIQ_1_STARTING_VOLUME);
-                        Double StartConc = (Double) kapa1Map.get(ALIQ_1_STARTING_CONCENTRATION);
-                        if ((StartVol == null || StartConc == null || StartVol == 0.0 || StartConc == 0.0) && this.LIBRARY_YIELD.startsWith("#")) {
-                            this.LIBRARY_YIELD = "#ExomeCALCERROR";
-                        } else if (this.LIBRARY_YIELD.equals(Constants.EMPTY)) {
-                            this.LIBRARY_YIELD = String.valueOf(Math.round(StartVol * StartConc));
+
+                        if (afterDate) {
+                            if (libConc > 0) {
+                                Double volumeToUse;
+                                volumeToUse = (Double) kapa1Map.get(ALIQ_1_SOURCE_VOLUME_TO_USE);
+                                if (volumeToUse != null && volumeToUse > 0) {
+                                    this.CAPTURE_INPUT = String.valueOf(Math.round(volumeToUse * libConc));
+                                }
+                            } else {
+                                // Ambiguous
+                                this.CAPTURE_INPUT = "-2";
+                            }
+                        } else {
+                            // Before Date -  grab vol and concentration to amek library yield
+                            this.CAPTURE_INPUT = String.valueOf(kapa1Map.get(ALIQ_1_TARGET_MASS));
+                            Double StartVol = (Double) kapa1Map.get(ALIQ_1_STARTING_VOLUME);
+                            Double StartConc = (Double) kapa1Map.get(ALIQ_1_STARTING_CONCENTRATION);
+                            if ((StartVol == null || StartConc == null || StartVol == 0.0 || StartConc == 0.0) && this
+                                    .LIBRARY_YIELD.startsWith("#")) {
+                                this.LIBRARY_YIELD = "#ExomeCALCERROR";
+                            } else if (this.LIBRARY_YIELD.equals(Constants.EMPTY)) {
+                                this.LIBRARY_YIELD = String.valueOf(Math.round(StartVol * StartConc));
+                            }
+                            break kapa1Loop;
                         }
-                        break kapa1Loop;
                     }
                 }
             }
@@ -189,6 +206,11 @@ public class SampleInfoExome extends SampleInfoImpact {
 
         this.CAPTURE_BAIT_SET = getCaptureBaitSet(drm, apiUser);
         this.BAIT_VERSION = this.CAPTURE_BAIT_SET;
+    }
+
+    private boolean shouldValidateKapaProtocols(KickoffRequest kickoffRequest) {
+        return kickoffRequest.getCreationDate() == null || kickoffRequest.getCreationDate().isAfter
+                (kapaProtocolStartDate);
     }
 
     private String getCaptureBaitSet(DataRecordManager dataRecordManager, User apiUser) {
@@ -199,7 +221,8 @@ public class SampleInfoExome extends SampleInfoImpact {
             CaptureBaitSetRetriever captureBaitSetRetriever = new CaptureBaitSetRetriever();
             return captureBaitSetRetriever.retrieve(this.CAPTURE_BAIT_SET, baitSetToDesignFileMapping, this.IGO_ID);
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Unable to retrieve Bait set to design file name mapping. Original Capture Bait set: %s will be used", this.CAPTURE_BAIT_SET), e);
+            DEV_LOGGER.warn(String.format("Unable to retrieve Bait set to design file name mapping. Original Capture " +
+                    "Bait set: %s will be used", this.CAPTURE_BAIT_SET), e);
         }
         return this.CAPTURE_BAIT_SET;
     }
@@ -208,7 +231,8 @@ public class SampleInfoExome extends SampleInfoImpact {
         Map<String, String> baitSetToDesignFile = new HashMap<>();
 
         try {
-            List<DataRecord> baitSetToDesignFileMappings = dataRecordManager.queryDataRecords(Constants.BAIT_SET_TO_DESIGN_FILE_MAPPING, null, user);
+            List<DataRecord> baitSetToDesignFileMappings = dataRecordManager.queryDataRecords(Constants
+                    .BAIT_SET_TO_DESIGN_FILE_MAPPING, null, user);
 
             for (DataRecord baitSetToDesignFileMapping : baitSetToDesignFileMappings) {
                 String baitSet = baitSetToDesignFileMapping.getStringVal(Constants.BAIT_SET, user);
@@ -216,7 +240,8 @@ public class SampleInfoExome extends SampleInfoImpact {
                 baitSetToDesignFile.put(baitSet, designFileName);
             }
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Unable to retrieve Bait set to design file name mapping from record: %s", Constants.BAIT_SET_TO_DESIGN_FILE_MAPPING), e);
+            DEV_LOGGER.warn(String.format("Unable to retrieve Bait set to design file name mapping from record: %s",
+                    Constants.BAIT_SET_TO_DESIGN_FILE_MAPPING), e);
         }
 
         return baitSetToDesignFile;

@@ -16,6 +16,7 @@ import org.mskcc.util.VeloxConstants;
 
 import java.rmi.RemoteException;
 import java.text.DecimalFormat;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,6 +37,7 @@ public class SampleInfoImpact extends SampleInfo {
     // Consensus BaitSet
     private static String ConsensusBaitSet;
     private static String ConsensusSpikeIn;
+    protected LocalDateTime kapaProtocolStartDate;
     String LIBRARY_INPUT;// = "#EMPTY";
     String LIBRARY_YIELD; // = "#EMPTY";
     String CAPTURE_BAIT_SET; // = "#EMPTY";
@@ -59,8 +61,9 @@ public class SampleInfoImpact extends SampleInfo {
      * @see #addPooledNormalDefaults
      **/
     public SampleInfoImpact(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest,
-                            Sample sample) {
+                            Sample sample, LocalDateTime kapaProtocolStartDate) {
         super(apiUser, drm, rec, kickoffRequest, sample);
+        this.kapaProtocolStartDate = kapaProtocolStartDate;
         getSpreadOutInfo(apiUser, drm, rec, kickoffRequest, sample);
         if (sample.isPooledNormal()) {
             addPooledNormalDefaults(rec, apiUser, drm, kickoffRequest);
