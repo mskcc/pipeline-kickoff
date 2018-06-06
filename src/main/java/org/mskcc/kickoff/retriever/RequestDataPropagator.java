@@ -9,8 +9,11 @@ import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
+import org.mskcc.kickoff.notify.GenerationError;
+import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.validator.ErrorRepository;
 
 import java.io.File;
 import java.util.*;
@@ -23,10 +26,12 @@ public class RequestDataPropagator implements DataPropagator {
 
     private String designFilePath;
     private String resultsPathPrefix;
+    private ErrorRepository errorRepository;
 
-    public RequestDataPropagator(String designFilePath, String resultsPathPrefix) {
+    public RequestDataPropagator(String designFilePath, String resultsPathPrefix, ErrorRepository errorRepository) {
         this.designFilePath = designFilePath;
         this.resultsPathPrefix = resultsPathPrefix;
+        this.errorRepository = errorRepository;
     }
 
     @Override
@@ -114,12 +119,13 @@ public class RequestDataPropagator implements DataPropagator {
             String patientId = sampleProperties.getOrDefault(Constants.CMO_PATIENT_ID, "");
             Patient patient = kickoffRequest.putPatientIfAbsent(patientId);
             if (!patient.isValid()) {
-                String message = String.format("Cannot make smart mapping because Patient ID is emtpy or has an " +
-                        "issue: %s", patientId);
+                String message = String.format("Patient ID for sample %s is empty or has an issue: %s", sample
+                        .getIgoId(), patientId);
                 PM_LOGGER.log(PmLogPriority.WARNING, message);
                 DEV_LOGGER.warn(message);
                 //@TODO check how to avoid clearnig patients list
                 kickoffRequest.getPatients().clear();
+                errorRepository.add(new GenerationError(message, ErrorCode.EMPTY_PATIENT));
                 return;
             }
             patient.addSample(sample);
@@ -346,7 +352,7 @@ public class RequestDataPropagator implements DataPropagator {
         if (files != null && files.length == 1) {
             File projectResultDir = files[0];
             File[] files2 = projectResultDir.listFiles((dir, name) -> name.startsWith("r_"));
-            if (files2.length > 0) {
+            if (files2 != null && files2.length > 0) {
                 int[] runs = new int[files2.length];
                 int index = 0;
                 for (File f : files2) {

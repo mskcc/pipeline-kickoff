@@ -28,7 +28,6 @@ import org.mskcc.kickoff.validator.*;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
 import org.mskcc.kickoff.velox.VeloxConnectionData;
 import org.mskcc.kickoff.velox.VeloxProjectProxy;
-import org.mskcc.kickoff.pairing.*;
 import org.mskcc.util.Constants;
 import org.mskcc.util.email.EmailConfiguration;
 import org.mskcc.util.email.EmailSender;
@@ -276,7 +275,7 @@ public class AppConfiguration {
 
     @Bean
     public RequestDataPropagator requestDataPropagator() {
-        return new RequestDataPropagator(designFilePath, resultsPathPrefix);
+        return new RequestDataPropagator(designFilePath, resultsPathPrefix, errorRepository);
     }
 
     @Bean
