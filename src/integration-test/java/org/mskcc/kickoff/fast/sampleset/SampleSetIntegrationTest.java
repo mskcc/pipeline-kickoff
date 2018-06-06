@@ -22,6 +22,7 @@ import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.sampleset.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
+import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
 import org.mskcc.kickoff.velox.VeloxConnectionData;
 import org.mskcc.kickoff.velox.VeloxProjectProxy;
@@ -53,7 +54,8 @@ public class SampleSetIntegrationTest {
     private String resultsPathPrefix = "/ifs/solres/seq";
     private ProjectFilesArchiver archiverMock = mock(ProjectFilesArchiver.class);
     private ProjectInfoRetriever projInfoRetriever = new ProjectInfoRetriever();
-    private RequestDataPropagator reqDataPropagator = new RequestDataPropagator(designFilePath, resultsPathPrefix);
+    private RequestDataPropagator reqDataPropagator = new RequestDataPropagator(designFilePath, resultsPathPrefix,
+            mock(ErrorRepository.class));
     private SampleSetProjectInfoConverter projInfoConv = new SampleSetProjectInfoConverter();
     private SampleSetToRequestConverter sampleSetToReqConv = new SampleSetToRequestConverter(projInfoConv);
     private RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever,
