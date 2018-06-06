@@ -10,6 +10,7 @@ import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.mskcc.util.CommonUtils;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -33,6 +34,7 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     private RequestTypeStrategyFactory requestTypeStrategyFactory = new RequestTypeStrategyFactory();
     private Set<String> pairingSampleIds = new HashSet<>();
     private Map<String, KickoffExternalSample> externalSamples = new HashMap<>();
+    private LocalDateTime creationDate;
 
     public KickoffRequest(String id, ProcessingType processingType) {
         super(id);
@@ -254,6 +256,14 @@ public class KickoffRequest extends org.mskcc.domain.Request {
 
     public boolean containsSample(String sampleId) {
         return containsIgoSample(sampleId) || containsExternalSample(sampleId);
+    }
+
+    public LocalDateTime getCreationDate() {
+        return creationDate;
+    }
+
+    public void setCreationDate(LocalDateTime creationDate) {
+        this.creationDate = creationDate;
     }
 
     @Override

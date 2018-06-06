@@ -26,6 +26,8 @@ import org.mskcc.kickoff.util.Utils;
 import org.mskcc.util.VeloxConstants;
 
 import java.rmi.RemoteException;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -43,6 +45,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private final Map<Sample, DataRecord> sampleToDataRecord = new HashMap<>();
     private final SequencerIdentifierRetriever sequencerIdentifierRetriever = new SequencerIdentifierRetriever();
     private ProjectInfoRetriever projectInfoRetriever;
+    private LocalDateTime kapaProtocolStartDate = LocalDateTime.of(2015, 8, 3, 0, 0, 0);
 
     public VeloxSingleRequestRetriever(User user, DataRecordManager dataRecordManager, ProjectInfoRetriever
             projectInfoRetriever) {
@@ -65,6 +68,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
             List<DataRecord> originalSampRec = getOriginalSampleRecords(dataRecordRequest);
 
+            setCreationDate(kickoffRequest, dataRecordRequest);
             setReadMe(kickoffRequest, dataRecordRequest);
             setName(kickoffRequest, dataRecordRequest);
             setRecipe(kickoffRequest, dataRecordRequest);
@@ -144,6 +148,17 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             DEV_LOGGER.warn(e.getMessage(), e);
         }
         kickoffRequest.setReadMe(readMe);
+    }
+
+    private void setCreationDate(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
+        try {
+            long dateCreated = dataRecordRequest.getLongVal("DateCreated", user);
+            LocalDateTime createdDate = LocalDateTime.ofInstant(Instant.ofEpochMilli(dateCreated), TimeZone.getDefault
+                    ().toZoneId());
+            kickoffRequest.setCreationDate(createdDate);
+        } catch (Exception e) {
+            DEV_LOGGER.warn(e.getMessage(), e);
+        }
     }
 
     private void setName(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
@@ -841,9 +856,11 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         // Latest attempt at refactoring the code. Why does species come up so much?
         SampleInfo sampleInfo;
         if (kickoffRequest.getRequestType() == RequestType.IMPACT || sample.isPooledNormal()) {
-            sampleInfo = new SampleInfoImpact(user, dataRecordManager, dataRecord, kickoffRequest, sample);
+            sampleInfo = new SampleInfoImpact(user, dataRecordManager, dataRecord, kickoffRequest, sample,
+                    kapaProtocolStartDate);
         } else if (kickoffRequest.getRequestType() == RequestType.EXOME) {
-            sampleInfo = new SampleInfoExome(user, dataRecordManager, dataRecord, kickoffRequest, sample);
+            sampleInfo = new SampleInfoExome(user, dataRecordManager, dataRecord, kickoffRequest, sample,
+                    kapaProtocolStartDate);
         } else {
             sampleInfo = new SampleInfo(user, dataRecordManager, dataRecord, kickoffRequest, sample);
         }
