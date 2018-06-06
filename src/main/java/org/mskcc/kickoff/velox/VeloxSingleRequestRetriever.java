@@ -45,7 +45,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private final Map<Sample, DataRecord> sampleToDataRecord = new HashMap<>();
     private final SequencerIdentifierRetriever sequencerIdentifierRetriever = new SequencerIdentifierRetriever();
     private ProjectInfoRetriever projectInfoRetriever;
-    private LocalDateTime kapaProtocolStartDate = LocalDateTime.of(2015, 4, 2, 0, 0, 0);
+    private LocalDateTime kapaProtocolStartDate = LocalDateTime.of(2015, 8, 3, 0, 0, 0);
 
     public VeloxSingleRequestRetriever(User user, DataRecordManager dataRecordManager, ProjectInfoRetriever
             projectInfoRetriever) {
