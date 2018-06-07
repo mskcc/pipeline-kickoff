@@ -1,3 +1,8 @@
+import org.mskcc.util.email.Email
+import org.mskcc.util.email.EmailConfiguration
+import org.mskcc.util.email.EmailToMimeMessageConverter
+import org.mskcc.util.email.JavaxEmailSender
+
 group 'org.mskcc.kickoff.lims'
 version '1.19.0-SNAPSHOT'
 
@@ -12,6 +17,14 @@ sourceCompatibility = 1.8
 buildscript {
     repositories {
         jcenter()
+        mavenCentral()
+        maven { url "${nexusUrlReleases}" }
+        maven { url "${nexusUrlSnapshots}" }
+    }
+    dependencies {
+        classpath 'javax.mail:javax.mail-api:1.5.6'
+        classpath 'com.sun.mail:javax.mail:1.5.5'
+        classpath group: 'org.mskcc.common', name:'common-domain', version: '2.9.0'
     }
 }
 
@@ -96,10 +109,29 @@ tasks.withType(Test) {
                 def output = "Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)"
                 def startItem = '|  ', endItem = '  |'
                 def repeatLength = startItem.length() + output.length() + endItem.length()
-                println('\n' + ('-' * repeatLength) + '\n' + startItem + output + endItem + '\n' + ('-' * repeatLength))
+                def message = '\n' + ('-' * repeatLength) + '\n' + startItem + output + endItem + '\n' + ('-' * repeatLength)
+                println(message)
+
+                if(result.failedTestCount > 0) {
+                    sendNotification(message)
+                }
             }
         }
     }
+}
+
+private void sendNotification(String message) {
+    println("Sending integration tests notfication email to: ${integrationTestsNotificationTo}")
+    JavaxEmailSender emailSender = new JavaxEmailSender(new EmailToMimeMessageConverter());
+
+    def String[] recipients = integrationTestsNotificationTo.split(',')
+    EmailConfiguration emailConfiguration = new EmailConfiguration(Arrays.asList(recipients), integrationTestsNotificationFrom, integrationTestsNotificationHost);
+    Email email = new Email.Builder(emailConfiguration, "Pipeline Kickoff Integration Test FAILURE", message)
+            .withTitle("Hello,")
+            .withFooter(":(")
+            .build();
+
+    emailSender.send(email);
 }
 
 run {
@@ -113,6 +145,7 @@ run {
     systemProperties = System.properties
     environment SPRING_PROFILES_ACTIVE: environment.SPRING_PROFILES_ACTIVE ?: "prod,igo"
 }
+
 
 sourceSets {
     integrationTest {
@@ -129,6 +162,7 @@ sourceSets {
 configurations {
     integrationTestCompile.extendsFrom compile
     integrationTestRuntime.extendsFrom runtime
+    antMail
 }
 
 task integrationTest(type: Test) {
@@ -188,6 +222,20 @@ uploadArchives {
         }
     }
 }
+
+configurations { antClasspath }
+dependencies {
+    antClasspath 'ant:ant-javamail:1.6.5'
+    antClasspath 'javax.activation:activation:1.1.1'
+    antClasspath 'javax.mail:mail:1.4.7'
+}
+ClassLoader antClassLoader = org.apache.tools.ant.Project.class.classLoader
+configurations.antClasspath.each { File jar ->
+    println "Adding to ant classpath : " + jar.absolutePath
+    antClassLoader.addURL( jar.toURI().toURL() )
+}
+
+
 
 
 
