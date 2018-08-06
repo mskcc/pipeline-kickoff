@@ -1,5 +1,7 @@
 # pipeline-kickoff
 
+http://plvpipetrack1.mskcc.org:8099/display/PipelineInitiation/Analysis+Pipeline+Initiation+Home
+
 Pipeline kickoff gathers information from LIMS (using LIMS API) and file system and creates manifest files which are used by analysis pipeline. 
 This code is run as a cron job retrieving recently delivered requests for which those files can be generated.
 
