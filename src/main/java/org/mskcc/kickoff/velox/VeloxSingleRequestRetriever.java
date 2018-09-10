@@ -219,16 +219,10 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     kickoffRequest);
             sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
             sample.setProperties(sampleInfo);
-            sample.setFields(getFields(sampleInfo));
 
             sample.setIsTumor(sample.get(Constants.SAMPLE_CLASS) != null && !sample.get(Constants.SAMPLE_CLASS)
                     .contains(Constants.NORMAL));
         }
-    }
-
-    private Map<String, Object> getFields(Map<String, String> sampleInfo) {
-        return sampleInfo.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, s -> s.getValue() == null ? "" : s.getValue()));
     }
 
     private void setProperties(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
@@ -317,7 +311,6 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     String thisBait = sampleInfo.get(Constants.CAPTURE_BAIT_SET);
                     if (!thisBait.contains(",")) {
                         sample.setProperties(sampleInfo);
-                        sample.setFields(getFields(sampleInfo));
                     }
 
                     addPoolSeqQc(kickoffRequest, dataRecordRequest, Collections.singleton(pooledNormalRecord));

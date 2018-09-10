@@ -64,7 +64,7 @@ public class RequestDataPropagator implements DataPropagator {
 
     private String getSpeciesConcat(KickoffRequest request) {
         Set<String> uniqueSpecies = request.getAllValidSamples().values().stream()
-                .map(Sample::getSpecies)
+                .map(s -> s.get(Constants.SPECIES))
                 .filter(Objects::nonNull)
                 .map(s -> s.replaceAll(",", "+"))
                 .collect(Collectors.toSet());

@@ -92,13 +92,13 @@ public class RequestDataPropagatorTest {
     public void whenThereAreMultipleSpecies_shouldConcatThem() throws Exception {
         KickoffRequest request = new KickoffRequest("id1", new ForcedProcessingType());
         Sample sample1 = new Sample("id1", s -> true);
-        sample1.setSpecies("Human,Zebrafish");
+        sample1.put(Constants.SPECIES, "Human,Zebrafish");
 
         Sample sample2 = new Sample("id2", s -> true);
-        sample2.setSpecies("Human");
+        sample2.put(Constants.SPECIES, "Human");
 
         Sample sample3 = new Sample("id3", s -> true);
-        sample3.setSpecies("Human");
+        sample3.put(Constants.SPECIES, "Human");
 
         request.putSampleIfAbsent(sample1);
         request.putSampleIfAbsent(sample2);
