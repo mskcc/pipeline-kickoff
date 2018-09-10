@@ -1,6 +1,5 @@
 package org.mskcc.kickoff.retriever;
 
-import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 
 import java.io.File;
@@ -25,8 +24,6 @@ public interface DataPropagator {
     void setNewBaitSet(KickoffRequest kickoffRequest);
 
     void assignProjectSpecificInfo(KickoffRequest request);
-
-    void validateSpecies(KickoffRequest kickoffRequest, Sample sample);
 
     String findDesignFile(KickoffRequest request, String assay);
 

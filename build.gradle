@@ -24,7 +24,7 @@ buildscript {
     dependencies {
         classpath 'javax.mail:javax.mail-api:1.5.6'
         classpath 'com.sun.mail:javax.mail:1.5.5'
-        classpath group: 'org.mskcc.common', name:'common-domain', version: '2.9.0'
+        classpath group: 'org.mskcc.common', name: 'common-domain', version: '2.9.0'
     }
 }
 
@@ -53,9 +53,9 @@ dependencies {
     compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.10.0'
 
     compile group: 'com.google.guava', name: 'guava', version: '11.0.2'
-    compile group: 'com.github.spullara.cli-parser', name:'cli-parser', version: '1.1'
+    compile group: 'com.github.spullara.cli-parser', name: 'cli-parser', version: '1.1'
 
-    compile group: 'org.mskcc.common', name:'common-domain', version: '2.9.0'
+    compile group: 'org.mskcc.common', name: 'common-domain', version: '2.9.0'
 
     compile group: 'com.atlassian.jira', name: 'jira-rest-java-client-core', version: '2.0.0-m25'
     compile 'com.atlassian.httpclient:atlassian-httpclient-spi:0.17.0-m01'
@@ -65,21 +65,23 @@ dependencies {
     compile group: 'com.velox.internalproducts', name: 'veloxapi', version: '9.5.1-b633'
     compile group: 'com.velox.internalproducts', name: 'sapioutils', version: '7.1.1-LIMS9.5.0'
 
-    compile 'org.hamcrest:hamcrest-all:1.3'
-    compile 'org.hamcrest:hamcrest-core:1.3'
-
     compile group: 'log4j', name: 'apache-log4j-extras', version: '1.1'
 
-    compile ('junit:junit:4.12') {
-        exclude group: 'org.hamcrest'
-    }
-    compile ('org.mockito:mockito-all:1.10.19') {
+    compile('junit:junit:4.12') {
         exclude group: 'org.hamcrest'
     }
 
+    compile('org.mockito:mockito-core:1.10.19') {
+        exclude group: 'org.hamcrest'
+    }
+
+    compile 'org.hamcrest:hamcrest-core:1.3'
+    compile 'org.hamcrest:hamcrest-all:1.3'
     compile group: 'org.springframework', name: 'spring-test', version: '5.0.2.RELEASE'
 
-    testCompile 'org.assertj:assertj-core:3.9.0'
+    testCompile ('org.assertj:assertj-core:3.9.0') {
+        exclude group: 'org.hamcrest'
+    }
 }
 
 configurations.all {
@@ -112,7 +114,7 @@ tasks.withType(Test) {
                 def message = '\n' + ('-' * repeatLength) + '\n' + startItem + output + endItem + '\n' + ('-' * repeatLength)
                 println(message)
 
-                if(result.failedTestCount > 0) {
+                if (result.failedTestCount > 0) {
                     sendNotification(message)
                 }
             }
@@ -232,7 +234,7 @@ dependencies {
 ClassLoader antClassLoader = org.apache.tools.ant.Project.class.classLoader
 configurations.antClasspath.each { File jar ->
     println "Adding to ant classpath : " + jar.absolutePath
-    antClassLoader.addURL( jar.toURI().toURL() )
+    antClassLoader.addURL(jar.toURI().toURL())
 }
 
 

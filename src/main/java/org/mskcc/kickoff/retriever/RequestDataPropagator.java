@@ -17,6 +17,7 @@ import org.mskcc.kickoff.validator.ErrorRepository;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.mskcc.kickoff.config.Arguments.runAsExome;
 
@@ -46,7 +47,7 @@ public class RequestDataPropagator implements DataPropagator {
                     .getValidUniqueCmoIdSamples(s -> !s.isPooledNormal()).size()));
 
             assignProjectSpecificInfo(request);
-            projectInfo.put(Constants.ProjectInfo.SPECIES, String.valueOf(request.getSpecies()));
+            projectInfo.put(Constants.ProjectInfo.SPECIES, String.valueOf(getSpeciesConcat(request)));
 
             request.setReadmeInfo(String.format("%s %s", request.getReadMe(), request.getExtraReadMeInfo()));
             addManualOverrides(request);
@@ -59,6 +60,14 @@ public class RequestDataPropagator implements DataPropagator {
             addSamplesToPatients(request);
             request.setRunNumber(getRunNumber(request));
         }
+    }
+
+    private String getSpeciesConcat(KickoffRequest request) {
+        Set<String> uniqueSpecies = request.getAllValidSamples().values().stream()
+                .map(s -> s.getSpecies().replaceAll(",", "+"))
+                .collect(Collectors.toSet());
+
+        return String.join(",", uniqueSpecies);
     }
 
     @Override
@@ -187,7 +196,6 @@ public class RequestDataPropagator implements DataPropagator {
                 continue;
 
             DEV_LOGGER.info(String.format("Resolving bait version for sample: %s", sample.getIgoId()));
-            validateSpecies(request, sample);
 
             //baitVerison - sometimes bait version needs to be changed. If so, the CAPTURE_BAIT_SET must also be changed
             if (request.getRequestType() == RequestType.RNASEQ || request.getRequestType() == RequestType.OTHER) {
@@ -251,39 +259,6 @@ public class RequestDataPropagator implements DataPropagator {
         }
         if (bvChanged) {
             setNewBaitSet(request);
-        }
-    }
-
-    @Override
-    public void validateSpecies(KickoffRequest kickoffRequest, Sample sample) {
-        DEV_LOGGER.trace(String.format("Validating species for sample: %s", sample.getIgoId()));
-
-        try {
-            RequestSpecies sampleSpecies = RequestSpecies.getSpeciesByValue(sample.get(Constants.SPECIES));
-            if (kickoffRequest.getSpecies() == RequestSpecies.XENOGRAFT) {
-                // Xenograft projects may only have samples of sampleSpecies human or xenograft
-                if (sampleSpecies != RequestSpecies.HUMAN && sampleSpecies != RequestSpecies.XENOGRAFT) {
-                    Utils.setExitLater(true);
-                    String message = String.format("Request species has been determined as xenograft, but this sample" +
-                            " is neither xenograft or human: %s", sampleSpecies);
-                    PM_LOGGER.log(Level.ERROR, message);
-                    DEV_LOGGER.log(Level.ERROR, message);
-                }
-            } else if (kickoffRequest.getSpecies() == null) {
-                kickoffRequest.setSpecies(sampleSpecies);
-            } else if (kickoffRequest.getSpecies() != sampleSpecies) {
-                // Requests that are not xenograft must have 100% the same sampleSpecies for each sample. If that is
-                // not true, it will output issue here:
-                String message = String.format("There seems to be a clash between sampleSpecies of each sample: " +
-                        "Species for sample %s=%s Species for request so far=%s", sample.getProperties().get
-                        (Constants.IGO_ID), sampleSpecies, kickoffRequest.getSpecies());
-                Utils.setExitLater(true);
-                PM_LOGGER.log(PmLogPriority.SAMPLE_ERROR, message);
-                DEV_LOGGER.log(Level.ERROR, message);
-            }
-        } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while retrieving information about request species for " +
-                    "request id: %s", kickoffRequest.getId()));
         }
     }
 
