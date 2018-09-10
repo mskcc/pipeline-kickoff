@@ -219,6 +219,9 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     kickoffRequest);
             sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
             sample.setProperties(sampleInfo);
+            sample.setFields(sampleInfo.entrySet().stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey, s -> (Object) s.getValue())));
+
             sample.setIsTumor(sample.get(Constants.SAMPLE_CLASS) != null && !sample.get(Constants.SAMPLE_CLASS)
                     .contains(Constants.NORMAL));
         }
@@ -310,6 +313,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     String thisBait = sampleInfo.get(Constants.CAPTURE_BAIT_SET);
                     if (!thisBait.contains(",")) {
                         sample.setProperties(sampleInfo);
+                        sample.setFields(sampleInfo.entrySet().stream()
+                                .collect(Collectors.toMap(Map.Entry::getKey, s -> (Object) s.getValue())));
                     }
 
                     addPoolSeqQc(kickoffRequest, dataRecordRequest, Collections.singleton(pooledNormalRecord));

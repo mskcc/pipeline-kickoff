@@ -106,7 +106,6 @@ public class RequestDataPropagatorTest {
 
         requestDataPropagator.propagateRequestData(Arrays.asList(request));
 
-
         assertThat(request.getProjectInfo().get(Constants.ProjectInfo.SPECIES), is("Human,Human+Zebrafish"));
     }
 
