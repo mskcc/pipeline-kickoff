@@ -73,7 +73,7 @@ public class SampleSetProjectInfoConverter {
     }
 
     private String getIgoProjectId(KickoffSampleSet sampleSet) {
-        return getPropertyFromPrimaryRequest(sampleSet, Constants.ProjectInfo.IGO_PROJECT_ID);
+        return sampleSet.getName();
     }
 
     private String getFinalProjectTitle(KickoffSampleSet sampleSet) {

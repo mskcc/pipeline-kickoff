@@ -58,11 +58,6 @@ public class SampleSetProjectInfoConverterTest {
     }
 
     @Test
-    public void whenPrimaryRequestHasNoIgoProjectId_shouldThrowAnException() {
-        assertExceptionThrownOnMissingPrimaryRequestProperty(Constants.ProjectInfo.IGO_PROJECT_ID);
-    }
-
-    @Test
     public void whenPrimaryRequestHasNoFinalProjectTitle_shouldThrowAnException() {
         assertExceptionThrownOnMissingPrimaryRequestProperty(Constants.ProjectInfo.FINAL_PROJECT_TITLE);
     }
@@ -310,7 +305,10 @@ public class SampleSetProjectInfoConverterTest {
 
     private void assertProjectInfo(Map<String, String> projectInfo) {
         for (Map.Entry<String, String> info : projectInfo.entrySet()) {
-            if (!primaryKickoffRequest.getProjectInfo().containsKey(info.getKey()))
+            if (info.getKey().equals(Constants.ProjectInfo.IGO_PROJECT_ID))
+                assertThat(Constants.ProjectInfo.IGO_PROJECT_ID, projectInfo.get(Constants.ProjectInfo
+                        .IGO_PROJECT_ID), is(sampleSet.getName()));
+            else if (!primaryKickoffRequest.getProjectInfo().containsKey(info.getKey()))
                 assertThat("Property " + info.getKey(), StringUtils.isEmpty(info.getValue()), is(true));
             else
                 assertThat("Property " + info.getKey(), info.getValue(), is(primaryKickoffRequest.getProjectInfo()
@@ -327,7 +325,6 @@ public class SampleSetProjectInfoConverterTest {
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.CMO_PROJECT_BRIEF, getRandomValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.PROJECT_MANAGER, getRandomValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.PROJECT_MANAGER_EMAIL, getRandomValue());
-        kickoffRequest.addProjectProperty(Constants.ProjectInfo.IGO_PROJECT_ID, getRandomValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.FINAL_PROJECT_TITLE, getRandomValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.BIOINFORMATIC_REQUEST, getRandomValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.TUMOR_TYPE, "tumorType");
