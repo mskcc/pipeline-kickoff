@@ -9,8 +9,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.typeCompatibleWith;
 
-//import org.mskcc.TestUtils;
-
 public class LimsProjectNameValidatorTest {
     private ProjectNameValidator projectNameValidator;
 

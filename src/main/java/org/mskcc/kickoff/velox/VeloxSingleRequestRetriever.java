@@ -219,6 +219,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     kickoffRequest);
             sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
             sample.setProperties(sampleInfo);
+
             sample.setIsTumor(sample.get(Constants.SAMPLE_CLASS) != null && !sample.get(Constants.SAMPLE_CLASS)
                     .contains(Constants.NORMAL));
         }

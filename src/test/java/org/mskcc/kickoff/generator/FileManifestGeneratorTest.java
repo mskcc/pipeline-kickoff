@@ -1,9 +1,12 @@
 package org.mskcc.kickoff.generator;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mskcc.kickoff.archive.FilesArchiver;
+import org.mskcc.kickoff.archive.ProjectFilesArchiver;
+import org.mskcc.kickoff.archive.RunPipelineLogger;
 import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.kickoff.config.LogConfigurator;
 import org.mskcc.kickoff.domain.KickoffRequest;
@@ -13,11 +16,15 @@ import org.mskcc.kickoff.printer.OutputFilesPrinter;
 import org.mskcc.kickoff.printer.observer.SpyFileUploader;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.proxy.RequestProxy;
+import org.mskcc.kickoff.validator.ErrorRepository;
+import org.mskcc.kickoff.validator.InMemoryErrorRepository;
 import org.mskcc.kickoff.validator.ProjectNameValidator;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
@@ -30,7 +37,7 @@ import static org.mockito.Mockito.*;
 
 @ComponentScan(basePackages = "org.mskcc.kickoff")
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(classes = TestAppConfiguration.class)
+@ContextConfiguration(classes = FileManifestGeneratorTest.TestAppConfiguration.class)
 @ActiveProfiles("test")
 @PropertySource("classpath:application-dev.properties")
 public class FileManifestGeneratorTest {
@@ -139,5 +146,78 @@ public class FileManifestGeneratorTest {
 
         //then
         verify(emailNotificator, times(1)).notifyMessage(eq(projectId), any());
+    }
+
+    @Configuration
+    public static class TestAppConfiguration {
+        @Bean
+        public OutputFilesPrinter outputFilesPrinter() {
+            return mock(OutputFilesPrinter.class);
+        }
+
+        @Bean
+        public FilesArchiver filesArchiver() {
+            return mock(FilesArchiver.class);
+        }
+
+        @Bean
+        public RequestValidator requestValidator() {
+            return mock(RequestValidator.class);
+        }
+
+        @Bean
+        public LogConfigurator logConfigurator() {
+            return mock(LogConfigurator.class);
+        }
+
+        @Bean
+        public OutputDirRetriever outputDirRetriever() {
+            return mock(OutputDirRetriever.class);
+        }
+
+        @Bean
+        public RequestProxy requestProxy() {
+            return mock(RequestProxy.class);
+        }
+
+        @Bean
+        public ProjectNameValidator projectNameValidator() {
+            return mock(ProjectNameValidator.class);
+        }
+
+        @Bean
+        public NotificationFormatter notificationFormatter() {
+            return notGenerated -> StringUtils.join(notGenerated);
+        }
+
+        @Bean
+        public EmailNotificator emailNotificator() {
+            return mock(EmailNotificator.class);
+        }
+
+        @Bean
+        public SpyFileUploader spyFileUploader() {
+            return new SpyFileUploader();
+        }
+
+        @Bean
+        public RunPipelineLogger runPipelineLogger() {
+            return new RunPipelineLogger();
+        }
+
+        @Bean
+        public FileManifestGenerator fileManifestGenerator() {
+            return new FileManifestGenerator();
+        }
+
+        @Bean
+        public ProjectFilesArchiver projectFilesArchiver() {
+            return mock(ProjectFilesArchiver.class);
+        }
+
+        @Bean
+        public ErrorRepository errorRepository() {
+            return new InMemoryErrorRepository();
+        }
     }
 }

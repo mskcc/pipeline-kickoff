@@ -6,12 +6,14 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.printer.ErrorCode;
+import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.NormalProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.validator.InMemoryErrorRepository;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -84,6 +86,27 @@ public class RequestDataPropagatorTest {
 
         //then
         assertThat(errorRepository.getErrors().size(), is(0));
+    }
+
+    @Test
+    public void whenThereAreMultipleSpecies_shouldConcatThem() throws Exception {
+        KickoffRequest request = new KickoffRequest("id1", new ForcedProcessingType());
+        Sample sample1 = new Sample("id1", s -> true);
+        sample1.put(Constants.SPECIES, "Human,Zebrafish");
+
+        Sample sample2 = new Sample("id2", s -> true);
+        sample2.put(Constants.SPECIES, "Human");
+
+        Sample sample3 = new Sample("id3", s -> true);
+        sample3.put(Constants.SPECIES, "Human");
+
+        request.putSampleIfAbsent(sample1);
+        request.putSampleIfAbsent(sample2);
+        request.putSampleIfAbsent(sample3);
+
+        requestDataPropagator.propagateRequestData(Arrays.asList(request));
+
+        assertThat(request.getProjectInfo().get(Constants.ProjectInfo.SPECIES), is("Human,Human+Zebrafish"));
     }
 
     private void assertAssay(RequestType requestType, Optional<String> baitVersion, String expectedAssay) {
