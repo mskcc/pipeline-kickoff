@@ -55,7 +55,7 @@ dependencies {
     compile group: 'com.google.guava', name: 'guava', version: '11.0.2'
     compile group: 'com.github.spullara.cli-parser', name: 'cli-parser', version: '1.1'
 
-    compile group: 'org.mskcc.common', name: 'common-domain', version: '2.9.0'
+    compile group: 'org.mskcc.common', name: 'common-domain', version: '2.10.0-SNAPSHOT'
 
     compile group: 'com.atlassian.jira', name: 'jira-rest-java-client-core', version: '2.0.0-m25'
     compile 'com.atlassian.httpclient:atlassian-httpclient-spi:0.17.0-m01'
@@ -64,6 +64,7 @@ dependencies {
     //SAPIO
     compile group: 'com.velox.internalproducts', name: 'veloxapi', version: '9.5.1-b633'
     compile group: 'com.velox.internalproducts', name: 'sapioutils', version: '7.1.1-LIMS9.5.0'
+    compile group: 'com.velox.internalproducts', name: 'sapio-commons', version: '4.1.3-LIMS9.0.0'
 
     compile group: 'log4j', name: 'apache-log4j-extras', version: '1.1'
 
@@ -169,7 +170,7 @@ configurations {
 
 task integrationTest(type: Test) {
     filter {
-        includeTestsMatching "org.mskcc.kickoff.fast.*"
+        includeTestsMatching "org.mskcc.kickoff.fast.sampleset.*"
     }
 
     if (System.getProperty('DEBUG', 'false') == 'true')

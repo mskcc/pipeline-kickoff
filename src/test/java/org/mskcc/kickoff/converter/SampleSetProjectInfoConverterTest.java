@@ -11,8 +11,8 @@ import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.sampleset.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
-import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.ConverterUtils;
+import org.mskcc.util.Constants;
 import org.mskcc.util.TestUtils;
 
 import java.util.*;

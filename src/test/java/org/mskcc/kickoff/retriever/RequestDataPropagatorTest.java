@@ -9,9 +9,9 @@ import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.NormalProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
-import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.validator.InMemoryErrorRepository;
+import org.mskcc.util.Constants;
 
 import java.util.Arrays;
 import java.util.HashMap;

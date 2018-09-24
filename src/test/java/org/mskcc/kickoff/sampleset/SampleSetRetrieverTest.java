@@ -34,11 +34,9 @@ public class SampleSetRetrieverTest {
     public void whenSampleSetHasNoSamplesNorRequests_shouldReturnSampleSetWithEmptyRequests() throws Exception {
         //given
         String baitVer = "someBait";
-        String primaryReqId = "primaryId";
         Recipe recipe = Recipe.SMARTER_AMP_SEQ;
 
         when(sampleSetProxyMock.getBaitVersion()).thenReturn(baitVer);
-        when(sampleSetProxyMock.getPrimaryRequestId()).thenReturn(primaryReqId);
         when(sampleSetProxyMock.getRecipe()).thenReturn(recipe.getValue());
 
         //when
@@ -48,7 +46,6 @@ public class SampleSetRetrieverTest {
         assertThat(sampleSet.getBaitSet(), is(baitVer));
         assertThat(sampleSet.getRequests().size(), is(0));
         assertThat(sampleSet.getName(), is(projId));
-        assertThat(sampleSet.getPrimaryRequestId(), is(primaryReqId));
         assertThat(sampleSet.getRecipe(), is(recipe));
     }
 
