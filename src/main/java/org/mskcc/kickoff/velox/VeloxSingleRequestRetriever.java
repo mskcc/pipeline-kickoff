@@ -578,6 +578,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private String getRunIdFromRunFolder(String runFolder) throws NotFound, RemoteException {
         String[] runParts = runFolder.split("_");
+        if (runParts.length < 2)
+            throw new RuntimeException(String.format("Run folder %s is not in expected format '.*_.*'", runFolder));
         return String.format("%s_%s", runParts[0], runParts[1]);
     }
 

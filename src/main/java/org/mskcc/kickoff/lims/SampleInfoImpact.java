@@ -11,7 +11,7 @@ import org.apache.log4j.Logger;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.util.Constants;
+import org.mskcc.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
 import java.rmi.RemoteException;

@@ -1,6 +1,8 @@
 package org.mskcc.kickoff.sampleset;
 
+import org.apache.commons.lang3.StringUtils;
 import org.mskcc.domain.Recipe;
+import org.mskcc.domain.SampleSet;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffExternalSample;
 import org.mskcc.kickoff.domain.KickoffRequest;
@@ -27,6 +29,9 @@ public class SampleSetRetriever {
 
             putRequestsAndSamples(processingType, sampleSet);
             sampleSet.setPrimaryRequestId(sampleSetProxy.getPrimaryRequestId());
+
+            validatePrimaryRequestIsInSampleSet(sampleSet);
+
             sampleSet.setBaitSet(sampleSetProxy.getBaitVersion());
             sampleSet.setRecipe(getRecipe());
             List<KickoffExternalSample> externalSamples = sampleSetProxy.getExternalSamples();
@@ -67,6 +72,13 @@ public class SampleSetRetriever {
         }
 
         sampleSet.setRequestIdToKickoffRequest(requestIdToRequest);
+    }
+
+    private void validatePrimaryRequestIsInSampleSet(KickoffSampleSet sampleSet) {
+        if (!StringUtils.isEmpty(sampleSet.getPrimaryRequestId()) && !sampleSet.getRequestIdToKickoffRequest()
+                .containsKey(sampleSet.getPrimaryRequestId()))
+            throw new SampleSet.PrimaryRequestNotPartOfSampleSetException(String.format("Primary request %s is not " +
+                    "part of sample set  %s", sampleSet.getPrimaryRequestId(), sampleSet.getName()));
     }
 
     private Recipe getRecipe() throws Exception {

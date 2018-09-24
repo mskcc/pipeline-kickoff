@@ -11,8 +11,8 @@ import org.apache.commons.lang3.text.WordUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.RequestType;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.mskcc.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
 import java.util.*;

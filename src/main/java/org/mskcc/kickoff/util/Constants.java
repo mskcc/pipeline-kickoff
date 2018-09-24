@@ -101,6 +101,7 @@ public class Constants {
     }
 
     public static class Excel {
+
         public static final String INSTRUCTIONS = "instructions";
         public static final String EMPTY = "#empty";
         public static final String SPECIMEN_COLLECTION_YEAR = "SPECIMEN_COLLECTION_YEAR";
