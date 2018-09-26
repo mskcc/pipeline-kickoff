@@ -4,11 +4,12 @@ import org.mskcc.util.email.EmailToMimeMessageConverter
 import org.mskcc.util.email.JavaxEmailSender
 
 group 'org.mskcc.kickoff.lims'
-version '1.23.1-SNAPSHOT'
+version '1.23.2-SNAPSHOT'
 
 apply plugin: 'application'
 apply plugin: 'maven'
 apply plugin: 'idea'
+apply plugin: "jacoco"
 
 mainClassName = "org.mskcc.kickoff.lims.CreateManifestSheet"
 
@@ -238,6 +239,17 @@ configurations.antClasspath.each { File jar ->
     antClassLoader.addURL(jar.toURI().toURL())
 }
 
+test {
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled false
+        csv.enabled false
+        html.destination "${buildDir}/reports/jacoco"
+    }
+}
 
 
 
