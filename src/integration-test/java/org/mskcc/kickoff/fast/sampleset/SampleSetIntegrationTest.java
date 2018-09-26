@@ -84,26 +84,17 @@ public class SampleSetIntegrationTest {
                 veloxConnectionData.getPassword()
         );
         openConnection();
+        try {
+             cleanupTestingRecords();
+        } catch (Exception e) {
+            LOG.error(e);
+        }
     }
 
     @After
     public void tearDown() throws Exception {
         try {
-            if (sampleSetRecord != null) {
-                dataRecUtilManager.deleteRecords(Arrays.asList(sampleSetRecord), true);
-
-                List<DataRecord> reqRecords1 = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId " +
-                        "= '" +
-                        reqId1 + "'", user);
-                dataRecUtilManager.deleteRecords(reqRecords1, true);
-
-                List<DataRecord> reqRecords2 = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId " +
-                        "= '" +
-                        reqId2 + "'", user);
-                dataRecUtilManager.deleteRecords(reqRecords2, true);
-
-                dataRecordManager.storeAndCommit(String.format("Sample Set deleted: %s", validSampleSetId), user);
-            }
+           cleanupTestingRecords();
         } finally {
             closeConnection();
         }
@@ -164,6 +155,7 @@ public class SampleSetIntegrationTest {
         addSampleSetRecord(validSampleSetId);
         addRequest(reqId1);
         addPrimaryRequest(reqId1);
+
         store();
 
         KickoffRequest request = veloxProjectProxy.getRequest(validSampleSetId);
@@ -314,6 +306,16 @@ public class SampleSetIntegrationTest {
     }
 
     private void openConnection() throws Exception {
+        // add shutdown hook: for connection close
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            LOG.info("Run shutdown hook");
+            try {
+                closeConnection();
+            } catch (Exception e) {
+                LOG.error(e);
+            }
+        }));
+
         if (!connection.isConnected()) {
             connection.open();
         }
@@ -325,7 +327,29 @@ public class SampleSetIntegrationTest {
     }
 
     private void closeConnection() throws VeloxConnectionException {
-        connection.close();
+        if (connection.isConnected()) {
+            connection.close();
+        }
         LOG.info("Closed LIMS connection");
+    }
+
+    // delete inserted testing records
+    private void cleanupTestingRecords() throws Exception{
+        List<DataRecord> list = dataRecordManager.queryDataRecords(VeloxConstants.SAMPLE_SET, "NAME " +
+                "= '" +
+                validSampleSetId + "'", user);
+        dataRecUtilManager.deleteRecords(list, true);
+
+        List<DataRecord> reqRecords1 = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId " +
+                "= '" +
+                reqId1 + "'", user);
+        dataRecUtilManager.deleteRecords(reqRecords1, true);
+
+        List<DataRecord> reqRecords2 = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId " +
+                "= '" +
+                reqId2 + "'", user);
+        dataRecUtilManager.deleteRecords(reqRecords2, true);
+
+        dataRecordManager.storeAndCommit(String.format("Sample Set deleted: %s", validSampleSetId), user);
     }
 }
