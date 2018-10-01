@@ -174,10 +174,6 @@ public class SampleSetToRequestConverter {
         DEV_LOGGER.info(String.format("Samples found for sample set: %s [%s]", sampleSet.getName(), Utils
                 .getJoinedCollection(sampleSetSamples.keySet())));
 
-//        for (KickoffExternalSample externalSample : sampleSet.getExternalSamples()) {
-//            sampleSetSamples.put(externalSample.getIgoId(), externalSample);
-//        }
-
         Map<String, KickoffExternalSample> externalSampleMap = sampleSet.getExternalSamples().stream()
                 .collect(Collectors.toMap(s -> s.getIgoId(), s -> s));
 

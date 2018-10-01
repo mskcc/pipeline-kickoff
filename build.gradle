@@ -171,7 +171,7 @@ configurations {
 
 task integrationTest(type: Test) {
     filter {
-        includeTestsMatching "org.mskcc.kickoff.fast.sampleset.*"
+        includeTestsMatching "org.mskcc.kickoff.fast.*"
     }
 
     if (System.getProperty('DEBUG', 'false') == 'true')

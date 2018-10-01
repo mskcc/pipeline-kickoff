@@ -12,8 +12,10 @@ import org.mskcc.kickoff.generator.DefaultPathAwareOutputDirRetriever;
 import org.mskcc.kickoff.generator.OutputDirRetriever;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.manifest.ManifestFile;
-import org.mskcc.kickoff.notify.NewLineNotificationFormatter;
+import org.mskcc.kickoff.notify.DoubleSlashNewLineStrategy;
+import org.mskcc.kickoff.notify.FilesErrorsNotificationFormatter;
 import org.mskcc.kickoff.notify.NotificationFormatter;
+import org.mskcc.kickoff.notify.SingleSlashNewLineStrategy;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.resolver.PairednessResolver;
@@ -149,6 +151,12 @@ public class AppConfiguration {
 
     @Autowired
     private ObserverManager observerManager;
+
+    @Autowired
+    private SingleSlashNewLineStrategy singleSlashNewLineStrategy;
+
+    @Autowired
+    private DoubleSlashNewLineStrategy doubleSlashNewLineStrategy;
 
     private String regeneratedStatus = "Files Regenerated";
 
@@ -367,7 +375,14 @@ public class AppConfiguration {
     }
 
     @Bean
-    public NotificationFormatter notificationFormatter() {
-        return new NewLineNotificationFormatter();
+    @Qualifier("singleSlash")
+    public NotificationFormatter singleSlashNotificationFormatter() {
+        return new FilesErrorsNotificationFormatter(errorRepository, singleSlashNewLineStrategy);
+    }
+
+    @Bean
+    @Qualifier("doubleSlash")
+    public NotificationFormatter doubleSlashNotificationFormatter() {
+        return new FilesErrorsNotificationFormatter(errorRepository, doubleSlashNewLineStrategy);
     }
 }

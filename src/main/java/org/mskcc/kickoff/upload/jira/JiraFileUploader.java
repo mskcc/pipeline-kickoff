@@ -9,11 +9,10 @@ import com.atlassian.jira.rest.client.api.domain.input.TransitionInput;
 import com.atlassian.jira.rest.client.internal.async.AsynchronousJiraRestClientFactory;
 import com.atlassian.util.concurrent.Promise;
 import com.google.common.collect.Iterables;
-import org.apache.commons.lang.text.StrBuilder;
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.manifest.ManifestFile;
-import org.mskcc.kickoff.notify.GenerationError;
+import org.mskcc.kickoff.notify.NotificationFormatter;
 import org.mskcc.kickoff.upload.FileDeletionException;
 import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
@@ -63,6 +62,10 @@ public class JiraFileUploader implements FileUploader {
     @Autowired
     @Qualifier("jiraRestTemplate")
     private RestTemplate restTemplate;
+
+    @Autowired
+    @Qualifier("doubleSlash")
+    private NotificationFormatter notificationFormatter;
 
     private IssueStatus issueStatus;
     private JiraRestClient restClient;
@@ -133,40 +136,11 @@ public class JiraFileUploader implements FileUploader {
         String fileCreationTimeComment = String.format("Manifest files time creation: %s",
                 LocalDateTime.now());
 
-        String errorComment = getErrorComment();
+        String errorComment = notificationFormatter.format();
 
         String comment = getFormattedComment(String.format("%s\\n\\n%s", fileCreationTimeComment, errorComment));
 
         addComment(getIssue(summary), comment);
-    }
-
-    private String getErrorComment() {
-        StrBuilder errorComment = new StrBuilder();
-
-        if (!errorRepository.getErrors().isEmpty()) {
-            errorComment.append("Errors: \\n");
-            for (GenerationError generationError : errorRepository.getErrors()) {
-                errorComment.append(String.format("    -%s\\n", generationError.getMessage()));
-            }
-
-            errorComment.append("\\n");
-        }
-
-        for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
-            if (!manifestFile.isFileGenerated()) {
-                errorComment.append(String.format("Required file not created: %s", manifestFile.getName()));
-                errorComment.append("\\n");
-            }
-
-            if (manifestFile.getGenerationErrors().size() > 0) {
-                errorComment.append(String.format("%s errors: \\n", manifestFile.getName()));
-                errorComment.append(manifestFile.getGenerationErrors().stream()
-                        .map(e -> String.format("    -%s\\n", e.getMessage()))
-                        .collect(Collectors.joining()));
-            }
-        }
-
-        return errorComment.toString();
     }
 
     @Override

@@ -1,6 +1,5 @@
 package org.mskcc.kickoff.generator;
 
-import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -22,6 +21,7 @@ import org.mskcc.kickoff.validator.ProjectNameValidator;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -62,6 +62,7 @@ public class FileManifestGeneratorTest {
     @Autowired
     private EmailNotificator emailNotificator;
     @Autowired
+    @Qualifier("singleSlash")
     private NotificationFormatter notificationFormatter;
     @Autowired
     private SpyFileUploader fileUploader;
@@ -130,8 +131,7 @@ public class FileManifestGeneratorTest {
         fileManifestGenerator.generate(projectId);
 
         //then
-        verify(emailNotificator, times(1)).notifyMessage(projectId, notificationFormatter.format(Arrays.asList
-                (ManifestFile.MAPPING)));
+        verify(emailNotificator, times(1)).notifyMessage(projectId, notificationFormatter.format());
     }
 
     @Test
@@ -186,8 +186,9 @@ public class FileManifestGeneratorTest {
         }
 
         @Bean
+        @Qualifier("singleSlash")
         public NotificationFormatter notificationFormatter() {
-            return notGenerated -> StringUtils.join(notGenerated);
+            return () -> "Errors";
         }
 
         @Bean
