@@ -187,7 +187,7 @@ public class FileManifestGeneratorTest {
 
         @Bean
         public NotificationFormatter notificationFormatter() {
-            return () -> "";
+            return () -> "Errors";
         }
 
         @Bean
