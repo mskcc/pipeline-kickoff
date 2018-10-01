@@ -7,6 +7,8 @@ import org.mskcc.kickoff.config.AppConfiguration;
 import org.mskcc.kickoff.config.LogConfigurator;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.FileManifestGenerator;
+import org.mskcc.kickoff.notify.DoubleSlashNewLineStrategy;
+import org.mskcc.kickoff.notify.SingleSlashNewLineStrategy;
 import org.mskcc.kickoff.pairing.PairingInfoRetriever;
 import org.mskcc.kickoff.pairing.PairingsResolver;
 import org.mskcc.kickoff.pairing.SmartPairingRetriever;
@@ -228,6 +230,16 @@ public class ManifestFilesGeneratorTestConfiguration {
     @Bean
     public PairingInfoValidPredicate pairingInfoValidPredicate() {
         return new PairingInfoValidPredicate(errorRepository(), observerManager());
+    }
+
+    @Bean
+    public SingleSlashNewLineStrategy singleSlashNewLineStrategy() {
+        return new SingleSlashNewLineStrategy();
+    }
+
+    @Bean
+    public DoubleSlashNewLineStrategy doubleSlashNewLineStrategy() {
+        return new DoubleSlashNewLineStrategy();
     }
 
     public class MockJiraFileUploader extends JiraFileUploader {

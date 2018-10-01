@@ -10,7 +10,6 @@ import org.mskcc.kickoff.config.LogConfigurator;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.manifest.ManifestFile;
-import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.notify.NotificationFormatter;
 import org.mskcc.kickoff.printer.OutputFilesPrinter;
 import org.mskcc.kickoff.proxy.RequestProxy;
@@ -21,6 +20,7 @@ import org.mskcc.kickoff.validator.ProjectNameValidator;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -62,6 +62,7 @@ public class FileManifestGenerator implements ManifestGenerator {
     private FileUploader fileUploader;
 
     @Autowired
+    @Qualifier("singleSlash")
     private NotificationFormatter notificationFormatter;
 
     @Autowired
@@ -100,12 +101,12 @@ public class FileManifestGenerator implements ManifestGenerator {
                 .filter(f -> !f.isFileGenerated())
                 .collect(Collectors.toList());
 
-        String errorMessage = getGeneralErrors();
+        String errorMessage = "";
         if (notGenerated.size() > 0) {
             DEV_LOGGER.info(String.format("Sending email notification about manifest files not generated for " +
                     "request: %s", projectId));
 
-            errorMessage += notificationFormatter.format(notGenerated);
+            errorMessage += notificationFormatter.format();
         }
 
         if (!StringUtils.isEmpty(errorMessage)) {
@@ -117,19 +118,6 @@ public class FileManifestGenerator implements ManifestGenerator {
                         projectId), e);
             }
         }
-    }
-
-    private String getGeneralErrors() {
-        StringBuilder generalErrors = new StringBuilder();
-
-        if (errorRepository.getErrors().size() > 0)
-            generalErrors.append("General request errors: \n");
-
-        for (GenerationError generationError : errorRepository.getErrors()) {
-            generalErrors.append(generationError.getMessage()).append("\n");
-        }
-
-        return generalErrors.toString();
     }
 
     private void setFilePermissions(KickoffRequest kickoffRequest) {
