@@ -186,6 +186,7 @@ public class FileManifestGeneratorTest {
         }
 
         @Bean
+        @Qualifier("singleSlash")
         public NotificationFormatter notificationFormatter() {
             return () -> "Errors";
         }
