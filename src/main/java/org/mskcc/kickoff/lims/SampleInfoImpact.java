@@ -8,6 +8,7 @@ import com.velox.api.datarecord.NotFound;
 import com.velox.api.user.User;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
+import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
@@ -93,7 +94,7 @@ public class SampleInfoImpact extends SampleInfo {
         this.SPECIMEN_COLLECTION_YEAR = optionallySetDefault(this.SPECIMEN_COLLECTION_YEAR, "000");
         this.SEX = "na";
         this.SAMPLE_CLASS = optionallySetDefault(this.SAMPLE_CLASS, "PoolNormal");
-        this.SPECIES = optionallySetDefault(this.SPECIES, "POOLNORMAL");
+        this.SPECIES = optionallySetDefault(this.SPECIES, RequestSpecies.HUMAN.getValue());
         if (this.CMO_SAMPLE_ID.contains("MOUSE")) {
             this.SPECIES = "Mouse";
         }
@@ -1071,7 +1072,8 @@ public class SampleInfoImpact extends SampleInfo {
 
             return isSampleRun;
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Error while trying to get pooled normal run id: %s. This pooled normal won't be added.", sampleId), e);
+            DEV_LOGGER.warn(String.format("Error while trying to get pooled normal run id: %s. This pooled normal " +
+                    "won't be added.", sampleId), e);
             return false;
         }
     }
