@@ -35,13 +35,10 @@ public class RequestValidator {
     private final PairingsValidator pairingsValidator;
     private final List<PriorityAwareLogMessage> poolQCWarnings = new ArrayList<>();
     private final ErrorRepository errorRepository;
-    private final BiPredicate<Sample, Sample> pairingInfoPredicate;
 
     @Autowired
-    public RequestValidator(@Qualifier("pairingInfoValidPredicate") BiPredicate<Sample, Sample> pairingInfoPredicate,
-                            PairingsValidator pairingsValidator, ErrorRepository errorRepository) {
+    public RequestValidator(PairingsValidator pairingsValidator, ErrorRepository errorRepository) {
         this.errorRepository = errorRepository;
-        this.pairingInfoPredicate = pairingInfoPredicate;
         this.pairingsValidator = pairingsValidator;
     }
 

@@ -54,6 +54,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
 @Configuration
@@ -270,7 +271,7 @@ public class AppConfiguration {
     public RequestsRetrieverFactory requestsRetrieverFactory() {
         return new RequestsRetrieverFactory(
                 projectInfoRetriever(),
-                requestDataPropagator(),
+                singleRequestRequestDataPropagator(),
                 sampleSetToRequestConverter(),
                 readOnlyExternalSamplesRepository());
     }
@@ -282,8 +283,27 @@ public class AppConfiguration {
     }
 
     @Bean
-    public RequestDataPropagator requestDataPropagator() {
-        return new RequestDataPropagator(designFilePath, resultsPathPrefix, errorRepository);
+    @Qualifier("sampleSetRequestDataPropagator")
+    public RequestDataPropagator sampleSetRequestDataPropagator() {
+        return new RequestDataPropagator(designFilePath, resultsPathPrefix, errorRepository,
+                sampleSetBaitSetCompatibilityPredicate());
+    }
+
+    @Bean
+    public BiPredicate<String, String> sampleSetBaitSetCompatibilityPredicate() {
+        return new SampleSetBaitSetCompatibilityPredicate();
+    }
+
+    @Bean
+    public BiPredicate<String, String> singleRequestBaitSetCompatibilityPredicate() {
+        return new AllSameBaitSetCompatibilityPredicate();
+    }
+
+    @Bean
+    @Qualifier("singleRequestRequestDataPropagator")
+    public RequestDataPropagator singleRequestRequestDataPropagator() {
+        return new RequestDataPropagator(designFilePath, resultsPathPrefix, errorRepository,
+                singleRequestBaitSetCompatibilityPredicate());
     }
 
     @Bean

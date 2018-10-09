@@ -25,7 +25,8 @@ import static org.mockito.Mockito.when;
 
 public class RequestDataPropagatorTest {
     private ErrorRepository errorRepository = new InMemoryErrorRepository();
-    private RequestDataPropagator requestDataPropagator = new RequestDataPropagator("", "", errorRepository);
+    private RequestDataPropagator requestDataPropagator = new RequestDataPropagator("", "", errorRepository,
+            (bs1, bs2) -> true);
 
     @Test
     public void whenAnyRequest_shouldAddAssay() throws Exception {

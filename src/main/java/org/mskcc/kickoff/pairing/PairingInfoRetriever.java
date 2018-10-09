@@ -116,30 +116,8 @@ public class PairingInfoRetriever {
         return pairings;
     }
 
-    private boolean isSampleFromRequest(KickoffRequest request, Sample pairingSample) {
-        return request.getSamples().containsKey(pairingSample.getIgoId());
-    }
-
     private Sample getNormal(KickoffRequest request, Sample pairingSample) {
         return request.getSample(pairingSample.getIgoId());
     }
 
-    private Collection<Sample> getValidTumorSamples(KickoffRequest request) {
-        Set<Sample> validTumorSamples = new HashSet<>(request.getAllValidSamples(s -> s.isTumor()).values());
-        validTumorSamples.addAll(request.getTumorExternalSamples());
-
-        return validTumorSamples;
-    }
-
-    private String getInitialNormalId(Sample pairingSample) {
-        if (!Objects.equals(pairingSample.getCmoSampleId(), org.mskcc.util.Constants.UNDEFINED))
-            return pairingSample.getCmoSampleId();
-        if (!StringUtils.isEmpty(pairingSample.getIgoId()))
-            return pairingSample.getIgoId();
-        return Constants.NA_LOWER_CASE;
-    }
-
-    private String getNormalCmoId(KickoffRequest request, Sample pairingSample) {
-        return request.getSample(pairingSample.getIgoId()).get(Constants.CORRECTED_CMO_ID);
-    }
 }

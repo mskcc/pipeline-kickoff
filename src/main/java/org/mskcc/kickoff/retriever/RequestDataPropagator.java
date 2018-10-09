@@ -17,6 +17,7 @@ import org.mskcc.kickoff.validator.ErrorRepository;
 
 import java.io.File;
 import java.util.*;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
 import static org.mskcc.kickoff.config.Arguments.runAsExome;
@@ -28,11 +29,16 @@ public class RequestDataPropagator implements DataPropagator {
     private String designFilePath;
     private String resultsPathPrefix;
     private ErrorRepository errorRepository;
+    private BiPredicate<String, String> baitSetCompatibilityPredicate;
 
-    public RequestDataPropagator(String designFilePath, String resultsPathPrefix, ErrorRepository errorRepository) {
+    public RequestDataPropagator(String designFilePath,
+                                 String resultsPathPrefix,
+                                 ErrorRepository errorRepository,
+                                 BiPredicate<String, String> baitSetCompatibilityPredicate) {
         this.designFilePath = designFilePath;
         this.resultsPathPrefix = resultsPathPrefix;
         this.errorRepository = errorRepository;
+        this.baitSetCompatibilityPredicate = baitSetCompatibilityPredicate;
     }
 
     @Override
@@ -201,10 +207,10 @@ public class RequestDataPropagator implements DataPropagator {
 
             //baitVerison - sometimes bait version needs to be changed. If so, the CAPTURE_BAIT_SET must also be changed
             if (request.getRequestType() == RequestType.RNASEQ || request.getRequestType() == RequestType.OTHER) {
-                String emptyBatVersion = Constants.EMPTY;
+                String emptyBaitVersion = Constants.EMPTY;
                 DEV_LOGGER.info(String.format("Setting bait version to: %s for request: %s of type: %s",
-                        emptyBatVersion, request.getId(), request.getRequestType().getName()));
-                request.setBaitVersion(emptyBatVersion);
+                        emptyBaitVersion, request.getId(), request.getRequestType().getName()));
+                request.setBaitVersion(emptyBaitVersion);
             } else {
                 String baitVersion = sample.get(Constants.BAIT_VERSION);
                 if (!StringUtils.isEmpty(baitVersion)) {
@@ -245,10 +251,9 @@ public class RequestDataPropagator implements DataPropagator {
                             return;
                         }
                     }
-                    if (!Objects.equals(request.getBaitVersion(), baitVersion) && !Objects.equals(request
-                            .getBaitVersion(), Constants.EMPTY)) {
+                    if (!isBaitSetCompatible(request, baitVersion)) {
                         String message = String.format("Request Bait version is not consistent: Current sample Bait " +
-                                "verion: %s Bait version for request so far: %s", baitVersion, request.getBaitVersion
+                                "version: %s Bait version for request so far: %s", baitVersion, request.getBaitVersion
                                 ());
                         Utils.setExitLater(true);
                         PM_LOGGER.log(Level.ERROR, message);
@@ -262,6 +267,11 @@ public class RequestDataPropagator implements DataPropagator {
         if (bvChanged) {
             setNewBaitSet(request);
         }
+    }
+
+    private boolean isBaitSetCompatible(KickoffRequest request, String baitVersion) {
+        return baitSetCompatibilityPredicate.test(request.getBaitVersion(), baitVersion) || Objects.equals(request
+                .getBaitVersion(), Constants.EMPTY);
     }
 
     @Override

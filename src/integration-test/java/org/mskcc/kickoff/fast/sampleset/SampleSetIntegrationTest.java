@@ -57,7 +57,7 @@ public class SampleSetIntegrationTest {
     private ProjectFilesArchiver archiverMock = mock(ProjectFilesArchiver.class);
     private ProjectInfoRetriever projInfoRetriever = new ProjectInfoRetriever();
     private RequestDataPropagator reqDataPropagator = new RequestDataPropagator(designFilePath, resultsPathPrefix,
-            mock(ErrorRepository.class));
+            mock(ErrorRepository.class), (bs1, bs2) -> true);
     private SampleSetProjectInfoConverter projInfoConv = new SampleSetProjectInfoConverter();
     private SampleSetToRequestConverter sampleSetToReqConv = new SampleSetToRequestConverter(projInfoConv);
     private RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever,

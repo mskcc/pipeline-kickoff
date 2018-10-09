@@ -15,16 +15,19 @@ import static org.mskcc.util.VeloxConstants.SAMPLE_SET;
 public class RequestsRetrieverFactory {
     private final Predicate<String> sampleSetProjectPredicate;
     private ProjectInfoRetriever projectInfoRetriever;
-    private RequestDataPropagator requestDataPropagator;
+    private RequestDataPropagator sampleSetRequestDataPropagator;
+    private RequestDataPropagator singleRequestRequestDataPropagator;
     private SampleSetToRequestConverter sampleSetToRequestConverter;
     private ReadOnlyExternalSamplesRepository externalSamplesRepository;
 
     public RequestsRetrieverFactory(ProjectInfoRetriever projectInfoRetriever,
-                                    RequestDataPropagator requestDataPropagator,
+                                    RequestDataPropagator sampleSetRequestDataPropagator,
+                                    RequestDataPropagator singleRequestRequestDataPropagator,
                                     SampleSetToRequestConverter sampleSetToRequestConverter,
                                     ReadOnlyExternalSamplesRepository readOnlyExternalSamplesRepository) {
         this.projectInfoRetriever = projectInfoRetriever;
-        this.requestDataPropagator = requestDataPropagator;
+        this.sampleSetRequestDataPropagator = sampleSetRequestDataPropagator;
+        this.singleRequestRequestDataPropagator = singleRequestRequestDataPropagator;
         this.sampleSetToRequestConverter = sampleSetToRequestConverter;
         this.sampleSetProjectPredicate = new SampleSetProjectPredicate();
         this.externalSamplesRepository = readOnlyExternalSamplesRepository;
@@ -37,7 +40,7 @@ public class RequestsRetrieverFactory {
         if (sampleSetProjectPredicate.test(projectId))
             return getSampleSetRequestsRetriever(user, dataRecordManager, projectId, veloxPairingsRetriever);
 
-        return new UniRequestsRetriever(user, dataRecordManager, projectInfoRetriever, requestDataPropagator,
+        return new UniRequestsRetriever(user, dataRecordManager, projectInfoRetriever, singleRequestRequestDataPropagator,
                 veloxPairingsRetriever);
     }
 
@@ -53,7 +56,7 @@ public class RequestsRetrieverFactory {
                 VeloxSingleRequestRetriever(user, dataRecordManager, projectInfoRetriever));
         SampleSetRetriever sampleSetRetriever = new SampleSetRetriever(veloxSampleSetProxy, samplesToRequestsConverter);
 
-        return new SampleSetRequestRetriever(requestDataPropagator, sampleSetToRequestConverter, sampleSetRetriever,
+        return new SampleSetRequestRetriever(sampleSetRequestDataPropagator, sampleSetToRequestConverter, sampleSetRetriever,
                 sampleSetRecord, veloxPairingsRetriever);
     }
 
