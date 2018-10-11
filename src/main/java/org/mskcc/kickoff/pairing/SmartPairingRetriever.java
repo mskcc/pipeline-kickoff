@@ -3,6 +3,7 @@ package org.mskcc.kickoff.pairing;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.Patient;
+import org.mskcc.domain.sample.Preservation;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
@@ -105,28 +106,20 @@ public class SmartPairingRetriever {
             return Constants.NA_LOWER_CASE;
         }
 
-        if (isFfpe(tumor)) {
-            DEV_LOGGER.info(String.format("Trying to pair Frozen of Pooled normals %s to tumor: %s", pooledNormals,
-                    tumor.getIgoId()));
-            return tryToMathFfpePooledNormal(seqTypeCompatiblePooledNormals);
+        // if tumor preservation is ffpe
+        if (getPreservation(tumor) == FFPE) {
+            DEV_LOGGER.info(String.format("Trying to pair FFPE Pooled normals %s to tumor: %s", pooledNormals, tumor
+                    .getIgoId()));
+            return tryToMatchFfpePooledNormal(seqTypeCompatiblePooledNormals);
         }
-
-        DEV_LOGGER.info(String.format("Trying to pair FFPE Pooled normals %s to tumor: %s", pooledNormals, tumor
-                .getIgoId()));
+        DEV_LOGGER.info(String.format("Trying to pair Frozen of Pooled normals %s to tumor: %s", pooledNormals,
+                tumor.getIgoId()));
         return tryToMatchFrozenPooledNormal(seqTypeCompatiblePooledNormals);
-    }
-
-    private boolean isFfpe(Sample sample) {
-        String preservation = sample.get(Constants.SPECIMEN_PRESERVATION_TYPE);
-        boolean isFfpe = fromString(preservation) == FFPE;
-        DEV_LOGGER.info(String.format("Sample %s has preservation type %s", sample.getIgoId(), FFPE));
-
-        return isFfpe;
     }
 
     private String tryToMatchFrozenPooledNormal(Collection<Sample> pooledNormals) {
         Optional<Sample> frozenPooledNormal = pooledNormals.stream()
-                .filter(s -> isFrozen(s))
+                .filter(s -> getPreservation(s) == FROZEN)
                 .findFirst();
 
         if (frozenPooledNormal.isPresent() && StringUtils.isEmpty(frozenPooledNormal.get().getCorrectedCmoSampleId()))
@@ -136,14 +129,16 @@ public class SmartPairingRetriever {
         return frozenPooledNormal.map(Sample::getCorrectedCmoSampleId).orElse(Constants.NA_LOWER_CASE);
     }
 
-    private boolean isFrozen(Sample s) {
-        String preservation = s.get(Constants.SPECIMEN_PRESERVATION_TYPE);
-        return fromString(preservation) == FROZEN;
+    // get sample's preservation
+    private Preservation getPreservation(Sample sample) {
+        String preservation = sample.get(Constants.SPECIMEN_PRESERVATION_TYPE);
+        DEV_LOGGER.info(String.format("Sample %s has preservation type %s", sample.getIgoId(), preservation));
+        return fromString(preservation);
     }
 
-    private String tryToMathFfpePooledNormal(Collection<Sample> pooledNormals) {
+    private String tryToMatchFfpePooledNormal(Collection<Sample> pooledNormals) {
         Optional<Sample> ffpePooledNormal = pooledNormals.stream()
-                .filter(s -> isFfpe(s))
+                .filter(s -> getPreservation(s) == FFPE)
                 .findFirst();
         if (ffpePooledNormal.isPresent() && StringUtils.isEmpty(ffpePooledNormal.get().getCorrectedCmoSampleId()))
             throw new RuntimeException(String.format("Cmo Sample id is empty for sample: %s", ffpePooledNormal.get()
