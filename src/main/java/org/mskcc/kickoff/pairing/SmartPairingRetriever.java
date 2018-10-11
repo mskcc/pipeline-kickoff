@@ -107,7 +107,7 @@ public class SmartPairingRetriever {
         }
 
         // if tumor preservation is ffpe
-        if (getPreservation(tumor) == FFPE) {
+        if (getSamplePreservation(tumor) == FFPE) {
             DEV_LOGGER.info(String.format("Trying to pair FFPE Pooled normals %s to tumor: %s", pooledNormals, tumor
                     .getIgoId()));
             return tryToMatchFfpePooledNormal(seqTypeCompatiblePooledNormals);
@@ -119,7 +119,7 @@ public class SmartPairingRetriever {
 
     private String tryToMatchFrozenPooledNormal(Collection<Sample> pooledNormals) {
         Optional<Sample> frozenPooledNormal = pooledNormals.stream()
-                .filter(s -> getPreservation(s) == FROZEN)
+                .filter(s -> getSamplePreservation(s) == FROZEN)
                 .findFirst();
 
         if (frozenPooledNormal.isPresent() && StringUtils.isEmpty(frozenPooledNormal.get().getCorrectedCmoSampleId()))
@@ -130,7 +130,7 @@ public class SmartPairingRetriever {
     }
 
     // get sample's preservation
-    private Preservation getPreservation(Sample sample) {
+    private Preservation getSamplePreservation(Sample sample) {
         String preservation = sample.get(Constants.SPECIMEN_PRESERVATION_TYPE);
         DEV_LOGGER.info(String.format("Sample %s has preservation type %s", sample.getIgoId(), preservation));
         return fromString(preservation);
@@ -138,7 +138,7 @@ public class SmartPairingRetriever {
 
     private String tryToMatchFfpePooledNormal(Collection<Sample> pooledNormals) {
         Optional<Sample> ffpePooledNormal = pooledNormals.stream()
-                .filter(s -> getPreservation(s) == FFPE)
+                .filter(s -> getSamplePreservation(s) == FFPE)
                 .findFirst();
         if (ffpePooledNormal.isPresent() && StringUtils.isEmpty(ffpePooledNormal.get().getCorrectedCmoSampleId()))
             throw new RuntimeException(String.format("Cmo Sample id is empty for sample: %s", ffpePooledNormal.get()
