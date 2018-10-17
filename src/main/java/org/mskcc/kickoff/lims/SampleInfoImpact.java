@@ -8,6 +8,7 @@ import com.velox.api.datarecord.NotFound;
 import com.velox.api.user.User;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
+import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
@@ -51,7 +52,6 @@ public class SampleInfoImpact extends SampleInfo {
     private String CAPTURE_CONCENTRATION; // = "#EMPTY";
     private String CAPTURE_NAME; // = "#EMPTY";
     private String SPIKE_IN_GENES; // = "na";
-    private static List<DataRecord> potentialPooledNormalsQcs;
 
     /**
      * This is the method that CreateManifestSheet calls.<br>First it looks at parent class's method, then uses new
@@ -94,7 +94,7 @@ public class SampleInfoImpact extends SampleInfo {
         this.SPECIMEN_COLLECTION_YEAR = optionallySetDefault(this.SPECIMEN_COLLECTION_YEAR, "000");
         this.SEX = "na";
         this.SAMPLE_CLASS = optionallySetDefault(this.SAMPLE_CLASS, "PoolNormal");
-        this.SPECIES = optionallySetDefault(this.SPECIES, "POOLNORMAL");
+        this.SPECIES = optionallySetDefault(this.SPECIES, RequestSpecies.HUMAN.getValue());
         if (this.CMO_SAMPLE_ID.contains("MOUSE")) {
             this.SPECIES = "Mouse";
         }
@@ -992,8 +992,13 @@ public class SampleInfoImpact extends SampleInfo {
 
     private void populatePoolNormals(User apiUser, DataRecordManager dataRecordManager, KickoffRequest kickoffRequest) {
         try {
-            if(potentialPooledNormalsQcs == null)
-                potentialPooledNormalsQcs = getPotentialPooledNormalQCs(apiUser, dataRecordManager);
+            String query = String.format("%s LIKE '%s'", VeloxConstants.OTHER_SAMPLE_ID,
+                    "%POOLEDNORMAL%");
+
+            DEV_LOGGER.info(String.format("Query used to look for pooled normals: %s", query));
+
+            List<DataRecord> potentialPooledNormalsQcs = dataRecordManager.queryDataRecords(VeloxConstants
+                    .SEQ_ANALYSIS_SAMPLE_QC, query, apiUser);
 
             for (DataRecord potentialPooledNormalQc : potentialPooledNormalsQcs) {
                 if (!isSampleRun(potentialPooledNormalQc, apiUser, kickoffRequest))
@@ -1054,16 +1059,6 @@ public class SampleInfoImpact extends SampleInfo {
         }
     }
 
-    private List<DataRecord> getPotentialPooledNormalQCs(User apiUser, DataRecordManager dataRecordManager) throws Exception {
-        String query = String.format("%s LIKE '%s'", VeloxConstants.OTHER_SAMPLE_ID,
-                "%POOLEDNORMAL%", VeloxConstants.SEQUENCER_RUN_FOLDER);
-
-        DEV_LOGGER.info(String.format("Query used to look for pooled normals: %s", query));
-        return dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC,
-                query, apiUser);
-    }
-
-
     private boolean isSampleRun(DataRecord potentialPooledNormalQc, User apiUser, KickoffRequest kickoffRequest)
             throws NotFound, RemoteException {
         String sampleId = potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
@@ -1077,7 +1072,8 @@ public class SampleInfoImpact extends SampleInfo {
 
             return isSampleRun;
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Error while trying to get pooled normal run id: %s. This pooled normal won't be added.", sampleId), e);
+            DEV_LOGGER.warn(String.format("Error while trying to get pooled normal run id: %s. This pooled normal " +
+                    "won't be added.", sampleId), e);
             return false;
         }
     }
