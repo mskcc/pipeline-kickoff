@@ -52,6 +52,7 @@ public class SampleInfoImpact extends SampleInfo {
     private String CAPTURE_CONCENTRATION; // = "#EMPTY";
     private String CAPTURE_NAME; // = "#EMPTY";
     private String SPIKE_IN_GENES; // = "na";
+    private static List<DataRecord> potentialPooledNormalsQcs;
 
     /**
      * This is the method that CreateManifestSheet calls.<br>First it looks at parent class's method, then uses new
@@ -561,8 +562,8 @@ public class SampleInfoImpact extends SampleInfo {
         if (KANP != null && KANP.size() > 0) {
             int largestValidIndex = -1;
             if (!Normalization_DR) {
-                // for each item in KANP, check valid box. 
-                // if not true, add index to list to remove from list. 
+                // for each item in KANP, check valid box.
+                // if not true, add index to list to remove from list.
                 List<Object> validity = new ArrayList<>();
                 try {
                     validity = drm.getValueList(KANP, "Preservation", apiUser);
@@ -675,7 +676,7 @@ public class SampleInfoImpact extends SampleInfo {
         }
         return result;
     }
-    
+
     /*
      Library Concentration
      */
@@ -727,7 +728,7 @@ public class SampleInfoImpact extends SampleInfo {
         // Pull concentration values in libConcParent if this is okay.
         conc_ng = pullConcValues(drm, apiUser, libConcParent);
 
-        // IF conc_ng is less than 0, check to see if the grandparent datarecord has a different 
+        // IF conc_ng is less than 0, check to see if the grandparent datarecord has a different
         // request. ONLY THEN redo pullConcValues, but with grandparent sample
         if (conc_ng <= 0 && grandparents != null && grandparents.size() > 0) {
             DataRecord gp = grandparents.get(0);
@@ -992,13 +993,8 @@ public class SampleInfoImpact extends SampleInfo {
 
     private void populatePoolNormals(User apiUser, DataRecordManager dataRecordManager, KickoffRequest kickoffRequest) {
         try {
-            String query = String.format("%s LIKE '%s'", VeloxConstants.OTHER_SAMPLE_ID,
-                    "%POOLEDNORMAL%", VeloxConstants.SEQUENCER_RUN_FOLDER);
-
-            DEV_LOGGER.info(String.format("Query used to look for pooled normals: %s", query));
-
-            List<DataRecord> potentialPooledNormalsQcs = dataRecordManager.queryDataRecords(VeloxConstants
-                    .SEQ_ANALYSIS_SAMPLE_QC, query, apiUser);
+            if(potentialPooledNormalsQcs == null)
+                potentialPooledNormalsQcs = getPotentialPooledNormalQCs(apiUser, dataRecordManager);
 
             for (DataRecord potentialPooledNormalQc : potentialPooledNormalsQcs) {
                 if (!isSampleRun(potentialPooledNormalQc, apiUser, kickoffRequest))
@@ -1058,6 +1054,15 @@ public class SampleInfoImpact extends SampleInfo {
             DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
         }
     }
+
+    private List<DataRecord> getPotentialPooledNormalQCs(User apiUser, DataRecordManager dataRecordManager) throws Exception {
+        String query = String.format("%s LIKE '%s'", VeloxConstants.OTHER_SAMPLE_ID, "%POOLEDNORMAL%");
+
+        DEV_LOGGER.info(String.format("Query used to look for pooled normals: %s", query));
+        return dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC,
+                query, apiUser);
+    }
+
 
     private boolean isSampleRun(DataRecord potentialPooledNormalQc, User apiUser, KickoffRequest kickoffRequest)
             throws NotFound, RemoteException {
