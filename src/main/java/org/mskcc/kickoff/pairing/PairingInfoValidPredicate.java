@@ -1,23 +1,14 @@
-package org.mskcc.kickoff.validator;
+package org.mskcc.kickoff.pairing;
 
 import org.apache.log4j.Logger;
 import org.mskcc.domain.instrument.InstrumentType;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.manifest.ManifestFile;
-import org.mskcc.kickoff.notify.GenerationError;
-import org.mskcc.kickoff.printer.ErrorCode;
-import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
-import org.mskcc.kickoff.printer.observer.ObserverManager;
-import org.mskcc.kickoff.manifest.ManifestFile;
-import org.mskcc.kickoff.notify.GenerationError;
-import org.mskcc.kickoff.printer.ErrorCode;
-import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
-import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.validator.ErrorRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 

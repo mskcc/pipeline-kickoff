@@ -18,11 +18,11 @@ public class ToHoldTransitioner implements Transitioner {
     private String holdTransition;
 
     @Autowired
-    private HoldIssueStatus holdJiraIssueState;
+    private HoldIssueStatus holdIssueStatus;
 
     @Override
     public void transition(FileUploader fileUploader, String issueId) {
         fileUploader.changeStatus(holdTransition, issueId);
-        fileUploader.setIssueStatus(holdJiraIssueState);
+        fileUploader.setIssueStatus(holdIssueStatus);
     }
 }

@@ -17,12 +17,10 @@ import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.util.*;
-import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
 import static org.mskcc.kickoff.config.Arguments.*;
@@ -32,17 +30,12 @@ public class RequestValidator {
     static final int MAX_NUMBER_OF_SAMPLES = 200;
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
-    private final PairingsValidator pairingsValidator;
     private final List<PriorityAwareLogMessage> poolQCWarnings = new ArrayList<>();
     private final ErrorRepository errorRepository;
-    private final BiPredicate<Sample, Sample> pairingInfoPredicate;
 
     @Autowired
-    public RequestValidator(@Qualifier("pairingInfoValidPredicate") BiPredicate<Sample, Sample> pairingInfoPredicate,
-                            PairingsValidator pairingsValidator, ErrorRepository errorRepository) {
+    public RequestValidator(ErrorRepository errorRepository) {
         this.errorRepository = errorRepository;
-        this.pairingInfoPredicate = pairingInfoPredicate;
-        this.pairingsValidator = pairingsValidator;
     }
 
     public void validate(KickoffRequest kickoffRequest) {
@@ -59,7 +52,6 @@ public class RequestValidator {
         validateOutputDir(kickoffRequest);
         validateHasValidSamples(kickoffRequest);
         validateSamplesExist(kickoffRequest);
-        validatePairings(kickoffRequest);
     }
 
     private void validateHasValidSamples(KickoffRequest kickoffRequest) {
@@ -69,11 +61,6 @@ public class RequestValidator {
             errorRepository.add(new GenerationError(e.getMessage(), ErrorCode.NO_VALID_SAMPLES));
             throw e;
         }
-    }
-
-    private void validatePairings(KickoffRequest kickoffRequest) {
-        if (!kickoffRequest.isPairingError())
-            pairingsValidator.isValid(kickoffRequest.getPairingInfos());
     }
 
     private void validateShiny(KickoffRequest request) {

@@ -4,6 +4,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mskcc.domain.instrument.InstrumentType;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.pairing.PairingInfoValidPredicate;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 
 import static org.hamcrest.MatcherAssert.assertThat;

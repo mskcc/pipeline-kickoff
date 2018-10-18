@@ -36,7 +36,11 @@ import org.mskcc.util.VeloxConstants;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.rmi.RemoteException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.function.BiPredicate;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -49,27 +53,27 @@ public class SampleSetIntegrationTest {
     private static int counter = 0;
     private final String reqId1 = "12345_S";
     private final String reqId2 = "23456_S";
-    private final String sampleId1 = "SampleSetTestSample1";
-    private final Random random = (new Random());
     private String validSampleSetId = "set_SampleSetTest";
     private String designFilePath = "/ifs/projects/CMO/targets/designs";
     private String resultsPathPrefix = "/ifs/solres/seq";
     private ProjectFilesArchiver archiverMock = mock(ProjectFilesArchiver.class);
     private ProjectInfoRetriever projInfoRetriever = new ProjectInfoRetriever();
     private RequestDataPropagator reqDataPropagator = new RequestDataPropagator(designFilePath, resultsPathPrefix,
-            mock(ErrorRepository.class));
+            mock(ErrorRepository.class), (bs1, bs2) -> true);
     private SampleSetProjectInfoConverter projInfoConv = new SampleSetProjectInfoConverter();
-    private SampleSetToRequestConverter sampleSetToReqConv = new SampleSetToRequestConverter(projInfoConv);
+    private SampleSetToRequestConverter sampleSetToReqConv = new SampleSetToRequestConverter(
+            projInfoConv,
+            (s1, s2) -> true,
+            mock(ErrorRepository.class));
     private RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever,
-            reqDataPropagator, sampleSetToReqConv, mock(ReadOnlyExternalSamplesRepository.class));
+            reqDataPropagator, reqDataPropagator, sampleSetToReqConv, mock(ReadOnlyExternalSamplesRepository.class),
+            mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class));
     private VeloxProjectProxy veloxProjectProxy;
     private DataRecord sampleSetRecord;
     private VeloxConnection connection;
     private DataRecordManager dataRecordManager;
     private DataRecordUtilManager dataRecUtilManager;
     private User user;
-    private String request_05667_AB = "05667_AB";
-    private String request_05667_AT = "05667_AT";
 
     @Before
     public void setUp() throws Exception {
@@ -190,6 +194,12 @@ public class SampleSetIntegrationTest {
 
         assertThat(ExceptionUtils.getRootCause(exception.get()).getClass(), IsCompatibleType.typeCompatibleWith(SampleSet
                 .PrimaryRequestNotPartOfSampleSetException.class));
+    }
+
+    @Test
+    public void whenSamplesInPairingHaveIncompatibleBaitSets_shouldSetError() throws Exception {
+        addSampleSetRecord(validSampleSetId);
+
     }
 
     private void addRequest(String reqId) throws Exception {

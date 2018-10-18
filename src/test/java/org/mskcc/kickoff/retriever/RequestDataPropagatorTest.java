@@ -1,6 +1,9 @@
 package org.mskcc.kickoff.retriever;
 
+import com.velox.sapioutils.shared.utilities.Sets;
+import org.assertj.core.api.Assertions;
 import org.junit.Test;
+import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
@@ -13,10 +16,7 @@ import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.validator.InMemoryErrorRepository;
 import org.mskcc.util.Constants;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
@@ -25,7 +25,8 @@ import static org.mockito.Mockito.when;
 
 public class RequestDataPropagatorTest {
     private ErrorRepository errorRepository = new InMemoryErrorRepository();
-    private RequestDataPropagator requestDataPropagator = new RequestDataPropagator("", "", errorRepository);
+    private RequestDataPropagator requestDataPropagator = new RequestDataPropagator("", "", errorRepository,
+            (bs1, bs2) -> true);
 
     @Test
     public void whenAnyRequest_shouldAddAssay() throws Exception {
@@ -90,6 +91,7 @@ public class RequestDataPropagatorTest {
 
     @Test
     public void whenThereAreMultipleSpecies_shouldConcatThem() throws Exception {
+        //given
         KickoffRequest request = new KickoffRequest("id1", new ForcedProcessingType());
         Sample sample1 = new Sample("id1", s -> true);
         sample1.put(Constants.SPECIES, "Human,Zebrafish");
@@ -104,9 +106,13 @@ public class RequestDataPropagatorTest {
         request.putSampleIfAbsent(sample2);
         request.putSampleIfAbsent(sample3);
 
+        //when
         requestDataPropagator.propagateRequestData(Arrays.asList(request));
 
-        assertThat(request.getProjectInfo().get(Constants.ProjectInfo.SPECIES), is("Human,Human+Zebrafish"));
+        //then
+        Set<RequestSpecies> species1 = Sets.asHashSet(RequestSpecies.HUMAN);
+        Set<RequestSpecies> species2 = Sets.asHashSet(RequestSpecies.HUMAN, RequestSpecies.ZEBRAFISH);
+        Assertions.assertThat(request.getSpeciesSet()).containsOnly(species1, species2);
     }
 
     private void assertAssay(RequestType requestType, Optional<String> baitVersion, String expectedAssay) {
