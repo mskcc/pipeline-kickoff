@@ -93,7 +93,7 @@ public class SampleInfoImpact extends SampleInfo {
         this.SPECIMEN_COLLECTION_YEAR = optionallySetDefault(this.SPECIMEN_COLLECTION_YEAR, "000");
         this.SEX = "na";
         this.SAMPLE_CLASS = optionallySetDefault(this.SAMPLE_CLASS, "PoolNormal");
-        this.SPECIES = optionallySetDefault(this.SPECIES, "POOLNORMAL");
+        this.SPECIES = optionallySetDefault(this.SPECIES, "Human");
         if (this.CMO_SAMPLE_ID.contains("MOUSE")) {
             this.SPECIES = "Mouse";
         }

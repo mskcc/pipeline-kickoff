@@ -7,17 +7,21 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffExternalSample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
+import org.mskcc.kickoff.notify.GenerationError;
+import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.ConverterUtils;
 import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.util.CommonUtils;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
 public class SampleSetToRequestConverter {
@@ -25,9 +29,16 @@ public class SampleSetToRequestConverter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     private SampleSetProjectInfoConverter sampleSetProjectInfoConverter;
+    private BiPredicate<String, String> baitSetCompatibilityPredicate;
+    private ErrorRepository errorRepository;
 
-    public SampleSetToRequestConverter(SampleSetProjectInfoConverter sampleSetProjectInfoConverter) {
+    public SampleSetToRequestConverter(
+            SampleSetProjectInfoConverter sampleSetProjectInfoConverter,
+            BiPredicate<String, String> baitSetCompatibilityPredicate,
+            ErrorRepository errorRepository) {
         this.sampleSetProjectInfoConverter = sampleSetProjectInfoConverter;
+        this.baitSetCompatibilityPredicate = baitSetCompatibilityPredicate;
+        this.errorRepository = errorRepository;
     }
 
     public KickoffRequest convert(KickoffSampleSet sampleSet) {
@@ -35,6 +46,7 @@ public class SampleSetToRequestConverter {
 
         if (hasRequests(sampleSet)) {
             setRequests(kickoffRequest, sampleSet);
+            validateBaitVersions(sampleSet);
             setProcessingType(kickoffRequest, sampleSet);
             setSamples(kickoffRequest, sampleSet);
             setPools(kickoffRequest, sampleSet);
@@ -64,6 +76,21 @@ public class SampleSetToRequestConverter {
 
     private void setRequests(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
         kickoffRequest.addRequests(sampleSet.getKickoffRequests());
+    }
+
+    private void validateBaitVersions(KickoffSampleSet sampleSet) {
+        for (int i = 0; i < sampleSet.getKickoffRequests().size() - 1; i++) {
+            for (int j = 1; j < sampleSet.getKickoffRequests().size(); j++) {
+                String baitVersion1 = sampleSet.getKickoffRequests().get(i).getBaitVersion();
+                String baitVersion2 = sampleSet.getKickoffRequests().get(j).getBaitVersion();
+
+                if (!baitSetCompatibilityPredicate.test(baitVersion1, baitVersion2)) {
+                    String message = String.format("Bait set '%s' and '%s' are incompatible", baitVersion1,
+                            baitVersion2);
+                    errorRepository.add(new GenerationError(message, ErrorCode.BAIT_SET_NOT_COMPATIBLE));
+                }
+            }
+        }
     }
 
     private boolean hasRequests(KickoffSampleSet sampleSet) {
@@ -265,8 +292,18 @@ public class SampleSetToRequestConverter {
     }
 
     private void setSpecies(KickoffRequest kickoffRequest, KickoffSampleSet sampleSet) {
-        kickoffRequest.setSpecies(ConverterUtils.getRequiredSameForAllProperty(sampleSet, r -> r.getSpecies(),
-                "species"));
+        Set<Set<RequestSpecies>> speciesSet = sampleSet.getKickoffRequests().stream()
+                .flatMap(s -> s.getSpeciesSet().stream())
+                .collect(Collectors.toSet());
+
+        if (speciesSet.size() == 0)
+            throw new ConverterUtils.RequiredPropertyNotSetException(String.format("Species not set for any of " +
+                    "requests %s", sampleSet.getRequestIdToKickoffRequest().keySet()));
+
+        kickoffRequest.setSpeciesSet(speciesSet);
+
+        kickoffRequest.getProjectInfo().put(Constants.SPECIES, ConverterUtils.getMergedPropertyValue(sampleSet,
+                r -> r.getProjectInfo().get(Constants.SPECIES), ","));
     }
 
     public static class AmbiguousStrandException extends RuntimeException {

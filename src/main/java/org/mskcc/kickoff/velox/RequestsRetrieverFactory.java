@@ -3,11 +3,14 @@ package org.mskcc.kickoff.velox;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
+import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.retriever.*;
 import org.mskcc.kickoff.sampleset.*;
+import org.mskcc.kickoff.validator.ErrorRepository;
 
 import java.util.List;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
 import static org.mskcc.util.VeloxConstants.SAMPLE_SET;
@@ -19,29 +22,38 @@ public class RequestsRetrieverFactory {
     private RequestDataPropagator singleRequestRequestDataPropagator;
     private SampleSetToRequestConverter sampleSetToRequestConverter;
     private ReadOnlyExternalSamplesRepository externalSamplesRepository;
+    private BiPredicate<Sample, Sample> sampleSetPairingValidPredicate;
+    private BiPredicate<Sample, Sample> singleRequestPairingValidPredicate;
+    private ErrorRepository errorRepository;
 
     public RequestsRetrieverFactory(ProjectInfoRetriever projectInfoRetriever,
                                     RequestDataPropagator sampleSetRequestDataPropagator,
                                     RequestDataPropagator singleRequestRequestDataPropagator,
                                     SampleSetToRequestConverter sampleSetToRequestConverter,
-                                    ReadOnlyExternalSamplesRepository readOnlyExternalSamplesRepository) {
+                                    ReadOnlyExternalSamplesRepository readOnlyExternalSamplesRepository,
+                                    BiPredicate<Sample, Sample> sampleSetPairingValidPredicate,
+                                    BiPredicate<Sample, Sample> singleRequestPairingValidPredicate,
+                                    ErrorRepository errorRepository) {
         this.projectInfoRetriever = projectInfoRetriever;
         this.sampleSetRequestDataPropagator = sampleSetRequestDataPropagator;
         this.singleRequestRequestDataPropagator = singleRequestRequestDataPropagator;
         this.sampleSetToRequestConverter = sampleSetToRequestConverter;
         this.sampleSetProjectPredicate = new SampleSetProjectPredicate();
         this.externalSamplesRepository = readOnlyExternalSamplesRepository;
+        this.sampleSetPairingValidPredicate = sampleSetPairingValidPredicate;
+        this.singleRequestPairingValidPredicate = singleRequestPairingValidPredicate;
+        this.errorRepository = errorRepository;
     }
 
     public RequestsRetriever getRequestsRetriever(User user, DataRecordManager dataRecordManager, String projectId)
             throws RequestNotFoundException {
-        VeloxPairingsRetriever veloxPairingsRetriever = new VeloxPairingsRetriever(user);
+        VeloxPairingsRetriever veloxPairingsRetriever = new VeloxPairingsRetriever(user, errorRepository);
 
         if (sampleSetProjectPredicate.test(projectId))
             return getSampleSetRequestsRetriever(user, dataRecordManager, projectId, veloxPairingsRetriever);
 
         return new UniRequestsRetriever(user, dataRecordManager, projectInfoRetriever, singleRequestRequestDataPropagator,
-                veloxPairingsRetriever);
+                veloxPairingsRetriever, singleRequestPairingValidPredicate);
     }
 
     private RequestsRetriever getSampleSetRequestsRetriever(User user, DataRecordManager dataRecordManager, String
@@ -57,7 +69,7 @@ public class RequestsRetrieverFactory {
         SampleSetRetriever sampleSetRetriever = new SampleSetRetriever(veloxSampleSetProxy, samplesToRequestsConverter);
 
         return new SampleSetRequestRetriever(sampleSetRequestDataPropagator, sampleSetToRequestConverter, sampleSetRetriever,
-                sampleSetRecord, veloxPairingsRetriever);
+                sampleSetRecord, veloxPairingsRetriever, sampleSetPairingValidPredicate);
     }
 
     private DataRecord getSampleSetRecord(String projectId, DataRecordManager dataRecordManager, User user) throws

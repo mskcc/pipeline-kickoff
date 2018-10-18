@@ -2,9 +2,9 @@ package org.mskcc.kickoff.manifest;
 
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.notify.GenerationError;
+import org.mskcc.kickoff.pairing.PairingInfoValidPredicate;
 import org.mskcc.kickoff.printer.*;
 import org.mskcc.kickoff.printer.observer.FileGenerationStatusManifestFileObserver;
-import org.mskcc.kickoff.validator.PairingInfoValidPredicate;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.annotation.PostConstruct;

@@ -53,7 +53,7 @@ public class RequestDataPropagator implements DataPropagator {
                     .getValidUniqueCmoIdSamples(s -> !s.isPooledNormal()).size()));
 
             assignProjectSpecificInfo(request);
-            projectInfo.put(Constants.ProjectInfo.SPECIES, String.valueOf(getSpeciesConcat(request)));
+            setSpecies(request);
 
             request.setReadmeInfo(String.format("%s %s", request.getReadMe(), request.getExtraReadMeInfo()));
             addManualOverrides(request);
@@ -68,14 +68,32 @@ public class RequestDataPropagator implements DataPropagator {
         }
     }
 
-    private String getSpeciesConcat(KickoffRequest request) {
-        Set<String> uniqueSpecies = request.getAllValidSamples().values().stream()
-                .map(s -> s.get(Constants.SPECIES))
-                .filter(Objects::nonNull)
-                .map(s -> s.replaceAll(",", "+"))
+    private void setSpecies(KickoffRequest request) {
+        Set<Set<RequestSpecies>> species = getSpecies(request);
+        request.setSpeciesSet(species);
+        request.getProjectInfo().put(Constants.ProjectInfo.SPECIES, getSpeciesConcat(species));
+    }
+
+    private String getSpeciesConcat(Set<Set<RequestSpecies>> species) {
+        Set<String> uniqueSpecies = species.stream()
+                .map(s -> s.stream()
+                        .map(s1 -> s1.getValue())
+                        .collect(Collectors.joining("+")))
                 .collect(Collectors.toSet());
 
         return String.join(",", uniqueSpecies);
+    }
+
+    private Set<Set<RequestSpecies>> getSpecies(KickoffRequest request) {
+        return request.getAllValidSamples().values().stream()
+                .map(s -> s.get(Constants.SPECIES))
+                .filter(s -> !StringUtils.isEmpty(s))
+                .map(s -> Arrays.stream(s.split(","))
+                        .map(s1 -> String.valueOf(s1))
+                        .map(s1 -> RequestSpecies.getSpeciesByValue(s1))
+                        .collect(Collectors.toSet()))
+                .distinct()
+                .collect(Collectors.toSet());
     }
 
     @Override
@@ -253,11 +271,12 @@ public class RequestDataPropagator implements DataPropagator {
                     }
                     if (!isBaitSetCompatible(request, baitVersion)) {
                         String message = String.format("Request Bait version is not consistent: Current sample Bait " +
-                                "version: %s Bait version for request so far: %s", baitVersion, request.getBaitVersion
-                                ());
+                                "version: %s Bait version for request so far: %s", baitVersion, request
+                                .getBaitVersion());
                         Utils.setExitLater(true);
                         PM_LOGGER.log(Level.ERROR, message);
                         DEV_LOGGER.log(Level.ERROR, message);
+                        errorRepository.add(new GenerationError(message, ErrorCode.BAIT_SET_NOT_COMPATIBLE));
                     } else if (Objects.equals(request.getBaitVersion(), Constants.EMPTY)) {
                         request.setBaitVersion(baitVersion);
                     }

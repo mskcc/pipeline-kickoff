@@ -2,6 +2,7 @@ package org.mskcc.kickoff.domain;
 
 import org.apache.log4j.Logger;
 import org.mskcc.domain.PairingInfo;
+import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.RequestType;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
@@ -16,7 +17,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
-
 
 public class KickoffRequest extends org.mskcc.domain.Request {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
@@ -35,10 +35,19 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     private Set<String> pairingSampleIds = new HashSet<>();
     private Map<String, KickoffExternalSample> externalSamples = new HashMap<>();
     private LocalDateTime creationDate;
+    private Set<Set<RequestSpecies>> speciesSet = new HashSet<>();
 
     public KickoffRequest(String id, ProcessingType processingType) {
         super(id);
         this.processingType = processingType;
+    }
+
+    public Set<Set<RequestSpecies>> getSpeciesSet() {
+        return speciesSet;
+    }
+
+    public void setSpeciesSet(Set<Set<RequestSpecies>> speciesSet) {
+        this.speciesSet = speciesSet;
     }
 
     public RequestTypeStrategy getRequestTypeStrategy() {

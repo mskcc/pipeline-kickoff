@@ -42,6 +42,18 @@ public class VeloxProjectProxy implements RequestProxy {
         this.requestsRetrieverFactory = requestsRetrieverFactory;
     }
 
+    public static void resolvePairings(KickoffRequest kickoffRequest) {
+        if (!kickoffRequest.isPairingError()) {
+            for (PairingInfo pairingInfo : kickoffRequest.getPairingInfos()) {
+                Sample normalSample = pairingInfo.getNormal();
+                Sample tumorSample = pairingInfo.getTumor();
+
+                tumorSample.setPairing(normalSample);
+                normalSample.setPairing(tumorSample);
+            }
+        }
+    }
+
     @Override
     public KickoffRequest getRequest(String projectId) {
         VeloxConnection connection = tryToConnectToLims();
@@ -107,7 +119,6 @@ public class VeloxProjectProxy implements RequestProxy {
             requestsRetriever = requestsRetrieverFactory.getRequestsRetriever(user, dataRecordManager, projectId);
             KickoffRequest kickoffRequest = requestsRetriever.retrieve(projectId, new NormalProcessingType
                     (projectFilesArchiver));
-            resolvePairings(kickoffRequest);
 
             return kickoffRequest;
         } catch (RequestNotFoundException e) {
@@ -148,18 +159,6 @@ public class VeloxProjectProxy implements RequestProxy {
         }
 
         InstrumentType.mapNameToType("DMPSample", InstrumentType.DMP_SAMPLE);
-    }
-
-    private void resolvePairings(KickoffRequest kickoffRequest) {
-        if (!kickoffRequest.isPairingError()) {
-            for (PairingInfo pairingInfo : kickoffRequest.getPairingInfos()) {
-                Sample normalSample = pairingInfo.getNormal();
-                Sample tumorSample = pairingInfo.getTumor();
-
-                tumorSample.setPairing(normalSample);
-                normalSample.setPairing(tumorSample);
-            }
-        }
     }
 
     public class MySafeShutdown extends Thread {

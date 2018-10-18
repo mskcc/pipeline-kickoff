@@ -12,6 +12,8 @@ import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.sampleset.SampleSetRetriever;
 import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
 
+import java.util.function.BiPredicate;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.mock;
@@ -28,7 +30,8 @@ public class SampleSetRequestRetrieverTest {
     @Before
     public void setUp() throws Exception {
         sampleSetRequestRetriever = new SampleSetRequestRetriever(requetsDataPropagator, sampleSetToReqConv,
-                sampleSetRetriever, mock(DataRecord.class), mock(VeloxPairingsRetriever.class));
+                sampleSetRetriever, mock(DataRecord.class), mock(VeloxPairingsRetriever.class), mock(BiPredicate
+                .class));
     }
 
     @Test

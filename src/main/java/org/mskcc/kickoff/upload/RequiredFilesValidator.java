@@ -2,12 +2,14 @@ package org.mskcc.kickoff.upload;
 
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.validator.ErrorRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class RequiredFilesValidator implements FilesValidator {
     private ErrorRepository errorRepository;
 
+    @Autowired
     public RequiredFilesValidator(ErrorRepository errorRepository) {
         this.errorRepository = errorRepository;
     }

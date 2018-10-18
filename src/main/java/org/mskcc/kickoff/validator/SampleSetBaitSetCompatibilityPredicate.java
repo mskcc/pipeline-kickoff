@@ -1,36 +1,52 @@
 package org.mskcc.kickoff.validator;
 
-import org.mskcc.domain.Recipe;
+import org.apache.log4j.Logger;
+import org.mskcc.kickoff.util.Constants;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BiPredicate;
 
 public class SampleSetBaitSetCompatibilityPredicate implements BiPredicate<String, String> {
-    private static Set<Pair<String>> baitSetCompatibility = new HashSet<>();
+    private static final Logger LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
-    static {
-        baitSetCompatibility.add(new Pair<>(Recipe.IMPACT_410.getValue(), Recipe.IMPACT_468.getValue()));
-        baitSetCompatibility.add(new Pair<>(Recipe.IMPACT_410.getValue(), Recipe.IMPACT_341.getValue()));
-        baitSetCompatibility.add(new Pair<>(Recipe.IMPACT_468.getValue(), Recipe.IMPACT_341.getValue()));
+    private List<Pair<String>> baitSetCompatibilityPairs = new ArrayList<>();
+
+    public SampleSetBaitSetCompatibilityPredicate(List<Pair<String>> baitSetCompatibilityPairs) {
+        this.baitSetCompatibilityPairs = baitSetCompatibilityPairs;
     }
 
     @Override
     public boolean test(String baitSet1, String baitSet2) {
-        return baitSet1.equals(baitSet2) || isCompatible(baitSet1, baitSet2);
+        boolean isCompatible = baitSet1.equals(baitSet2) || isCompatible(baitSet1, baitSet2);
+
+        if (!isCompatible)
+            LOGGER.warn(String.format("Bait set '%s' and '%s' are incompatible", baitSet1, baitSet2));
+        else
+            LOGGER.info(String.format("Bait set '%s' and '%s' are compatible", baitSet1, baitSet2));
+
+        return isCompatible;
     }
 
     private boolean isCompatible(String baitSet1, String baitSet2) {
-        return baitSetCompatibility.contains(new Pair<>(baitSet1, baitSet2));
+        return baitSetCompatibilityPairs.contains(new Pair<>(baitSet1, baitSet2));
     }
 
-    static class Pair<T> {
+    public static class Pair<T> {
         private T element1;
         private T element2;
 
         public Pair(T element1, T element2) {
             this.element1 = element1;
             this.element2 = element2;
+        }
+
+        @Override
+        public String toString() {
+            return "Pair{" +
+                    "element1=" + element1 +
+                    ", element2=" + element2 +
+                    '}';
         }
 
         @Override

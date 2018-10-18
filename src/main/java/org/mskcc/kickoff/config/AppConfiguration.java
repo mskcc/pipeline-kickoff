@@ -7,6 +7,7 @@ import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.helpers.Loader;
 import org.mskcc.domain.Pairedness;
 import org.mskcc.domain.PassedRunPredicate;
+import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.generator.DefaultPathAwareOutputDirRetriever;
 import org.mskcc.kickoff.generator.OutputDirRetriever;
@@ -16,6 +17,8 @@ import org.mskcc.kickoff.notify.DoubleSlashNewLineStrategy;
 import org.mskcc.kickoff.notify.FilesErrorsNotificationFormatter;
 import org.mskcc.kickoff.notify.NotificationFormatter;
 import org.mskcc.kickoff.notify.SingleSlashNewLineStrategy;
+import org.mskcc.kickoff.pairing.PairingInfoValidPredicate;
+import org.mskcc.kickoff.pairing.SampleSetPairingInfoValidPredicate;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.resolver.PairednessResolver;
@@ -51,6 +54,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -60,105 +64,76 @@ import java.util.function.Predicate;
 @Configuration
 @Import({ProdConfiguration.class, DevConfiguration.class, TestConfiguration.class})
 public class AppConfiguration {
+    private static final Logger LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+    private static final String PAIR_DELIMITER = ":";
     @Value("${manifestArchivePath}")
     private String manifestArchivePath;
-
     @Value("${designFilePath}")
     private String designFilePath;
-
     @Value("${resultsPathPrefix}")
     private String resultsPathPrefix;
-
     @Value("${manifestOutputFilePath}")
     private String manifestOutputFilePath;
-
     @Value("${file.generation.failure.notification.from}")
     private String from;
-
     @Value("${file.generation.failure.notification.host}")
     private String host;
-
     @Value("#{'${file.generation.failure.notification.recipients}'.split(',')}")
     private List<String> recipients;
-
     @Value("${jira.url}")
     private String jiraUrl;
-
     @Value("${jira.username}")
     private String jiraUsername;
-
     @Value("${jira.password}")
     private String jiraPassword;
-
     @Value("${jira.roslin.project.name}")
     private String jiraRoslinProjectName;
-
     @Value("${jira.roslin.generated.transition}")
     private String generatedTransition;
-
     @Value("${jira.roslin.regenerated.transition}")
     private String regeneratedTransition;
-
     @Value("${jira.roslin.fastqs.available.status}")
     private String fastqsAvailableStatus;
-
     @Value("${jira.roslin.input.regeneration.status}")
     private String regenerateStatus;
-
     @Value("${jira.roslin.input.generated.status}")
     private String generatedStatus;
-
     @Value("${lims.host}")
     private String limsHost;
-
     @Value("${lims.port}")
     private int limsPort;
-
     @Value("${lims.username}")
     private String limsUsername;
-
     @Value("${lims.password}")
     private String limsPassword;
-
     @Value("${lims.guid}")
     private String limsGuid;
-
     @Value("${jira.pm.group.name}")
     private String pmGroupName;
-
     @Value("${jira.igo.formatted.name.property}")
     private String igoFormattedNameProperty;
-
     @Value("${external.sample.rest.url}")
     private String externalRestUrl;
-
     @Value("${external.sample.rest.samples.endpoint}")
     private String externalRestEndpoint;
-
     @Value("${external.sample.rest.username}")
     private String externalSampleRestUsername;
-
     @Value("${external.sample.rest.password}")
     private String externalSampleRestPassword;
-
+    @Value("#{'${pairing.assay.compatibility}'.split(',')}")
+    private List<String> baitSetCompatibility;
     @Autowired
     private ClientHttpRequestInterceptor loggingClientHttpRequestInterceptor;
-
     @Autowired
-    private HoldIssueStatus holdJiraIssueState;
-
+    private HoldIssueStatus holdIssueStatus;
     @Autowired
     private ErrorRepository errorRepository;
-
     @Autowired
     private ObserverManager observerManager;
-
     @Autowired
     private SingleSlashNewLineStrategy singleSlashNewLineStrategy;
-
     @Autowired
     private DoubleSlashNewLineStrategy doubleSlashNewLineStrategy;
-
     private String regeneratedStatus = "Files Regenerated";
 
     public static void configureLogger(String loggerPropertiesName) {
@@ -259,7 +234,10 @@ public class AppConfiguration {
 
     @Bean
     public SampleSetToRequestConverter sampleSetToRequestConverter() {
-        return new SampleSetToRequestConverter(projectInfoConverter());
+        return new SampleSetToRequestConverter(
+                projectInfoConverter(),
+                sampleSetBaitSetCompatibilityPredicate(),
+                errorRepository);
     }
 
     @Bean
@@ -271,9 +249,13 @@ public class AppConfiguration {
     public RequestsRetrieverFactory requestsRetrieverFactory() {
         return new RequestsRetrieverFactory(
                 projectInfoRetriever(),
+                sampleSetRequestDataPropagator(),
                 singleRequestRequestDataPropagator(),
                 sampleSetToRequestConverter(),
-                readOnlyExternalSamplesRepository());
+                readOnlyExternalSamplesRepository(),
+                sampleSetPairingInfoValidPredicate(),
+                singleRequestPairingInfoValidPredicate(),
+                errorRepository);
     }
 
     @Bean
@@ -291,7 +273,30 @@ public class AppConfiguration {
 
     @Bean
     public BiPredicate<String, String> sampleSetBaitSetCompatibilityPredicate() {
-        return new SampleSetBaitSetCompatibilityPredicate();
+        return new SampleSetBaitSetCompatibilityPredicate(prepareCompatibilityConfig(baitSetCompatibility));
+    }
+
+    public List<SampleSetBaitSetCompatibilityPredicate.Pair<String>> prepareCompatibilityConfig(List<String>
+                                                                                                        baitSetCompatibility) {
+        List<SampleSetBaitSetCompatibilityPredicate.Pair<String>> pairs = new ArrayList<>();
+
+        for (String pair : baitSetCompatibility) {
+            String[] baitSets = pair.split(PAIR_DELIMITER);
+
+            if (baitSets.length != 2) {
+                LOGGER.warn(String.format("Bait set compatibility '%s' in properties file is in incorrect format. " +
+                        "Expected format is BAITSET1:BAITSET2", pair));
+                continue;
+            }
+
+            SampleSetBaitSetCompatibilityPredicate.Pair<String> compatibilityPair = new
+                    SampleSetBaitSetCompatibilityPredicate.Pair<>(baitSets[0], baitSets[1]);
+            LOGGER.info(String.format("Adding bait set compatibility pair: %s", compatibilityPair));
+
+            pairs.add(compatibilityPair);
+        }
+
+        return pairs;
     }
 
     @Bean
@@ -320,7 +325,7 @@ public class AppConfiguration {
     @Bean
     public StatusFactory jiraStateFactory() {
         return new StatusFactory(generateFilesState(), regenerateFilesState(), filesGeneratedState(),
-                holdJiraIssueState);
+                holdIssueStatus);
     }
 
     @Bean
@@ -404,5 +409,15 @@ public class AppConfiguration {
     @Qualifier("doubleSlash")
     public NotificationFormatter doubleSlashNotificationFormatter() {
         return new FilesErrorsNotificationFormatter(errorRepository, doubleSlashNewLineStrategy);
+    }
+
+    @Bean
+    public PairingInfoValidPredicate singleRequestPairingInfoValidPredicate() {
+        return new PairingInfoValidPredicate(errorRepository, observerManager);
+    }
+
+    @Bean
+    public BiPredicate<Sample, Sample> sampleSetPairingInfoValidPredicate() {
+        return new SampleSetPairingInfoValidPredicate(singleRequestPairingInfoValidPredicate(), sampleSetBaitSetCompatibilityPredicate());
     }
 }

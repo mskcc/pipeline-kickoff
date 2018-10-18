@@ -3,6 +3,7 @@ package org.mskcc.kickoff.velox;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
+import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.process.ProcessingType;
@@ -13,6 +14,7 @@ import org.mskcc.kickoff.retriever.SingleRequestRetriever;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiPredicate;
 
 import static org.mskcc.util.VeloxConstants.REQUEST;
 
@@ -22,17 +24,20 @@ public class UniRequestsRetriever implements RequestsRetriever {
     private final SingleRequestRetriever singleRequestRetriever;
     private final RequestDataPropagator requestDataPropagator;
     private VeloxPairingsRetriever veloxPairingsRetriever;
+    private BiPredicate<Sample, Sample> pairingValidPredicate;
 
     public UniRequestsRetriever(User user,
                                 DataRecordManager dataRecordManager,
                                 ProjectInfoRetriever projectInfoRetriever,
                                 RequestDataPropagator requestDataPropagator,
-                                VeloxPairingsRetriever veloxPairingsRetriever) {
+                                VeloxPairingsRetriever veloxPairingsRetriever,
+                                BiPredicate<Sample, Sample> pairingValidPredicate) {
         this.user = user;
         this.dataRecordManager = dataRecordManager;
         this.requestDataPropagator = requestDataPropagator;
         this.veloxPairingsRetriever = veloxPairingsRetriever;
         this.singleRequestRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager, projectInfoRetriever);
+        this.pairingValidPredicate = pairingValidPredicate;
     }
 
     @Override
@@ -47,7 +52,9 @@ public class UniRequestsRetriever implements RequestsRetriever {
         requestDataPropagator.propagateRequestData(Arrays.asList(kickoffRequest));
         kickoffRequest.setRunNumbers(String.valueOf(kickoffRequest.getRunNumber()));
         kickoffRequest.addRequests(Arrays.asList(kickoffRequest));
-        kickoffRequest.setPairingInfos(veloxPairingsRetriever.retrieve(requestsDataRecords.get(0), kickoffRequest));
+        kickoffRequest.setPairingInfos(veloxPairingsRetriever.retrieve(requestsDataRecords.get(0), kickoffRequest,
+                pairingValidPredicate));
+        VeloxProjectProxy.resolvePairings(kickoffRequest);
 
         return kickoffRequest;
     }

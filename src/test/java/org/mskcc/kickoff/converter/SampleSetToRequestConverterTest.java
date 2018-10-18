@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.converter;
 
+import com.google.common.collect.Sets;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
@@ -8,25 +9,29 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
+import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.NormalProcessingType;
 import org.mskcc.kickoff.sampleset.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
 import org.mskcc.kickoff.util.ConverterUtils;
+import org.mskcc.kickoff.validator.ErrorRepository;
+import org.mskcc.kickoff.validator.InMemoryErrorRepository;
 
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.typeCompatibleWith;
 import static org.hamcrest.core.Is.is;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.mskcc.util.TestUtils.assertThrown;
 
-public class SampleSetToKickoffRequestConverterTest {
+public class SampleSetToRequestConverterTest {
     private static final String PATIENT_ID_1 = "patient1";
     private static final String PATIENT_ID_2 = "patient2";
     private static final String PATIENT_ID_3 = "patient3";
@@ -39,9 +44,12 @@ public class SampleSetToKickoffRequestConverterTest {
     private final NormalProcessingType normalProcessingType = new NormalProcessingType(projectFilesArchiver);
     private final SampleSetProjectInfoConverter sampleSetProjectInfoConverterMock = mock
             (SampleSetProjectInfoConverter.class);
+    private ErrorRepository errorRepository = new InMemoryErrorRepository();
+    private BiPredicate<String, String> baitSetPredicate = mock(BiPredicate.class);
     private SampleSetToRequestConverter sampleSetToRequestConverter = new SampleSetToRequestConverter
-            (sampleSetProjectInfoConverterMock);
+            (sampleSetProjectInfoConverterMock, baitSetPredicate, errorRepository);
     private KickoffSampleSet sampleSet;
+    private RequestSpecies DEFAULT_SPECIES;
 
     @Before
     public void setUp() throws Exception {
@@ -453,36 +461,58 @@ public class SampleSetToKickoffRequestConverterTest {
 
     @Test
     public void whenAllRequestsHaveSameSpecies_shouldProjectHaveThisSpeciesSet() {
+        //given
         KickoffRequest kickoffRequest = getNormalImpactPiRequest();
         KickoffRequest kickoffRequest1 = getNormalImpactPiRequest();
 
-        kickoffRequest.setSpecies(RequestSpecies.BACTERIA);
-        kickoffRequest1.setSpecies(RequestSpecies.BACTERIA);
-
         sampleSet.setKickoffRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
+
+        //when
         KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
-        assertThat(request.getSpecies(), is(RequestSpecies.BACTERIA));
+
+        //then
+        assertThat(request.getSpeciesSet(), containsInAnyOrder(Sets.newHashSet(DEFAULT_SPECIES)));
     }
 
     @Test
-    public void whenRequestsHaveDifferentSpecies_shouldThrowAnException() {
+    public void whenRequestsHaveDifferentSpecies_shouldNotThrowAnException() {
+        //given
         KickoffRequest kickoffRequest = getNormalImpactPiRequest();
         KickoffRequest kickoffRequest1 = getNormalImpactPiRequest();
 
-        kickoffRequest.setSpecies(RequestSpecies.BACTERIA);
-        kickoffRequest1.setSpecies(RequestSpecies.C_ELEGANS);
+        kickoffRequest.setSpeciesSet(getSpeciesSet(RequestSpecies.BACTERIA));
+        kickoffRequest1.setSpeciesSet(getSpeciesSet(RequestSpecies.C_ELEGANS));
 
         sampleSet.setKickoffRequests(Arrays.asList(kickoffRequest, kickoffRequest1));
+
+        //when
         Optional<Exception> exception = assertThrown(() -> sampleSetToRequestConverter.convert(sampleSet));
-        assertThat(exception.isPresent(), is(true));
-        assertThat(exception.get().getClass(), typeCompatibleWith(SampleSetToRequestConverter
-                .AmbiguousPropertyException.class));
+
+        //when
+        assertThat(exception.isPresent(), is(false));
+    }
+
+    private Set<Set<RequestSpecies>> getSpeciesSet(RequestSpecies requestSpecies) {
+        Set<Set<RequestSpecies>> species = new HashSet<>();
+        species.add(Sets.newHashSet(requestSpecies));
+
+        return species;
     }
 
     @Test
     public void whenRequestsHaveNoSpecies_shouldThrowAnException() {
-        sampleSet.setKickoffRequests(Arrays.asList(getNormalImpactPiRequest(), getNormalImpactPiRequest()));
+        //given
+        KickoffRequest request1 = getNormalImpactPiRequest();
+        request1.setSpeciesSet(Collections.emptySet());
+        KickoffRequest request2 = getNormalImpactPiRequest();
+        request2.setSpeciesSet(Collections.emptySet());
+
+        sampleSet.setKickoffRequests(Arrays.asList(request1, request2));
+
+        //when
         Optional<Exception> exception = assertThrown(() -> sampleSetToRequestConverter.convert(sampleSet));
+
+        //then
         assertThat(exception.isPresent(), is(true));
         assertThat(exception.get().getClass(), typeCompatibleWith(ConverterUtils.RequiredPropertyNotSetException
                 .class));
@@ -880,8 +910,8 @@ public class SampleSetToKickoffRequestConverterTest {
         String extraRead = "I'm extra";
         kickoffRequest.setExtraReadMeInfo(extraRead);
 
-        RequestSpecies species = RequestSpecies.BACTERIA;
-        kickoffRequest.setSpecies(species);
+        Set<Set<RequestSpecies>> species = getSpeciesSet(RequestSpecies.BACTERIA);
+        kickoffRequest.setSpeciesSet(species);
 
         String runId = "runId3";
         kickoffRequest.addRunID(runId);
@@ -936,7 +966,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
         assertThat(request.getExtraReadMeInfo(), is(kickoffRequest.getId() + ": " + extraRead));
 
-        assertThat(request.getSpecies(), is(species));
+        assertThat(request.getSpeciesSet(), is(species));
 
         assertThat(request.getRunIds().contains(runId), is(true));
 
@@ -949,6 +979,51 @@ public class SampleSetToKickoffRequestConverterTest {
 
         assertThat(request.getPatients().containsKey(patientId1), is(true));
         assertThat(request.getPatients().containsKey(patientId2), is(true));
+    }
+
+    @Test
+    public void whenRequestsHaveIncompatibleBaitSets_shouldAddError() throws Exception {
+        //given
+
+        KickoffRequest kickoffRequest1 = getNormalImpactRequest();
+        kickoffRequest1.setBaitVersion(Recipe.IMPACT_341.getValue());
+
+        KickoffRequest kickoffRequest2 = getNormalImpactRequest();
+        kickoffRequest2.setBaitVersion(Recipe.HEME_PACT_V_3.getValue());
+
+        List<KickoffRequest> requests = Arrays.asList(kickoffRequest1, kickoffRequest2);
+
+        sampleSet.setKickoffRequests(requests);
+        when(baitSetPredicate.test(any(), any())).thenReturn(false);
+
+        //when
+        KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
+
+        //then
+        assertThat(errorRepository.getErrors().stream()
+                .anyMatch(e -> e.getErrorCode() == ErrorCode.BAIT_SET_NOT_COMPATIBLE), is(true));
+    }
+
+    @Test
+    public void whenRequestsHaveCompatibleBaitSets_shouldAddError() throws Exception {
+        //given
+        KickoffRequest kickoffRequest1 = getNormalImpactRequest();
+        kickoffRequest1.setBaitVersion(Recipe.IMPACT_341.getValue());
+
+        KickoffRequest kickoffRequest2 = getNormalImpactRequest();
+        kickoffRequest2.setBaitVersion(Recipe.HEME_PACT_V_3.getValue());
+
+        List<KickoffRequest> requests = Arrays.asList(kickoffRequest1, kickoffRequest2);
+
+        sampleSet.setKickoffRequests(requests);
+        when(baitSetPredicate.test(any(), any())).thenReturn(true);
+
+        //when
+        KickoffRequest request = sampleSetToRequestConverter.convert(sampleSet);
+
+        //then
+        assertThat(errorRepository.getErrors().stream()
+                .noneMatch(e -> e.getErrorCode() == ErrorCode.BAIT_SET_NOT_COMPATIBLE), is(true));
     }
 
     private KickoffRequest getBicAutorunnableRequest() {
@@ -1007,6 +1082,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
     private KickoffRequest getNormalImpactPiRequest() {
         KickoffRequest kickoffRequest = getNormalImpactRequest();
+
         kickoffRequest.setPi("King Julian");
 
         return kickoffRequest;
@@ -1020,7 +1096,7 @@ public class SampleSetToKickoffRequestConverterTest {
 
     private KickoffRequest getNormalImpactHumanRequest() {
         KickoffRequest kickoffRequest = getNormalImpactRequest();
-        kickoffRequest.setSpecies(RequestSpecies.HUMAN);
+        kickoffRequest.setSpeciesSet(getSpeciesSet(RequestSpecies.HUMAN));
         return kickoffRequest;
     }
 
@@ -1031,7 +1107,9 @@ public class SampleSetToKickoffRequestConverterTest {
     }
 
     private KickoffRequest getEmptyRequest() {
-        return new KickoffRequest(String.format("request_%d", id++), normalProcessingType);
+        KickoffRequest kickoffRequest = new KickoffRequest(String.format("request_%d", id++), normalProcessingType);
+        kickoffRequest.setSpeciesSet(getSpeciesSet(DEFAULT_SPECIES));
+        return kickoffRequest;
     }
 
     private KickoffRequest addPassedSample(KickoffRequest kickoffRequest) {

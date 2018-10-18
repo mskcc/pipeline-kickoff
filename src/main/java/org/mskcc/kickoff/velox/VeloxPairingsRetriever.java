@@ -7,22 +7,30 @@ import org.apache.log4j.Logger;
 import org.mskcc.domain.PairingInfo;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.notify.GenerationError;
+import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.util.VeloxConstants;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiPredicate;
 
 class VeloxPairingsRetriever {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
-    private final User user;
 
-    public VeloxPairingsRetriever(User user) {
+    private final User user;
+    private ErrorRepository errorRepository;
+
+    public VeloxPairingsRetriever(User user, ErrorRepository errorRepository) {
         this.user = user;
+        this.errorRepository = errorRepository;
     }
 
-    public List<PairingInfo> retrieve(DataRecord dataRecord, KickoffRequest kickoffRequest) {
+    public List<PairingInfo> retrieve(DataRecord dataRecord, KickoffRequest kickoffRequest, BiPredicate<Sample,
+            Sample> pairingValidPredicate) {
         try {
             List<DataRecord> pairingRecords = Arrays.asList(dataRecord.getChildrenOfType(VeloxConstants.PAIRING_INFO,
                     user));
@@ -45,7 +53,15 @@ class VeloxPairingsRetriever {
                     Sample tumor = getSample(kickoffRequest, tumorId);
                     Sample normal = getSample(kickoffRequest, normalId);
 
-                    pairings.add(new PairingInfo(tumor, normal));
+                    if (pairingValidPredicate.test(tumor, normal))
+                        pairings.add(new PairingInfo(tumor, normal));
+                    else {
+                        String error = String.format("Pairing between sample %s and sample %s is not valid", tumor
+                                        .getIgoId(),
+                                normal.getIgoId());
+                        errorRepository.add(new GenerationError(error, ErrorCode.PAIRING_NOT_VALID));
+                    }
+
                 } catch (Exception e) {
                     throw new RuntimeException(String.format("Unable to retrieve pairing with Record id: %s ",
                             pairingRecord.getRecordId()));
