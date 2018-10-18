@@ -98,11 +98,18 @@ public class MappingFilePrinter extends FilePrinter {
     private void printIgoSamples(KickoffRequest request, Map<String, String> sampleRenamesAndSwaps, HashSet<String>
             runsWithMultipleFolders, Set<Pairedness> pairednesses, StringBuilder mappingFileContents) throws
             IOException, InterruptedException {
+        
+        Set<String> igoIDs = new HashSet<>();
+        
         for (KickoffRequest singleRequest : request.getRequests()) {
             for (SampleRun sampleRun : getSampleRuns(singleRequest)) {
                 Sample sample = sampleRun.getSample();
                 String sampleId = sample.getCmoSampleId();
                 final String runId = sampleRun.getRunId();
+                
+                String igoID = sample.getIgoId();
+                if (igoIDs.contains(igoID)) continue;
+                igoIDs.add(igoID);
 
                 File dir = new File(String.format("%s/hiseq/FASTQ/", fastq_path));
 
