@@ -57,8 +57,7 @@ class VeloxPairingsRetriever {
                         pairings.add(new PairingInfo(tumor, normal));
                     else {
                         String error = String.format("Pairing between sample %s and sample %s is not valid", tumor
-                                        .getIgoId(),
-                                normal.getIgoId());
+                                .getIgoId(), normal.getIgoId());
                         errorRepository.add(new GenerationError(error, ErrorCode.PAIRING_NOT_VALID));
                     }
 

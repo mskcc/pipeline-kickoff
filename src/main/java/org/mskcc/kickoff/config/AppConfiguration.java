@@ -413,7 +413,7 @@ public class AppConfiguration {
 
     @Bean
     public PairingInfoValidPredicate singleRequestPairingInfoValidPredicate() {
-        return new PairingInfoValidPredicate(errorRepository, observerManager);
+        return new PairingInfoValidPredicate(observerManager);
     }
 
     @Bean

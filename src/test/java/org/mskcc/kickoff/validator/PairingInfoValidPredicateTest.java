@@ -14,7 +14,7 @@ import static org.mockito.Mockito.mock;
 public class PairingInfoValidPredicateTest {
     private static int id = 0;
     private final PairingInfoValidPredicate pairingInfoValidPredicate = new PairingInfoValidPredicate(mock
-            (ErrorRepository.class), mock(ObserverManager.class));
+            (ObserverManager.class));
 
     @Before
     public void setUp() throws Exception {
