@@ -233,7 +233,7 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Bean
     public PairingInfoValidPredicate pairingInfoValidPredicate() {
-        return new PairingInfoValidPredicate(errorRepository(), observerManager());
+        return new PairingInfoValidPredicate(observerManager());
     }
 
     @Bean
