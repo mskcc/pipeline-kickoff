@@ -106,17 +106,15 @@ public class SmartPairingRetriever {
         }
 
         if (isFfpe(tumor))
-            return tryToMathFfpePooledNormal(seqTypeCompatiblePooledNormals);
+            return tryToMatchFfpePooledNormal(seqTypeCompatiblePooledNormals);
 
         return tryToMatchFrozenPooledNormal(seqTypeCompatiblePooledNormals);
     }
 
     private boolean isFfpe(Sample sample) {
         String preservation = sample.get(Constants.SPECIMEN_PRESERVATION_TYPE);
-        boolean isFfpe = fromString(preservation) == FFPE;
         DEV_LOGGER.info(String.format("Sample %s has preservation type %s", sample.getIgoId(), preservation));
-
-        return isFfpe;
+        return fromString(preservation) == FFPE;
     }
 
     private String tryToMatchFrozenPooledNormal(Collection<Sample> pooledNormals) {
@@ -135,10 +133,11 @@ public class SmartPairingRetriever {
 
     private boolean isFrozen(Sample s) {
         String preservation = s.get(Constants.SPECIMEN_PRESERVATION_TYPE);
+        DEV_LOGGER.info(String.format("Sample %s has preservation type %s", s.getIgoId(), preservation));
         return fromString(preservation) == FROZEN;
     }
 
-    private String tryToMathFfpePooledNormal(Collection<Sample> pooledNormals) {
+    private String tryToMatchFfpePooledNormal(Collection<Sample> pooledNormals) {
         DEV_LOGGER.info(String.format("Trying to find FFPE Pooled Normal out of: %s", pooledNormals));
         Optional<Sample> ffpePooledNormal = pooledNormals.stream()
                 .filter(s -> isFfpe(s))
