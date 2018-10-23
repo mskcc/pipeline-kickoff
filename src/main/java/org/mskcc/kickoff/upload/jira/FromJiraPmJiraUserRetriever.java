@@ -46,9 +46,11 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
     @Value("${default.pm}")
     private String defaultPm;
 
-    @Autowired
-    @Qualifier("jiraRestTemplate")
     private RestTemplate restTemplate;
+
+    public FromJiraPmJiraUserRetriever(@Qualifier("jiraRestTemplate") RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     @Override
     public JiraUser retrieve(String projectManagerIgoName) {
