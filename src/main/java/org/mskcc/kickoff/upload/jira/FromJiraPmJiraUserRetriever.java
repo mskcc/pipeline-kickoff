@@ -43,8 +43,8 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
     @Value("${jira.rest.path}")
     private String jiraRestPath;
 
-    @Value("${default.pm}")
-    private String defaultPm;
+//    @Value("${default.pm}")
+//    private String defaultPm;
 
     private RestTemplate restTemplate;
 
