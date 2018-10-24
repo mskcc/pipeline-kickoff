@@ -7,7 +7,6 @@ import org.mskcc.kickoff.upload.jira.domain.JiraUser;
 import org.mskcc.kickoff.upload.jira.domain.JiraUserProperty;
 import org.mskcc.kickoff.upload.jira.domain.UserProperties;
 import org.mskcc.kickoff.util.Constants;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -43,9 +42,6 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
     @Value("${jira.rest.path}")
     private String jiraRestPath;
 
-//    @Value("${default.pm}")
-//    private String defaultPm;
-
     private RestTemplate restTemplate;
 
     public FromJiraPmJiraUserRetriever(@Qualifier("jiraRestTemplate") RestTemplate restTemplate) {
@@ -56,40 +52,33 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
     public JiraUser retrieve(String projectManagerIgoName) {
         LOGGER.info(String.format("Looking for jira user with IGO name [%s]", projectManagerIgoName));
 
-        // fetch jira users of pm group
         List<JiraUser> pmJiraUsers = getPmJiraUsers();
 
-        // check if projectManagerIgoName is valid
-        // if valid, then try to match
         if (isProjectManagerIgoNameValid(projectManagerIgoName)) {
-            Optional<JiraUser> matchedJiraUsers = tryMatchJiraUsers(projectManagerIgoName, pmJiraUsers);
-            if (matchedJiraUsers.isPresent()) return matchedJiraUsers.get();
+            Optional<JiraUser> matchedPmJiraUser = tryMatchPmJiraUsers(projectManagerIgoName, pmJiraUsers);
+            if (matchedPmJiraUser.isPresent()) return matchedPmJiraUser.get();
         }
 
-        // if not valid or matching failed, use first member
         if (pmJiraUsers.isEmpty()) {
             throw new NoPmFoundException(String.format("No Project Manager found in jira group [%s].", pmGroupName));
         } else {
-            LOGGER.info(String.format("No Project Manager in jira group %s " +
-                    "with IGO name %s: use first member of igo-pm group.", pmGroupName, projectManagerIgoName));
-            // No matching found
-            // set the assignee to the first member of "igo-pm" jira group as returned by the Jira API
+            LOGGER.info(String.format("No Project Manager in jira group [%s] matching " +
+                    "IGO name [%s]: use first member returned by the Jira API.", pmGroupName, projectManagerIgoName));
             return pmJiraUsers.get(0);
         }
     }
 
-    // invalid cases: null, empty, blank, NA, NO_PM
     private boolean isProjectManagerIgoNameValid(String projectManagerIgoName) {
         if (StringUtils.isNotBlank(projectManagerIgoName)
                 && !Constants.NO_PM.equalsIgnoreCase(projectManagerIgoName)
                 && !Constants.NA.equals(projectManagerIgoName)){
             return true;
         }
-        LOGGER.warn(String.format("Invalid Project manager in LIMS: [%s].", projectManagerIgoName));
+        LOGGER.warn(String.format("Invalid Project manager igo name: [%s].", projectManagerIgoName));
         return false;
     }
 
-    private Optional<JiraUser> tryMatchJiraUsers(String projectManagerIgoName, List<JiraUser> pmJiraUsers) {
+    private Optional<JiraUser> tryMatchPmJiraUsers(String projectManagerIgoName, List<JiraUser> pmJiraUsers) {
         for (JiraUser pmJiraUser : pmJiraUsers) {
             if (userHasProperty(pmJiraUser, igoFormattedNameProperty)) {
                 String igoFormattedName = getIgoFormattedName(pmJiraUser);

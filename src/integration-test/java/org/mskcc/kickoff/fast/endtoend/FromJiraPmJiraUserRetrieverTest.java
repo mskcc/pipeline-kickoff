@@ -25,8 +25,6 @@ import java.util.List;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-// only do retrieve jira pm user
-// will not do any put or post via jira api
 @RunWith(SpringJUnit4ClassRunner.class)
 @ActiveProfiles({"test", "tango"})
 @ContextConfiguration(classes = FromJiraPmJiraUserRetrieverTestConfig.class)
@@ -47,7 +45,7 @@ public class FromJiraPmJiraUserRetrieverTest {
     @Value("${jira.rest.path}")
     private String jiraRestPath;
 
-    // will need change later is PM left or removed from PM group user at jira
+    // will need change later if PM left or removed from PM group at jira
     private String currentValidIgoName = "Bourque, Caitlin";
 
     @Lazy
