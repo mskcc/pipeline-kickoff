@@ -39,6 +39,8 @@ public class SampleSetProjectInfoConverter {
 
         projectInfo.put(ProjectInfo.ASSAY, sampleSet.getBaitSet());
 
+        setTumorType(projectInfo, sampleSet);
+        
         setOptionalProjectProperty(projectInfo, sampleSet, ProjectInfo.DESIGN_FILE);
         setOptionalProjectProperty(projectInfo, sampleSet, ProjectInfo.SPIKEIN_DESIGN_FILE);
 

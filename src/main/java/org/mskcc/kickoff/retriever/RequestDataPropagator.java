@@ -124,8 +124,8 @@ public class RequestDataPropagator implements DataPropagator {
         }
 
         if (oncotreeCodes.isEmpty()) {
-            PM_LOGGER.log(PmLogPriority.WARNING, "I can't figure out the tumor type of this project. ");
-            DEV_LOGGER.warn("I can't figure out the tumor type of this project. ");
+            PM_LOGGER.log(PmLogPriority.WARNING, String.format("I can't figure out the tumor type for request [%s]: no valid Oncotree Code found!",kickoffRequest.getId()));
+            DEV_LOGGER.warn(String.format("I can't figure out the tumor type for request [%s]: no valid Oncotree Code found!",kickoffRequest.getId()));
         } else if (oncotreeCodes.size() == 1) {
             ArrayList<String> tumorTypes = new ArrayList<>(oncotreeCodes);
             projectInfo.put(Constants.ProjectInfo.TUMOR_TYPE, tumorTypes.get(0));
