@@ -46,7 +46,9 @@ public class FromJiraPmJiraUserRetrieverTest {
     private String jiraRestPath;
 
     // will need change later if PM left or removed from PM group at jira
-    private String currentValidIgoName = "Bourque, Caitlin";
+    private String defaultCmoPmKey = "bourquec";
+    private String defaultIgoPmKey = "cobbsc";
+    private String currentValidIgoName = "Selcuklu, S. Duygu";
 
     @Lazy
     @Autowired
@@ -59,46 +61,27 @@ public class FromJiraPmJiraUserRetrieverTest {
     }
 
     @Test
-    public void whenPMangerNameIsValid_shouldReturnMatchedJiraUser() {
+    public void whenPMangerNameIsValidAndIsInIgoPmGroup_shouldReturnMatchedJiraUser() {
         JiraUser assignee = pmJiraUserRetriever.retrieve(currentValidIgoName);
-        assertThat(assignee.getKey(), is("bourquec"));
+        assertThat(assignee.getKey(), is("selcukls"));
     }
 
     @Test
-    public void whenNO_PM_shouldReturnMatchedFirstJiraGroupMember() {
-        JiraUser assignee = pmJiraUserRetriever.retrieve(Constants.NO_PM);
-        List<JiraUser> jiraPmUsers = getPmJiraUsers();
-        assertThat(assignee.getKey(), is(jiraPmUsers.get(0).getKey()));
-    }
-
-    @Test
-    public void whenPMangerNameIsNotFound_shouldReturnMatchedFirstJiraGroupMember() {
+    public void whenPMangerNameIsValidAndIsInNotIgoPmGroup_shouldReturnDefaultCmoPM() {
         JiraUser assignee = pmJiraUserRetriever.retrieve("Liu, Feng");
-        List<JiraUser> jiraPmUsers = getPmJiraUsers();
-        assertThat(assignee.getKey(), is(jiraPmUsers.get(0).getKey()));
+        assertThat(assignee.getKey(), is(defaultCmoPmKey));
     }
 
-    private List<JiraUser> getPmJiraUsers() {
-        String getAllPmUsersUrl = String.format("%s/%s/group/member?groupname=%s", jiraUrl, jiraRestPath,
-                pmGroupName);
-        System.out.println(getAllPmUsersUrl);
-
-        HttpEntity<String> request = getHttpHeaders();
-        ResponseEntity<JiraGroup> response = new RestTemplate().exchange(getAllPmUsersUrl, HttpMethod.GET, request,
-                JiraGroup.class);
-        List<JiraUser> users = response.getBody().getValues();
-        System.out.println(String.format("Found %s users in group %s:", users.size(), pmGroupName));
-        return users;
+    @Test
+    public void whenPMangerNameIsInValid_shouldReturnDefaultCmoPM() {
+        JiraUser assignee = pmJiraUserRetriever.retrieve("");
+        assertThat(assignee.getKey(), is(defaultCmoPmKey));
     }
 
-    private HttpEntity<String> getHttpHeaders() {
-        String plainCreds = String.format("%s:%s", jiraUsername, jiraPassword);
-        byte[] plainCredsBytes = plainCreds.getBytes();
-        byte[] base64CredsBytes = Base64.encodeBase64(plainCredsBytes);
-        String base64Creds = new String(base64CredsBytes);
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Basic " + base64Creds);
-        return new HttpEntity<>(headers);
+    @Test
+    public void whenCmoSideProject_shouldReturnDefaultIgoPm() {
+        JiraUser assignee = pmJiraUserRetriever.retrieve(Constants.NO_PM);
+        assertThat(assignee.getKey(), is(defaultIgoPmKey));
     }
 
 }
