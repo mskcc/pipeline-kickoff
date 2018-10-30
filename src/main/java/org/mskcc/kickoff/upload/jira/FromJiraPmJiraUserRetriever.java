@@ -62,16 +62,19 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
         if (pmJiraUsers.isEmpty()) {
             throw new NoPmFoundException(String.format("No Project Manager found in jira group [%s].", pmGroupName));
         } else {
+            JiraUser usedJiraUser = pmJiraUsers.get(0);
             LOGGER.info(String.format("No Project Manager in jira group [%s] matching " +
-                    "IGO name [%s]: use first member returned by the Jira API.", pmGroupName, projectManagerIgoName));
-            return pmJiraUsers.get(0);
+                            "IGO name [%s]: use first member returned by the Jira API: [%s]", pmGroupName,
+                    projectManagerIgoName, usedJiraUser));
+
+            return usedJiraUser;
         }
     }
 
     private boolean isProjectManagerIgoNameValid(String projectManagerIgoName) {
         if (StringUtils.isNotBlank(projectManagerIgoName)
                 && !Constants.NO_PM.equalsIgnoreCase(projectManagerIgoName)
-                && !Constants.NA.equals(projectManagerIgoName)){
+                && !Constants.NA.equals(projectManagerIgoName)) {
             return true;
         }
         LOGGER.warn(String.format("Invalid Project manager igo name: [%s].", projectManagerIgoName));

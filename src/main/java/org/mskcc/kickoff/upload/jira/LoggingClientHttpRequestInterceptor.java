@@ -50,7 +50,6 @@ public class LoggingClientHttpRequestInterceptor implements ClientHttpRequestInt
     }
 
     protected void logResponse(HttpRequest request, ClientHttpResponse response) {
-//        if (LOGGER.isDebugEnabled()) {
         try {
             StringBuilder builder = new StringBuilder("Received \"")
                     .append(response.getRawStatusCode()).append(" ").append(response.getStatusText()).append("\" " +
@@ -84,11 +83,9 @@ public class LoggingClientHttpRequestInterceptor implements ClientHttpRequestInt
             LOGGER.warn(String.format("Failed to log response for %s request to %s", request.getMethod(), request
                     .getURI()), e);
         }
-//        }
     }
 
     protected boolean isBuffered(ClientHttpResponse response) {
-        // class is non-public, so we check by name
         boolean buffered = "org.springframework.http.client.BufferingClientHttpResponseWrapper".equals(response
                 .getClass().getName());
         if (!buffered && !loggedMissingBuffering) {

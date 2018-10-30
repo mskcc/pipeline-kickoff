@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
@@ -37,10 +38,12 @@ import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static java.util.Collections.emptyList;
+
 @Component
 public class JiraFileUploader implements FileUploader {
+    public static final String ERRORS_HEADER_KEY = "errors";
     private static final Logger LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
-
     @Value("${jira.url}")
     private String jiraUrl;
     @Value("${jira.username}")
@@ -156,16 +159,29 @@ public class JiraFileUploader implements FileUploader {
         LOGGER.info(String.format("Assigning jira user %s to issue %s", pmJiraUser.getKey(), issue.getSummary()));
 
         HttpEntity<JiraUser> jiraIssueHttpEntity = new HttpEntity<>(pmJiraUser);
-        ResponseEntity<JiraIssue> jiraIssueResponseEntity = restTemplate.exchange(String.format
-                ("%s/%s/issue/%s/assignee",
-                        jiraUrl, jiraRestPath, issue.getKey()), HttpMethod.PUT, jiraIssueHttpEntity, JiraIssue.class);
 
-        if (jiraIssueResponseEntity.getStatusCode() == HttpStatus.NO_CONTENT)
+        try {
+            ResponseEntity<JiraIssue> jiraIssueResponseEntity = restTemplate.exchange(String.format
+                            ("%s/%s/issue/%s/assignee", jiraUrl, jiraRestPath, issue.getKey()), HttpMethod.PUT,
+                    jiraIssueHttpEntity, JiraIssue.class);
+
+            logAddAssigneeStatus(pmJiraUser, issue, jiraIssueResponseEntity);
+        } catch (Exception e) {
+            throw new JiraIssueAssignmentException(String.format("Unable to assign jira user %s to issue %s. This " +
+                            "user may not exist.",
+                    pmJiraUser.getKey(), issue.getSummary()), e);
+        }
+    }
+
+    private void logAddAssigneeStatus(JiraUser pmJiraUser, Issue issue, ResponseEntity<JiraIssue>
+            jiraIssueResponseEntity) {
+        if (jiraIssueResponseEntity.getStatusCode().is2xxSuccessful())
             LOGGER.info(String.format(String.format("Successfully assigned jira user %s to issue %s", pmJiraUser
                     .getKey(), issue.getSummary())));
         else {
             throw new JiraIssueAssignmentException(String.format("Unable to assign jira user %s to issue %s. Reason: " +
-                    "%s", pmJiraUser.getKey(), issue.getSummary(), jiraIssueResponseEntity.getHeaders().get("errors")));
+                    "%s", pmJiraUser.getKey(), issue.getSummary(), jiraIssueResponseEntity.getHeaders().get
+                    (ERRORS_HEADER_KEY)));
         }
     }
 
@@ -176,11 +192,19 @@ public class JiraFileUploader implements FileUploader {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
 
-        HttpEntity<String> entity = new HttpEntity<>(String.format("\"%s\"", pmJiraUser.getUserName()), headers);
+        HttpEntity<String> entity = new HttpEntity<>(String.format("\"%s\"", "whateva"), headers);
 
-        ResponseEntity<String> watchersResponse = restTemplate.postForEntity(watchersUrl, entity, String.class);
+        try {
+            ResponseEntity<String> watchersResponse = restTemplate.postForEntity(watchersUrl, entity, String.class);
+            processAddWatcherStatus(pmJiraUser, issue, watchersResponse);
+        } catch (HttpClientErrorException e) {
+            throw new JiraIssueAssignmentException(String.format("Unable to add user '%s' as a watcher to issue %s. " +
+                    "This user may not exist.", pmJiraUser, issue.getSummary()), e);
+        }
+    }
 
-        if (watchersResponse.getStatusCode() == HttpStatus.NO_CONTENT)
+    private void processAddWatcherStatus(JiraUser pmJiraUser, Issue issue, ResponseEntity<String> watchersResponse) {
+        if (watchersResponse.getStatusCode().is2xxSuccessful())
             LOGGER.info(String.format(String.format("Successfully added user %s as watcher to issue %s", pmJiraUser,
                     issue.getSummary())));
         else {
@@ -243,12 +267,21 @@ public class JiraFileUploader implements FileUploader {
 
         HttpEntity<String> entity = new HttpEntity<>(comment, headers);
 
-        ResponseEntity<String> addCommentResponse = restTemplate.postForEntity(issue.getCommentsUri(), entity,
-                String.class);
+        try {
+            ResponseEntity<String> addCommentResponse = restTemplate.postForEntity(issue.getCommentsUri(), entity,
+                    String.class);
 
-        if (addCommentResponse.getStatusCode() != HttpStatus.CREATED)
-            LOGGER.warn(String.format("Comment not added. Response code: %s",
-                    addCommentResponse.getStatusCode()));
+            logIfNotSucceeded(issue, addCommentResponse);
+        } catch (HttpClientErrorException e) {
+            LOGGER.warn(String.format("Comment not added to issue %s", issue.getSummary()), e);
+        }
+    }
+
+    private void logIfNotSucceeded(Issue issue, ResponseEntity<String> addCommentResponse) {
+        if (addCommentResponse.getStatusCode().is2xxSuccessful())
+            LOGGER.warn(String.format("Comment not added to issue %s. Cause: %s %s", issue.getSummary(),
+                    addCommentResponse.getStatusCode(),
+                    addCommentResponse.getHeaders().getOrDefault(ERRORS_HEADER_KEY, emptyList())));
     }
 
     private String getFormattedComment(String comment) {
@@ -288,9 +321,35 @@ public class JiraFileUploader implements FileUploader {
         LOGGER.info(String.format("Deleting attachment: %s from issue: %s", existingAttachment.getFileName(),
                 issue.getSummary()));
 
-        restTemplate.exchange(existingAttachment.getUri(), HttpMethod.DELETE, null, String.class);
-        LOGGER.info(String.format("Deleted attachment: %s from issue: %s", existingAttachment.getFileName(),
-                issue.getSummary()));
+        try {
+            ResponseEntity<String> responseEntity = restTemplate.exchange(existingAttachment.getUri(), HttpMethod
+                    .DELETE, null, String.class);
+
+            logDeletionStatus(issue, existingAttachment, responseEntity);
+        } catch (HttpClientErrorException e) {
+            rethrowExceptionWithDescription(issue, existingAttachment, e);
+        }
+    }
+
+    private void rethrowExceptionWithDescription(Issue issue, JiraIssue.Fields.Attachment existingAttachment,
+                                                 HttpClientErrorException e) {
+        if (e.getStatusCode() == HttpStatus.NOT_FOUND)
+            throw new AttachmentNotFound(String.format("Attachment with file name: '%s' for issue '%s' doesn't exist",
+                    existingAttachment.getFileName(), issue.getSummary()), e);
+        else
+            throw new CannotDeleteJiraAttachment(String.format("Attachment with file name: '%s' for issue '%s' cannot" +
+                            " be deleted",
+                    existingAttachment.getFileName(), issue.getSummary()), e);
+    }
+
+    private void logDeletionStatus(Issue issue, JiraIssue.Fields.Attachment existingAttachment, ResponseEntity<String
+            > responseEntity) {
+        if (responseEntity.getStatusCode().is2xxSuccessful())
+            LOGGER.info(String.format("Deleted attachment: %s from issue: %s", existingAttachment.getFileName(),
+                    issue.getSummary()));
+        else
+            LOGGER.warn(String.format("Attachment with file name: '%s' for issue '%s' cannot be deleted",
+                    existingAttachment.getFileName(), issue.getSummary()));
     }
 
     public List<JiraIssue.Fields.Attachment> getExistingManifestAttachments(KickoffRequest request, String requestId) {
@@ -319,9 +378,20 @@ public class JiraFileUploader implements FileUploader {
         String getAttachmentsUrl = String.format("%s/%s/issue/%s?fields", jiraUrl, jiraRestPath, issue
                 .getKey());
 
-        ResponseEntity<JiraIssue> response = restTemplate.exchange(getAttachmentsUrl, HttpMethod.GET, null,
-                JiraIssue.class);
-        return response.getBody();
+        try {
+            ResponseEntity<JiraIssue> response = restTemplate.exchange(getAttachmentsUrl, HttpMethod.GET, null,
+                    JiraIssue.class);
+
+            if (response.getStatusCode().is2xxSuccessful())
+                return response.getBody();
+
+            throw new CannotRetrieveJiraIssue(String.format("Jira issue '%s' cannot be retrieved. Cause: %s %s", issue
+                    .getSummary(), response.getStatusCode(), response.getHeaders().getOrDefault(ERRORS_HEADER_KEY,
+                    emptyList())));
+        } catch (HttpClientErrorException e) {
+            throw new CannotRetrieveJiraIssue(String.format("Jira issue '%s' cannot be retrieved", issue.getSummary()
+            ), e);
+        }
     }
 
     private JiraRestClient getJiraRestClient() throws URISyntaxException {
@@ -377,6 +447,10 @@ public class JiraFileUploader implements FileUploader {
     }
 
     private class JiraIssueAssignmentException extends RuntimeException {
+        public JiraIssueAssignmentException(String message, Exception e) {
+            super(message, e);
+        }
+
         public JiraIssueAssignmentException(String message) {
             super(message);
         }
@@ -385,6 +459,28 @@ public class JiraFileUploader implements FileUploader {
     private class NoTransitionFoundException extends RuntimeException {
         public NoTransitionFoundException(String message) {
             super(message);
+        }
+    }
+
+    private class AttachmentNotFound extends RuntimeException {
+        public AttachmentNotFound(String message, Exception e) {
+            super(message, e);
+        }
+    }
+
+    private class CannotDeleteJiraAttachment extends RuntimeException {
+        public CannotDeleteJiraAttachment(String message, Exception e) {
+            super(message, e);
+        }
+    }
+
+    private class CannotRetrieveJiraIssue extends RuntimeException {
+        public CannotRetrieveJiraIssue(String message) {
+            super(message);
+        }
+
+        public CannotRetrieveJiraIssue(String message, Exception e) {
+            super(message, e);
         }
     }
 }
