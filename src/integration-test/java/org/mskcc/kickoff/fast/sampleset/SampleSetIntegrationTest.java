@@ -19,6 +19,7 @@ import org.mskcc.domain.QcStatus;
 import org.mskcc.domain.Recipe;
 import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.SampleSet;
+import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
@@ -89,7 +90,7 @@ public class SampleSetIntegrationTest {
         );
         openConnection();
         try {
-             cleanupTestingRecords();
+            cleanupTestingRecords();
         } catch (Exception e) {
             LOG.error(e);
         }
@@ -98,7 +99,7 @@ public class SampleSetIntegrationTest {
     @After
     public void tearDown() throws Exception {
         try {
-           cleanupTestingRecords();
+            cleanupTestingRecords();
         } finally {
             closeConnection();
         }
@@ -202,49 +203,6 @@ public class SampleSetIntegrationTest {
 
     }
 
-    private void addRequest(String reqId) throws Exception {
-        DataRecord request = dataRecordManager.addDataRecord(VeloxConstants.REQUEST, user);
-        request.setDataField(VeloxConstants.REQUEST_ID, reqId, user);
-
-        addPassedSample(request, reqId);
-        addPassedSample(request, reqId);
-
-        sampleSetRecord.addChild(request, user);
-    }
-
-    private DataRecord addPassedSample(DataRecord request, String reqId) throws IoError, NotFound, AlreadyExists,
-            InvalidValue, ServerException, RemoteException {
-        DataRecord sampleRecord = request.addChild(VeloxConstants.SAMPLE, user);
-        String otherSampleId = String.format("%s_%d", reqId, counter++);
-
-        sampleRecord.setDataField(VeloxConstants.OTHER_SAMPLE_ID, otherSampleId, user);
-        sampleRecord.setDataField(VeloxConstants.SAMPLE_ID, "igoId_" + counter++, user);
-        sampleRecord.setDataField(VeloxConstants.SPECIES, RequestSpecies.HUMAN.getValue(), user);
-
-        addPassedSampleQc(reqId, sampleRecord, otherSampleId);
-
-        return sampleRecord;
-    }
-
-    private void addPassedSampleQc(String reqId, DataRecord sampleRecord, String otherSampleId) throws IoError,
-            NotFound, AlreadyExists, InvalidValue, ServerException, RemoteException {
-        DataRecord sampleQc = sampleRecord.addChild(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC, user);
-
-        sampleQc.setDataField(VeloxConstants.SEQ_QC_STATUS, QcStatus.PASSED.getValue(), user);
-        sampleQc.setDataField(VeloxConstants.REQUEST, reqId, user);
-        sampleQc.setDataField(VeloxConstants.OTHER_SAMPLE_ID, otherSampleId, user);
-        sampleQc.setDataField(VeloxConstants.SEQUENCER_RUN_FOLDER, "koty_sa_najlepsze", user);
-    }
-
-    private void addPassedSample(String requestId) throws Exception {
-        DataRecord request = dataRecordManager.addDataRecord(VeloxConstants.REQUEST, user);
-        request.setDataField(VeloxConstants.REQUEST_ID, requestId, user);
-
-        DataRecord sampleRecord = addPassedSample(request, requestId);
-
-        sampleSetRecord.addChild(sampleRecord, user);
-    }
-
     @Test
     public void whenSampleSetPrimaryRequestIsNotPartOfSet_shouldThrowAnException() throws Exception {
         addSampleSetRecord(validSampleSetId);
@@ -276,6 +234,59 @@ public class SampleSetIntegrationTest {
         assertThat(request.getSamples().size(), is(samplesFromReq1.size() + samplesFromReq2.size()));
     }
 
+    private void addSampleSetRecord(String sampleSetId) throws Exception {
+        sampleSetRecord = dataRecordManager.addDataRecord(VeloxConstants.SAMPLE_SET, user);
+        sampleSetRecord.setDataField("Name", sampleSetId, user);
+        sampleSetRecord.setDataField(VeloxConstants.RECIPE, Recipe.IMPACT_410.getValue(), user);
+    }
+
+    private void addRequest(String reqId) throws Exception {
+        DataRecord request = dataRecordManager.addDataRecord(VeloxConstants.REQUEST, user);
+        request.setDataField(VeloxConstants.REQUEST_ID, reqId, user);
+        request.setDataField(VeloxConstants.REQUEST_NAME, "IMPACT410", user);
+
+        addPassedSample(request, reqId);
+        addPassedSample(request, reqId);
+
+        sampleSetRecord.addChild(request, user);
+    }
+
+    private DataRecord addPassedSample(DataRecord request, String reqId) throws IoError, NotFound, AlreadyExists,
+            InvalidValue, ServerException, RemoteException {
+        DataRecord sampleRecord = request.addChild(VeloxConstants.SAMPLE, user);
+        String otherSampleId = String.format("%s_%d", reqId, counter++);
+
+        sampleRecord.setDataField(VeloxConstants.OTHER_SAMPLE_ID, otherSampleId, user);
+        sampleRecord.setDataField(VeloxConstants.SAMPLE_ID, "igoId_" + counter++, user);
+        sampleRecord.setDataField(VeloxConstants.SPECIES, RequestSpecies.HUMAN.getValue(), user);
+        sampleRecord.setDataField(Sample.TUMOR_TYPE, "OMGCT,OOVC,VMGCT,VIMT", user);
+        sampleRecord.setDataField(VeloxConstants.RECIPE, "IMPACT410", user);
+
+        addPassedSampleQc(reqId, sampleRecord, otherSampleId);
+
+        return sampleRecord;
+    }
+
+    private void addPassedSampleQc(String reqId, DataRecord sampleRecord, String otherSampleId) throws IoError,
+            NotFound, AlreadyExists, InvalidValue, ServerException, RemoteException {
+        DataRecord sampleQc = sampleRecord.addChild(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC, user);
+
+        sampleQc.setDataField(VeloxConstants.SEQ_QC_STATUS, QcStatus.PASSED.getValue(), user);
+        sampleQc.setDataField(VeloxConstants.REQUEST, reqId, user);
+        sampleQc.setDataField(VeloxConstants.OTHER_SAMPLE_ID, otherSampleId, user);
+        sampleQc.setDataField(VeloxConstants.SEQUENCER_RUN_FOLDER, "koty_sa_najlepsze", user);
+    }
+
+    private void addPassedSample(String requestId) throws Exception {
+        DataRecord request = dataRecordManager.addDataRecord(VeloxConstants.REQUEST, user);
+        request.setDataField(VeloxConstants.REQUEST_ID, requestId, user);
+        request.setDataField(VeloxConstants.REQUEST_NAME, "IMPACT410", user);
+
+        DataRecord sampleRecord = addPassedSample(request, requestId);
+
+        sampleSetRecord.addChild(sampleRecord, user);
+    }
+
     private List<DataRecord> getSamplesFromRequest(String requestId) throws Exception {
         List<DataRecord> dataRecords = dataRecordManager.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" +
                 requestId + "'", user);
@@ -303,12 +314,6 @@ public class SampleSetIntegrationTest {
         sampleSetRecord.addChild(reqRecord, user);
 
         return reqRecord;
-    }
-
-    private void addSampleSetRecord(String sampleSetId) throws Exception {
-        sampleSetRecord = dataRecordManager.addDataRecord(VeloxConstants.SAMPLE_SET, user);
-        sampleSetRecord.setDataField("Name", sampleSetId, user);
-        sampleSetRecord.setDataField(VeloxConstants.RECIPE, Recipe.AMPLI_SEQ.getValue(), user);
     }
 
     private void store() throws ServerException, RemoteException, VeloxConnectionException {
