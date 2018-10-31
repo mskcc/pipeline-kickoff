@@ -192,7 +192,7 @@ public class JiraFileUploader implements FileUploader {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
 
-        HttpEntity<String> entity = new HttpEntity<>(String.format("\"%s\"", "whateva"), headers);
+        HttpEntity<String> entity = new HttpEntity<>(String.format("\"%s\"", pmJiraUser.getUserName()), headers);
 
         try {
             ResponseEntity<String> watchersResponse = restTemplate.postForEntity(watchersUrl, entity, String.class);
