@@ -2,6 +2,7 @@ package org.mskcc.kickoff.sampleset;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
+import org.mskcc.domain.RequestType;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.util.ConverterUtils;
@@ -40,7 +41,7 @@ public class SampleSetProjectInfoConverter {
         projectInfo.put(ProjectInfo.ASSAY, sampleSet.getBaitSet());
 
         setTumorType(projectInfo, sampleSet);
-        
+
         setOptionalProjectProperty(projectInfo, sampleSet, ProjectInfo.DESIGN_FILE);
         setOptionalProjectProperty(projectInfo, sampleSet, ProjectInfo.SPIKEIN_DESIGN_FILE);
 
@@ -95,8 +96,17 @@ public class SampleSetProjectInfoConverter {
 
         if (tumorTypes.size() > 1)
             projectInfo.put(ProjectInfo.TUMOR_TYPE, org.mskcc.kickoff.util.Constants.MIXED);
-        else
+        else if (hasTumorTypeFilledIn(sampleSet))
             setPropertyFromPrimaryRequest(sampleSet, projectInfo, ProjectInfo.TUMOR_TYPE);
+        else
+            DEV_LOGGER.warn(String.format("Primary request %s is not of type %s and tumor type is not available for " +
+                            "it " +
+                            "thus tumor type will not be available for sample set %s", sampleSet.getPrimaryRequestId(),
+                    RequestType.IMPACT, sampleSet.getName()));
+    }
+
+    private boolean hasTumorTypeFilledIn(KickoffSampleSet sampleSet) {
+        return sampleSet.getPrimaryRequest().isImpact() || sampleSet.getPrimaryRequest().isExome();
     }
 
     private String getPropertyFromPrimaryRequest(KickoffSampleSet sampleSet, String propertyName) {
