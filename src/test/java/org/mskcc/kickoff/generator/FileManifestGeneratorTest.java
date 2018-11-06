@@ -15,10 +15,7 @@ import org.mskcc.kickoff.printer.OutputFilesPrinter;
 import org.mskcc.kickoff.printer.observer.SpyFileUploader;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.proxy.RequestProxy;
-import org.mskcc.kickoff.validator.ErrorRepository;
-import org.mskcc.kickoff.validator.InMemoryErrorRepository;
-import org.mskcc.kickoff.validator.ProjectNameValidator;
-import org.mskcc.kickoff.validator.RequestValidator;
+import org.mskcc.kickoff.validator.*;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -219,6 +216,11 @@ public class FileManifestGeneratorTest {
         @Bean
         public ErrorRepository errorRepository() {
             return new InMemoryErrorRepository();
+        }
+
+        @Bean
+        public StrandValidator strandValidator() {
+            return new StrandValidator(errorRepository());
         }
     }
 }

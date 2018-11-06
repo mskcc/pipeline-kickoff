@@ -97,7 +97,7 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Bean
     public RequestFilePrinter requestFilePrinter() {
-        return new RequestFilePrinter(observerManager());
+        return new RequestFilePrinter(observerManager(), errorRepository);
     }
 
     @Bean
