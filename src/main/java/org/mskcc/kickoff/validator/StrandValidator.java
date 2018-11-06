@@ -20,8 +20,6 @@ public class StrandValidator implements Predicate<KickoffRequest> {
 
     @Override
     public boolean test(KickoffRequest kickoffRequest) {
-        kickoffRequest.addStrand(Strand.NONE);
-        kickoffRequest.addStrand(Strand.REVERSE);
         if (kickoffRequest.getStrands().size() > 1) {
             String msg = String.format("Ambiguous strand for request %s: %s", kickoffRequest.getId(), kickoffRequest
                     .getStrands());

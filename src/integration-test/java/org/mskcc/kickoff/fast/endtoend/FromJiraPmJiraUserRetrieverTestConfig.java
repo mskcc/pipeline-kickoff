@@ -9,6 +9,12 @@ import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.InterceptingClientHttpRequestFactory;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.web.client.RestTemplate;
+import org.mskcc.kickoff.upload.jira.FromJiraPmJiraUserRetriever;
+import org.mskcc.kickoff.upload.jira.PmJiraUserRetriever;
+
+import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Qualifier;
+
 
 import java.io.IOException;
 import java.util.Collections;
@@ -23,30 +29,31 @@ public class FromJiraPmJiraUserRetrieverTestConfig {
         FromJiraPmJiraUserRetrieverTestConfig.jiraUsername = jiraUsername;
     }
 
-//    @Bean
-//    @Qualifier("jiraRestTemplate")
-//    @Lazy
-//    public RestTemplate jiraRestTemplate() {
-//        RestTemplate restTemplate = new RestTemplate();
-//        addBasicAuth(restTemplate, jiraUsername, jiraPassword);
-//        return restTemplate;
-//    }
-
     public static void setJiraPassword(String jiraPassword) {
         FromJiraPmJiraUserRetrieverTestConfig.jiraPassword = jiraPassword;
     }
 
-//    @Bean
-//    @Lazy
-//    PmJiraUserRetriever pmJiraUserRetriever () {
-//        return new FromJiraPmJiraUserRetriever(jiraRestTemplate());
-//    }
+    @Bean
+    @Qualifier("jiraRestTemplate")
+    @Lazy
+    public RestTemplate jiraRestTemplate() {
+        RestTemplate restTemplate = new RestTemplate();
+        addBasicAuth(restTemplate, jiraUsername, jiraPassword);
+        return restTemplate;
+    }
+
+    @Bean
+    @Lazy
+    PmJiraUserRetriever pmJiraUserRetriever() {
+        return new FromJiraPmJiraUserRetriever(jiraRestTemplate());
+    }
 
     @Bean
     @Order(value = 0)
     PropertyPlaceholderConfigurer propertyPlaceholderConfigurer() throws IOException {
         final PropertyPlaceholderConfigurer configurer = new PropertyPlaceholderConfigurer();
-  configurer.setLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:application-dev.properties"));
+        configurer.setLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:application-dev" +
+                ".properties"));
         return configurer;
     }
 
