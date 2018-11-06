@@ -10,8 +10,10 @@ import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.function.Predicate;
+
 @Component
-class AutoGenerabilityValidator {
+public class AutoGenerabilityValidator implements Predicate<KickoffRequest> {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
@@ -22,7 +24,9 @@ class AutoGenerabilityValidator {
         this.errorRepository = errorRepository;
     }
 
-    public void validate(KickoffRequest kickoffRequest) {
+
+    @Override
+    public boolean test(KickoffRequest kickoffRequest) {
         boolean autoGenAble = kickoffRequest.isBicAutorunnable();
 
         if (!autoGenAble) {
@@ -49,5 +53,7 @@ class AutoGenerabilityValidator {
 
             throw new RuntimeException(msg);
         }
+
+        return autoGenAble;
     }
 }

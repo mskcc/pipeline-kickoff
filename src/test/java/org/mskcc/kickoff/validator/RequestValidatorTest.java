@@ -18,8 +18,8 @@ public class RequestValidatorTest {
     private RequestValidator requestValidator;
 
     @Test
-    public void when_should() throws Exception {
-        assertThat(requestValidator.getValidators().size(), is(9));
+    public void whenSpringStarts_shouldInjectRequestValidators() throws Exception {
+        assertThat(requestValidator.getValidators().size(), is(11));
     }
 
     @Configuration

@@ -15,9 +15,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
+import java.util.function.Predicate;
 
 @Component
-class SampleQcValidator {
+public class SampleQcValidator implements Predicate<KickoffRequest> {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
@@ -28,7 +29,9 @@ class SampleQcValidator {
         this.errorRepository = errorRepository;
     }
 
-    public void validate(KickoffRequest kickoffRequest) {
+    @Override
+    public boolean test(KickoffRequest kickoffRequest) {
+        boolean valid = true;
         Collection<Sample> nonPooledNormalUniqueSamples = kickoffRequest.getNonPooledNormalUniqueSamples
                 (Sample::getCmoSampleId);
 
@@ -49,6 +52,7 @@ class SampleQcValidator {
                         DEV_LOGGER.log(Level.ERROR, message);
                         kickoffRequest.setMappingIssue(true);
                         errorRepository.add(new GenerationError(message, ErrorCode.SAMPLES_UNDER_REVIEW));
+                        valid = false;
                     } else {
                         String message = String.format("Sample %s from run id %s needed additional reads.", sample,
                                 run);
@@ -57,6 +61,7 @@ class SampleQcValidator {
                         DEV_LOGGER.log(Level.ERROR, message);
                         kickoffRequest.setMappingIssue(true);
                         errorRepository.add(new GenerationError(message, ErrorCode.SAMPLE_NEEDS_ADDITIONAL_READS));
+                        valid = false;
                     }
                 }
             }
@@ -66,5 +71,7 @@ class SampleQcValidator {
                 DEV_LOGGER.warn(message);
             }
         }
+
+        return valid;
     }
 }
