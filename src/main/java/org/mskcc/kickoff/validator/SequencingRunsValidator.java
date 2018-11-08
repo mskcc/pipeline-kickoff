@@ -8,13 +8,11 @@ import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.util.function.Predicate;
 
 import static org.mskcc.kickoff.config.Arguments.forced;
 
-@Component
 public class SequencingRunsValidator implements Predicate<KickoffRequest> {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
@@ -28,8 +26,6 @@ public class SequencingRunsValidator implements Predicate<KickoffRequest> {
 
     @Override
     public boolean test(KickoffRequest kickoffRequest) {
-        boolean valid = true;
-
         long numberOfQcs = kickoffRequest.getSamples().values().stream()
                 .flatMap(s -> s.getRuns().values().stream()
                         .filter(r -> r.getSampleLevelQcStatus() != null || r.getPoolQcStatus() != null))
@@ -54,6 +50,6 @@ public class SequencingRunsValidator implements Predicate<KickoffRequest> {
             }
         }
 
-        return valid;
+        return true;
     }
 }

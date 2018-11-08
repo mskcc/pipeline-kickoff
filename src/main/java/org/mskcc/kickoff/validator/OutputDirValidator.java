@@ -5,14 +5,12 @@ import org.apache.log4j.Logger;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
-import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.util.function.Predicate;
 
 import static org.mskcc.kickoff.config.Arguments.outdir;
 
-@Component
 public class OutputDirValidator implements Predicate<KickoffRequest> {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);

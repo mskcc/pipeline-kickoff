@@ -1,15 +1,12 @@
 package org.mskcc.kickoff.validator;
 
-import org.mskcc.domain.Strand;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.ErrorCode;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.util.function.Predicate;
 
-@Component
 public class StrandValidator implements Predicate<KickoffRequest> {
     private ErrorRepository errorRepository;
 

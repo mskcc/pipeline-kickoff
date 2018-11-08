@@ -9,6 +9,7 @@ import org.mskcc.domain.Pairedness;
 import org.mskcc.domain.PassedRunPredicate;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.generator.DefaultPathAwareOutputDirRetriever;
 import org.mskcc.kickoff.generator.OutputDirRetriever;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
@@ -54,10 +55,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
@@ -419,5 +417,22 @@ public class AppConfiguration {
     @Bean
     public BiPredicate<Sample, Sample> sampleSetPairingInfoValidPredicate() {
         return new SampleSetPairingInfoValidPredicate(singleRequestPairingInfoValidPredicate(), sampleSetBaitSetCompatibilityPredicate());
+    }
+
+    @Bean
+    public List<Predicate<KickoffRequest>> validators() {
+        return Arrays.asList(
+                new AutoGenerabilityValidator(errorRepository),
+                new BarcodeValidator(),
+                new OutputDirValidator(),
+                new PoolQcValidator(errorRepository),
+                new PostSeqQcValidator(),
+                new ReadCountsValidator(),
+                new SampleQcValidator(errorRepository),
+                new SamplesValidator(errorRepository),
+                new SampleUniquenessValidator(errorRepository),
+                new SequencingRunsValidator(errorRepository),
+                new StrandValidator(errorRepository)
+        );
     }
 }

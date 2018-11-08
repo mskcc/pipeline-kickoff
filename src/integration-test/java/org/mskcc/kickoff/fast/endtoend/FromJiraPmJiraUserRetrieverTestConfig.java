@@ -1,20 +1,18 @@
 package org.mskcc.kickoff.fast.endtoend;
 
+import org.mskcc.kickoff.upload.jira.FromJiraPmJiraUserRetriever;
+import org.mskcc.kickoff.upload.jira.PmJiraUserRetriever;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.InterceptingClientHttpRequestFactory;
 import org.springframework.http.client.support.BasicAuthorizationInterceptor;
 import org.springframework.web.client.RestTemplate;
-import org.mskcc.kickoff.upload.jira.FromJiraPmJiraUserRetriever;
-import org.mskcc.kickoff.upload.jira.PmJiraUserRetriever;
-
-import org.springframework.context.annotation.Lazy;
-import org.springframework.beans.factory.annotation.Qualifier;
-
 
 import java.io.IOException;
 import java.util.Collections;
@@ -34,6 +32,15 @@ public class FromJiraPmJiraUserRetrieverTestConfig {
     }
 
     @Bean
+    @Order(value = 0)
+    static PropertyPlaceholderConfigurer propertyPlaceholderConfigurer() throws IOException {
+        final PropertyPlaceholderConfigurer configurer = new PropertyPlaceholderConfigurer();
+        configurer.setLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:application-dev" +
+                ".properties"));
+        return configurer;
+    }
+
+    @Bean
     @Qualifier("jiraRestTemplate")
     @Lazy
     public RestTemplate jiraRestTemplate() {
@@ -46,15 +53,6 @@ public class FromJiraPmJiraUserRetrieverTestConfig {
     @Lazy
     PmJiraUserRetriever pmJiraUserRetriever() {
         return new FromJiraPmJiraUserRetriever(jiraRestTemplate());
-    }
-
-    @Bean
-    @Order(value = 0)
-    PropertyPlaceholderConfigurer propertyPlaceholderConfigurer() throws IOException {
-        final PropertyPlaceholderConfigurer configurer = new PropertyPlaceholderConfigurer();
-        configurer.setLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:application-dev" +
-                ".properties"));
-        return configurer;
     }
 
     void addBasicAuth(RestTemplate restTemplate, String username, String password) {
