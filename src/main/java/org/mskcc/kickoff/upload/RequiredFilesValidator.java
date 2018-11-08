@@ -3,9 +3,7 @@ package org.mskcc.kickoff.upload;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
-@Component
 public class RequiredFilesValidator implements FilesValidator {
     private ErrorRepository errorRepository;
 
@@ -16,7 +14,9 @@ public class RequiredFilesValidator implements FilesValidator {
 
     @Override
     public boolean isValid(String issueId) {
-        return allRequiredFilesGenerated() && filesHaveNoErrors() && noGeneralErrors();
+        return allRequiredFilesGenerated() &&
+                filesHaveNoErrors() &&
+                noGeneralErrors();
     }
 
     private boolean allRequiredFilesGenerated() {
@@ -26,10 +26,10 @@ public class RequiredFilesValidator implements FilesValidator {
 
     private boolean filesHaveNoErrors() {
         return ManifestFile.getRequiredFiles().stream()
-                .allMatch(r -> r.getGenerationErrors().size() == 0);
+                .allMatch(r -> r.getGenerationErrors().isEmpty());
     }
 
     private boolean noGeneralErrors() {
-        return errorRepository.getErrors().size() == 0;
+        return errorRepository.getErrors().isEmpty();
     }
 }

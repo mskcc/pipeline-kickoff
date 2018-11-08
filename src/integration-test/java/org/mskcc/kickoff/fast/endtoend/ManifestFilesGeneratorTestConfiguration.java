@@ -68,12 +68,9 @@ public class ManifestFilesGeneratorTestConfiguration {
     @Autowired
     private StatusFactory statusFactory;
 
-    @Autowired
-    private ErrorRepository errorRepository;
-
     @Bean
     public FilesValidator filesValidator() {
-        return new RequiredFilesValidator(errorRepository);
+        return new RequiredFilesValidator(errorRepository());
     }
 
     @Bean
@@ -98,7 +95,7 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Bean
     public RequestFilePrinter requestFilePrinter() {
-        return new RequestFilePrinter(observerManager(), errorRepository);
+        return new RequestFilePrinter(observerManager(), errorRepository());
     }
 
     @Bean
@@ -148,12 +145,12 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Bean
     public MaxSamplesValidator maxSamplesValidator() {
-        return new MaxSamplesValidator(errorRepository);
+        return new MaxSamplesValidator(errorRepository());
     }
 
     @Bean
     public FileGenerationStatusManifestFileObserver fileGenerationStatusManifestFileObserver() {
-        return new FileGenerationStatusManifestFileObserver(errorRepository);
+        return new FileGenerationStatusManifestFileObserver(errorRepository());
     }
 
     @Bean
@@ -250,7 +247,7 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Bean
     public StrandValidator strandValidator() {
-        return new StrandValidator(errorRepository);
+        return new StrandValidator(errorRepository());
     }
 
     public class MockJiraFileUploader extends JiraFileUploader {

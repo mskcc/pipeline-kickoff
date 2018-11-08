@@ -979,7 +979,7 @@ public class SampleInfoImpact extends SampleInfo {
                 }
             }
         } catch (Exception e) {
-            DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
+            DEV_LOGGER.error("Exception thrown while retrieving information about pooled normals", e);
         }
     }
 

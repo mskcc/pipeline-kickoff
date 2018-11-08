@@ -10,8 +10,7 @@ import com.atlassian.jira.rest.client.internal.async.AsynchronousJiraRestClientF
 import com.atlassian.util.concurrent.Promise;
 import com.google.common.collect.Iterables;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -28,6 +27,7 @@ import org.mskcc.kickoff.printer.FilePrinter;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
+import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,7 +63,7 @@ import static org.mockito.Mockito.mock;
 @ActiveProfiles({"test", "tango"})
 @PropertySource("classpath:application-dev.properties")
 public class ManifestFilesGeneratorTest {
-    private static final Log LOGGER = LogFactory.getLog(ManifestFilesGeneratorTest.class);
+    private static final Logger LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     private final String projectId = "04919_G";
     private JiraRestClient restClient;
@@ -223,15 +223,12 @@ public class ManifestFilesGeneratorTest {
             Exception {
         //given
         List<JiraIssue.Fields.Attachment> allAttachmentsRun1 = uploadFiles();
-
         //when
         fileManifestGenerator.generate(projectId);
-
         //then
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.GROUPING, ManifestFile.PAIRING, ManifestFile
                 .REQUEST, ManifestFile.MAPPING, ManifestFile.CLINICAL));
         assertJiraStatus(filesGeneratedStatus);
-
         assertAttachmentsAreDifferent(allAttachmentsRun1);
     }
 

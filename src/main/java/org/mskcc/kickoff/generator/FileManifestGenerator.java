@@ -83,13 +83,14 @@ public class FileManifestGenerator implements ManifestGenerator {
             resolveExomeRequestType(kickoffRequest);
 
             saveFiles(kickoffRequest);
-            uploadFiles(kickoffRequest);
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
         } finally {
             setFilePermissions(kickoffRequest);
             sendEmailIfFileNotCreated(projectId);
         }
+
+        uploadFiles(kickoffRequest);
     }
 
     private void uploadFiles(KickoffRequest kickoffRequest) {

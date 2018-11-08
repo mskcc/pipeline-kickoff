@@ -209,8 +209,8 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     }
 
     public void validateHasSamples() {
-        if (getAllValidSamples().size() == 0)
-            throw new NoValidSamplesException(String.format("There are no samples in request: %s", getId()));
+        if (getAllValidSamples().isEmpty())
+            throw new NoValidSamplesException(String.format("There are no valid samples in request: %s", getId()));
 
         Set<String> validSampleIds = new TreeSet<>(getAllValidSamples().keySet());
         DEV_LOGGER.info(String.format("Found %d valid samples: [%s]", getAllValidSamples().size(), Utils

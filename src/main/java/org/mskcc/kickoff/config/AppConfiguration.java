@@ -29,6 +29,8 @@ import org.mskcc.kickoff.retriever.ServiceReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.sampleset.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.sampleset.SampleSetProjectPredicate;
 import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
+import org.mskcc.kickoff.upload.FilesValidator;
+import org.mskcc.kickoff.upload.RequiredFilesValidator;
 import org.mskcc.kickoff.upload.jira.state.*;
 import org.mskcc.kickoff.validator.*;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
@@ -417,6 +419,11 @@ public class AppConfiguration {
     @Bean
     public BiPredicate<Sample, Sample> sampleSetPairingInfoValidPredicate() {
         return new SampleSetPairingInfoValidPredicate(singleRequestPairingInfoValidPredicate(), sampleSetBaitSetCompatibilityPredicate());
+    }
+
+    @Bean
+    public FilesValidator filesValidator() {
+        return new RequiredFilesValidator(errorRepository);
     }
 
     @Bean
