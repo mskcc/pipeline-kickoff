@@ -10,6 +10,7 @@ import java.util.List;
 
 @Component
 public class MaxSamplesValidator {
+    static final int MAX_NUMBER_OF_SAMPLES = 200;
     private ErrorRepository errorRepository;
 
     @Autowired
@@ -19,9 +20,9 @@ public class MaxSamplesValidator {
 
     public void validate(List<Sample> samples) {
         int numberOfSamples = samples.size();
-        if (numberOfSamples > RequestValidator.MAX_NUMBER_OF_SAMPLES) {
+        if (numberOfSamples > MAX_NUMBER_OF_SAMPLES) {
             String message = String.format("Max number of samples exceeded. Current: %d, max: %d", numberOfSamples,
-                    RequestValidator.MAX_NUMBER_OF_SAMPLES);
+                    MAX_NUMBER_OF_SAMPLES);
             errorRepository.add(new GenerationError(message, ErrorCode.MAX_NUMBER_SAMPLES_EXCEEDED));
         }
     }

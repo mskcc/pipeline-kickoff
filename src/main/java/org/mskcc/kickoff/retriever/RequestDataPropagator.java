@@ -65,6 +65,7 @@ public class RequestDataPropagator implements DataPropagator {
             }
             addSamplesToPatients(request);
             request.setRunNumber(getRunNumber(request));
+            request.setReadmeInfo(String.format("%s %s", request.getReadMe(), request.getExtraReadMeInfo()));
         }
     }
 

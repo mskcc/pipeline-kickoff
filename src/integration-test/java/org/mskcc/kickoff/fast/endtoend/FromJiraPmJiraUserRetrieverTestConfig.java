@@ -23,11 +23,20 @@ public class FromJiraPmJiraUserRetrieverTestConfig {
     private static String jiraUsername;
     private static String jiraPassword;
 
+    public static void setJiraUsername(String jiraUsername) {
+        FromJiraPmJiraUserRetrieverTestConfig.jiraUsername = jiraUsername;
+    }
+
+    public static void setJiraPassword(String jiraPassword) {
+        FromJiraPmJiraUserRetrieverTestConfig.jiraPassword = jiraPassword;
+    }
+
     @Bean
     @Order(value = 0)
-    PropertyPlaceholderConfigurer propertyPlaceholderConfigurer() throws IOException {
+    static PropertyPlaceholderConfigurer propertyPlaceholderConfigurer() throws IOException {
         final PropertyPlaceholderConfigurer configurer = new PropertyPlaceholderConfigurer();
-  configurer.setLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:application-dev.properties"));
+        configurer.setLocations(new PathMatchingResourcePatternResolver().getResources("classpath*:application-dev" +
+                ".properties"));
         return configurer;
     }
 
@@ -40,24 +49,16 @@ public class FromJiraPmJiraUserRetrieverTestConfig {
         return restTemplate;
     }
 
+    @Bean
+    @Lazy
+    PmJiraUserRetriever pmJiraUserRetriever() {
+        return new FromJiraPmJiraUserRetriever(jiraRestTemplate());
+    }
+
     void addBasicAuth(RestTemplate restTemplate, String username, String password) {
         List<ClientHttpRequestInterceptor> interceptors = Collections.singletonList(new BasicAuthorizationInterceptor
                 (username, password));
         restTemplate.setRequestFactory(new InterceptingClientHttpRequestFactory(restTemplate.getRequestFactory(),
                 interceptors));
-    }
-
-    @Bean
-    @Lazy
-    PmJiraUserRetriever pmJiraUserRetriever () {
-        return new FromJiraPmJiraUserRetriever(jiraRestTemplate());
-    }
-
-    public static void setJiraUsername(String jiraUsername) {
-        FromJiraPmJiraUserRetrieverTestConfig.jiraUsername = jiraUsername;
-    }
-
-    public static void setJiraPassword(String jiraPassword) {
-        FromJiraPmJiraUserRetrieverTestConfig.jiraPassword = jiraPassword;
     }
 }

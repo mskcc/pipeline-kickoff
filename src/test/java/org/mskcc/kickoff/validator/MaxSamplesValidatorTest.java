@@ -25,20 +25,20 @@ public class MaxSamplesValidatorTest {
     public void whenNumberOfSamplesIsLessThanMax_shouldNotGenerateNumberOfSamplesExceededError() throws Exception {
         assertNoOverflowError(0);
         assertNoOverflowError(1);
-        assertNoOverflowError(RequestValidator.MAX_NUMBER_OF_SAMPLES - 2);
-        assertNoOverflowError(RequestValidator.MAX_NUMBER_OF_SAMPLES - 1);
-        assertNoOverflowError(RequestValidator.MAX_NUMBER_OF_SAMPLES);
+        assertNoOverflowError(MaxSamplesValidator.MAX_NUMBER_OF_SAMPLES - 2);
+        assertNoOverflowError(MaxSamplesValidator.MAX_NUMBER_OF_SAMPLES - 1);
+        assertNoOverflowError(MaxSamplesValidator.MAX_NUMBER_OF_SAMPLES);
     }
 
     @Test
     public void whenNumberOfSamplesIsMaxAndBigger_shouldNotGenerateNumberOfSamplesExceededError() throws Exception {
-        assertOverflowError(RequestValidator.MAX_NUMBER_OF_SAMPLES + 1);
+        assertOverflowError(MaxSamplesValidator.MAX_NUMBER_OF_SAMPLES + 1);
 
         setUp();
-        assertOverflowError(RequestValidator.MAX_NUMBER_OF_SAMPLES + RequestValidator.MAX_NUMBER_OF_SAMPLES);
+        assertOverflowError(MaxSamplesValidator.MAX_NUMBER_OF_SAMPLES + MaxSamplesValidator.MAX_NUMBER_OF_SAMPLES);
 
         setUp();
-        assertOverflowError(RequestValidator.MAX_NUMBER_OF_SAMPLES * 100);
+        assertOverflowError(MaxSamplesValidator.MAX_NUMBER_OF_SAMPLES * 100);
     }
 
     private void assertOverflowError(int numberOfSamples) {

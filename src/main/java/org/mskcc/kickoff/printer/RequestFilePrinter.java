@@ -12,6 +12,7 @@ import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.validator.ErrorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -32,15 +33,13 @@ import static org.mskcc.kickoff.util.Utils.getJoinedCollection;
 public class RequestFilePrinter extends FilePrinter {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
-
     private final String manualMappingPinfoToRequestFile = "Alternate_E-mails:DeliverTo,Lab_Head:PI_Name," +
             "Lab_Head_E-mail:PI,Requestor:Investigator_Name,Requestor_E-mail:Investigator,CMO_Project_ID:ProjectName," +
             "Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
     private final String manualMappingConfigMap = "name:ProjectTitle,desc:ProjectDesc,invest:PI,invest_name:PI_Name," +
             "tumor_type:TumorType,date_of_last_update:DateOfLastUpdate,assay_type:Assay";
-
     private final Set<String> requiredProjectInfoFields = new HashSet<>();
-
+    private ErrorRepository errorRepository;
     @Value("${pipeline.name}")
     private String pipelineName;
 
@@ -49,8 +48,9 @@ public class RequestFilePrinter extends FilePrinter {
     }
 
     @Autowired
-    public RequestFilePrinter(ObserverManager observerManager) {
+    public RequestFilePrinter(ObserverManager observerManager, ErrorRepository errorRepository) {
         super(observerManager);
+        this.errorRepository = errorRepository;
     }
 
     public void print(KickoffRequest request) {
@@ -139,6 +139,8 @@ public class RequestFilePrinter extends FilePrinter {
         Date date = new Date();
         requestFileContents.append("DateOfLastUpdate: ").append(dateFormat.format(date)).append("\n");
 
+        appendStrandErrorIfNeeded(request, requestFileContents);
+
         if ((!noPortal && request.getRequestType() != RequestType.RNASEQ) &&
                 !(Utils.isExitLater()
                         && !request.isInnovation()
@@ -157,6 +159,16 @@ public class RequestFilePrinter extends FilePrinter {
             observerManager.notifyObserversOfFileCreated(ManifestFile.REQUEST);
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Exception thrown while creating request file: %s", getFilePath(request)), e);
+        }
+    }
+
+    private void appendStrandErrorIfNeeded(KickoffRequest request, StringBuilder requestFileContents) {
+        if (errorRepository.getErrors().stream()
+                .anyMatch(e -> e.getErrorCode() == ErrorCode.AMBIGUOUS_STRAND)) {
+            requestFileContents
+                    .append(String.format("Strand: *FATAL ERROR* multiple strand type in this project: %s",
+                            request.getStrands()))
+                    .append("\n");
         }
     }
 

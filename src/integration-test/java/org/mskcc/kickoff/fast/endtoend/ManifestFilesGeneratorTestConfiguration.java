@@ -28,6 +28,7 @@ import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.validator.InMemoryErrorRepository;
 import org.mskcc.kickoff.validator.MaxSamplesValidator;
 import org.mskcc.kickoff.validator.RequestValidator;
+import org.mskcc.kickoff.validator.StrandValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -97,7 +98,7 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Bean
     public RequestFilePrinter requestFilePrinter() {
-        return new RequestFilePrinter(observerManager());
+        return new RequestFilePrinter(observerManager(), errorRepository);
     }
 
     @Bean
@@ -244,6 +245,12 @@ public class ManifestFilesGeneratorTestConfiguration {
     @Bean
     public DoubleSlashNewLineStrategy doubleSlashNewLineStrategy() {
         return new DoubleSlashNewLineStrategy();
+    }
+
+
+    @Bean
+    public StrandValidator strandValidator() {
+        return new StrandValidator(errorRepository);
     }
 
     public class MockJiraFileUploader extends JiraFileUploader {
