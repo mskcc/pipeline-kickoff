@@ -99,17 +99,22 @@ public class MappingFilePrinter extends FilePrinter {
             runsWithMultipleFolders, Set<Pairedness> pairednesses, StringBuilder mappingFileContents) throws
             IOException, InterruptedException {
         
-        Set<String> igoIDs = new HashSet<>();
+        Set<String> igoIDrunIds = new HashSet<>();
         
         for (KickoffRequest singleRequest : request.getRequests()) {
             for (SampleRun sampleRun : getSampleRuns(singleRequest)) {
                 Sample sample = sampleRun.getSample();
                 String sampleId = sample.getCmoSampleId();
                 final String runId = sampleRun.getRunId();
-                
-                String igoID = sample.getIgoId();
-                if (igoIDs.contains(igoID)) continue;
-                igoIDs.add(igoID);
+
+                String igoIDrunId = sample.getIgoId() + runId;
+                if (igoIDrunIds.contains(igoIDrunId)) {
+                    String message = String.format("Skipping Sequencing run [%s] for igo sample [%s]: already included.", runId, sample.getIgoId());
+                    logWarning(message);
+                    continue;
+                } else {
+                    igoIDrunIds.add(igoIDrunId);
+                }
 
                 File dir = new File(String.format("%s/hiseq/FASTQ/", fastq_path));
 
