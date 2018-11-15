@@ -1,7 +1,9 @@
 package org.mskcc.kickoff.printer;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
@@ -25,17 +27,22 @@ public class PairingFilePrinterTest {
     private final String norm1 = "norm1";
     private final String ffpePooledNormal = "FFPEPOOLEDNORMAL";
     private final String frozenPooledNormal = "FROZENPOOLEDNORMAL";
+    private final String projectId = "id";
     private ProcessingType processingType;
     private KickoffRequest request;
 
     private PairingsResolver pairingsResolver = mock(PairingsResolver.class);
-    private PairingFilePrinter pairingFilePrinter = new PairingFilePrinter(pairingsResolver, mock(ObserverManager
-            .class));
+    private PairingFilePrinter pairingFilePrinter = new PairingFilePrinter(pairingsResolver, mock(ObserverManager.class));
+
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Before
     public void setUp() throws Exception {
         processingType = mock(ProcessingType.class);
-        request = new KickoffRequest("id", processingType);
+        request = new KickoffRequest(projectId, processingType);
+        String outputPath = temporaryFolder.newFolder("Proj_" + projectId).getPath();
+        request.setOutputPath(outputPath);
     }
 
     @Test
