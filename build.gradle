@@ -4,7 +4,7 @@ import org.mskcc.util.email.EmailToMimeMessageConverter
 import org.mskcc.util.email.JavaxEmailSender
 
 group 'org.mskcc.kickoff.lims'
-version '1.24.9-SNAPSHOT'
+version '1.24.10-SNAPSHOT'
 
 apply plugin: 'application'
 apply plugin: 'maven'

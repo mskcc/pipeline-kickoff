@@ -57,7 +57,6 @@ public class MappingFilePrinter extends FilePrinter {
     @Override
     public void print(KickoffRequest request) {
         DEV_LOGGER.info(String.format("Starting to create file: %s", getFilePath(request)));
-
         try {
             String mappingFileContents = getMappings(request);
             writeMappingFile(request, mappingFileContents);
@@ -99,22 +98,13 @@ public class MappingFilePrinter extends FilePrinter {
             runsWithMultipleFolders, Set<Pairedness> pairednesses, StringBuilder mappingFileContents) throws
             IOException, InterruptedException {
         
-        Set<String> igoIDrunIds = new HashSet<>();
+        Set<String> processedSamplesRuns = new HashSet<>();
         
         for (KickoffRequest singleRequest : request.getRequests()) {
             for (SampleRun sampleRun : getSampleRuns(singleRequest)) {
                 Sample sample = sampleRun.getSample();
                 String sampleId = sample.getCmoSampleId();
                 final String runId = sampleRun.getRunId();
-
-                String igoIDrunId = sample.getIgoId() + runId;
-                if (igoIDrunIds.contains(igoIDrunId)) {
-                    String message = String.format("Skipping Sequencing run [%s] for igo sample [%s]: already included.", runId, sample.getIgoId());
-                    logWarning(message);
-                    continue;
-                } else {
-                    igoIDrunIds.add(igoIDrunId);
-                }
 
                 File dir = new File(String.format("%s/hiseq/FASTQ/", fastq_path));
 
@@ -124,6 +114,14 @@ public class MappingFilePrinter extends FilePrinter {
 
                 String runIdFull = optionalRunIDFull.get();
 
+                String sampleIDrunIdFull = sampleId + runIdFull;
+                if (processedSamplesRuns.contains(sampleIDrunIdFull)) {
+                    String message = String.format("Skipping Sequencing run [%s] for igo sample [%s]: already included.", runIdFull, sampleId);
+                    logWarning(message);
+                    continue;
+                }
+
+                processedSamplesRuns.add(sampleIDrunIdFull);
                 request.addRunID(runIdFull);
 
                 for (String samplePattern : getSamplePatterns(sample, sampleId)) {
@@ -178,7 +176,7 @@ public class MappingFilePrinter extends FilePrinter {
         Process pr = new ProcessBuilder("/bin/bash", "-c", cmd).start();
         pr.waitFor();
 
-        //@TODO move to atnoher place, manifest file depends on new mapping so it has to be done before printing any
+        //@TODO move to another place, manifest file depends on new mapping so it has to be done before printing any
         // files
         int exit = pr.exitValue();
         if (exit != 0) {
