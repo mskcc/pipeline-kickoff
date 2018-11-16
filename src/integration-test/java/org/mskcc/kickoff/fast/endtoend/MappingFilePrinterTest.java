@@ -54,7 +54,6 @@ public class MappingFilePrinterTest {
     private final String projectId;
     private KickoffRequest request;
 
-
     private ProjectFilesArchiver archiverMock = mock(ProjectFilesArchiver.class);
     private ProjectInfoRetriever projInfoRetriever = new ProjectInfoRetriever();
     private RequestDataPropagator reqDataPropagator = new RequestDataPropagator(designFilePath, resultsPathPrefix,
@@ -76,9 +75,7 @@ public class MappingFilePrinterTest {
         this.projectId = projectId;
     }
 
-    @Before
-    public void
-    setUp() throws Exception {
+    @Before public void setUp() throws Exception {
         veloxProjectProxy = new VeloxProjectProxy(getVeloxConnectionData(connectionFile), archiverMock,
                 requestsRetrieverFactory);
         VeloxConnectionData veloxConnectionData = getVeloxConnectionData(connectionFileTest);
@@ -95,20 +92,16 @@ public class MappingFilePrinterTest {
         ReflectionTestUtils.setField(mappingFilePrinter, "fastq_path", fastq_path);
     }
 
-    @After
-    public void
-    tearDown() throws Exception {
+    @After public void tearDown() throws Exception {
         closeConnection();
     }
 
     @Parameterized.Parameters(name = "Testing mapping file content for projectId: {0}")
-    public static Iterable<String>
-    params() {
+    public static Iterable<String> params() {
         return Lists.newArrayList("06302_D", "04430_AI", "set_07737_C", "set_09049_D_1");
     }
 
-    @Test public void
-    whenSampleHasSequencingRuns_shouldReturnItsUniqueRunFolderForEachSample() throws Exception{
+    @Test public void whenSampleHasSequencingRuns_shouldReturnItsUniqueRunFolderForEachSample() throws Exception{
         request = veloxProjectProxy.getRequest(projectId);
 
         String mappingFileContents = ReflectionTestUtils.invokeMethod(mappingFilePrinter, "getMappings", request);
@@ -122,8 +115,7 @@ public class MappingFilePrinterTest {
         assertSequencingRunsMatch(sampleRunsActual);
     }
 
-    private void
-    assertSequencingRunsMatch(Map<String, Set<String>> sampleRunsActual) {
+    private void assertSequencingRunsMatch(Map<String, Set<String>> sampleRunsActual) {
         Map<String, Set<String>> sampleRunsExp = getSampleRuns(request);
         assertThat(sampleRunsExp.size(), is(sampleRunsActual.size()));
 
@@ -137,8 +129,7 @@ public class MappingFilePrinterTest {
         }
     }
 
-    private Map<String, Set<String>>
-    getSampleRuns(KickoffRequest singleRequest) {
+    private Map<String, Set<String>> getSampleRuns(KickoffRequest singleRequest) {
         Map<String, String> sampleRenamesAndSwaps = SampleInfo.getSampleRenames();
         Map<String, Set<String>> sampleRuns = new HashMap<>();
         for (Sample sample : singleRequest.getAllValidSamples().values()) {
@@ -152,8 +143,7 @@ public class MappingFilePrinterTest {
         return sampleRuns;
     }
 
-    private VeloxConnectionData
-    getVeloxConnectionData(String connectionFile) throws Exception {
+    private VeloxConnectionData getVeloxConnectionData(String connectionFile) throws Exception {
         Properties properties = new Properties();
         InputStream input = new FileInputStream(SampleSetIntegrationTest.class.getResource(connectionFile).getPath());
         properties.load(input);
@@ -169,8 +159,7 @@ public class MappingFilePrinterTest {
         return veloxConnectionData;
     }
 
-    private void
-    openConnection() throws Exception {
+    private void openConnection() throws Exception {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             DEV_LOGGER.info("Run shutdown hook");
             try {
@@ -185,8 +174,7 @@ public class MappingFilePrinterTest {
         }
     }
 
-    private void
-    closeConnection() throws VeloxConnectionException {
+    private void closeConnection() throws VeloxConnectionException {
         if (connection.isConnected()) {
             connection.close();
         }
