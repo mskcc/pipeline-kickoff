@@ -24,6 +24,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -142,11 +145,28 @@ public class FileManifestGenerator implements ManifestGenerator {
         projectNameValidator.validate(projectId);
     }
 
-
     private void saveFiles(KickoffRequest kickoffRequest) {
         kickoffRequest.archiveFilesToOld();
         outputFilesPrinter.print(kickoffRequest);
+        removeOldFiles(kickoffRequest);
         filesArchiver.archive(kickoffRequest);
+    }
+
+    private void removeOldFiles(KickoffRequest kickoffRequest) {
+        for (ManifestFile manifestFile : ManifestFile.values()) {
+            if (Files.exists(Paths.get(manifestFile.getFilePath(kickoffRequest))) && !manifestFile.isFileGenerated()) {
+                removeFile(manifestFile.getFilePath(kickoffRequest));
+            }
+        }
+    }
+
+    private void removeFile(String filePath) {
+        try {
+            Files.delete(Paths.get(filePath));
+            DEV_LOGGER.info(String.format("Removed old file: %s", filePath));
+        } catch (IOException e) {
+            DEV_LOGGER.warn(String.format("Unable to delete old file: %s", filePath));
+        }
     }
 
     private void resolveExomeRequestType(KickoffRequest kickoffRequest) {

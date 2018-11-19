@@ -11,6 +11,7 @@ import org.mskcc.kickoff.config.LogConfigurator;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.notify.NotificationFormatter;
+import org.mskcc.kickoff.printer.FilePrinter;
 import org.mskcc.kickoff.printer.OutputFilesPrinter;
 import org.mskcc.kickoff.printer.observer.SpyFileUploader;
 import org.mskcc.kickoff.process.ProcessingType;
@@ -37,7 +38,8 @@ import static org.mockito.Mockito.*;
 @ContextConfiguration(classes = FileManifestGeneratorTest.TestAppConfiguration.class)
 @ActiveProfiles("test")
 @PropertySource("classpath:application-dev.properties")
-public class FileManifestGeneratorTest {
+public class
+FileManifestGeneratorTest {
     private final String projectId = "12345_T";
     private final String outputDir = "";
     @Autowired
@@ -79,6 +81,9 @@ public class FileManifestGeneratorTest {
         when(requestProxy.getRequest(projectId)).thenReturn(request);
         when(outputDirRetriever.retrieve(any(), any())).thenReturn(outputDir);
         Arguments.outdir = "outdir";
+        FilePrinter filePrinter = mock(FilePrinter.class);
+        when(filePrinter.getFilePath(any())).thenReturn("fakePath");
+        Arrays.stream(ManifestFile.values()).forEach(m -> m.setFilePrinter(filePrinter));
     }
 
     @Test

@@ -24,7 +24,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import static org.mskcc.kickoff.config.Arguments.noPortal;
 import static org.mskcc.kickoff.config.Arguments.rerunReason;
 import static org.mskcc.kickoff.util.Utils.filterToAscii;
 import static org.mskcc.kickoff.util.Utils.getJoinedCollection;
@@ -36,12 +35,12 @@ public class RequestFilePrinter extends FilePrinter {
     private final String manualMappingPinfoToRequestFile = "Alternate_E-mails:DeliverTo,Lab_Head:PI_Name," +
             "Lab_Head_E-mail:PI,Requestor:Investigator_Name,Requestor_E-mail:Investigator,CMO_Project_ID:ProjectName," +
             "Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
-    private final String manualMappingConfigMap = "name:ProjectTitle,desc:ProjectDesc,invest:PI,invest_name:PI_Name," +
-            "tumor_type:TumorType,date_of_last_update:DateOfLastUpdate,assay_type:Assay";
     private final Set<String> requiredProjectInfoFields = new HashSet<>();
     private ErrorRepository errorRepository;
     @Value("${pipeline.name}")
     private String pipelineName;
+
+    private String fileContents = "";
 
     {
         requiredProjectInfoFields.add(Constants.ASSAY);
@@ -53,6 +52,7 @@ public class RequestFilePrinter extends FilePrinter {
         this.errorRepository = errorRepository;
     }
 
+    @Override
     public void print(KickoffRequest request) {
         DEV_LOGGER.info(String.format("Starting to create file: %s", getFilePath(request)));
 
@@ -141,16 +141,10 @@ public class RequestFilePrinter extends FilePrinter {
 
         appendStrandErrorIfNeeded(request, requestFileContents);
 
-        if ((!noPortal && request.getRequestType() != RequestType.RNASEQ) &&
-                !(Utils.isExitLater()
-                        && !request.isInnovation()
-                        && request.getRequestType() != RequestType.OTHER
-                        && request.getRequestType() != RequestType.RNASEQ)) {
-            printPortalConfig(requestFileContents.toString(), request);
-        }
+        fileContents = requestFileContents.toString();
 
         try {
-            requestFileContents = new StringBuilder(filterToAscii(requestFileContents.toString()));
+            requestFileContents = new StringBuilder(filterToAscii(fileContents));
             File requestFile = new File(getFilePath(request));
             PrintWriter pW = new PrintWriter(new FileWriter(requestFile, false), false);
             pW.write(requestFileContents.toString());
@@ -160,6 +154,10 @@ public class RequestFilePrinter extends FilePrinter {
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Exception thrown while creating request file: %s", getFilePath(request)), e);
         }
+    }
+
+    public String getFileContents() {
+        return fileContents;
     }
 
     private void appendStrandErrorIfNeeded(KickoffRequest request, StringBuilder requestFileContents) {
@@ -272,81 +270,6 @@ public class RequestFilePrinter extends FilePrinter {
         return getJoinedCollection(request.getLibTypes(), ",");
     }
 
-    private void printPortalConfig(String requestFileContents, KickoffRequest request) {
-        // First make map from request to portal config
-        // THen create final map of portal config with values.
-        Map<String, String> configRequestMap = new LinkedHashMap<>();
-        for (String conv : manualMappingConfigMap.split(",")) {
-            String[] parts = conv.split(":", 2);
-            configRequestMap.put(parts[1], parts[0]);
-        }
-        StringBuilder groups = new StringBuilder("COMPONC;");
-        String assay = "";
-        String dataClinicalPath = "";
-
-        String replaceText = request.getRequestType().getName();
-        if (replaceText.equalsIgnoreCase(Constants.EXOME)) {
-            replaceText = "variant";
-        }
-        // For each line of requestFileContents, grab any fields that are in the map
-        // and add them to the configFileContents variable.
-        String configFileContents = "";
-        for (String line : requestFileContents.split("\n")) {
-            String[] parts = line.split(": ", 2);
-            if (configRequestMap.containsKey(parts[0])) {
-                if (parts[0].equals("PI")) {
-                    groups.append(parts[1].toUpperCase());
-                }
-                if (parts[0].equals("Assay")) {
-                    if (request.getRequestType() == RequestType.IMPACT) {
-                        assay = parts[1].toUpperCase();
-                    } else {
-                        assay = parts[1];
-                    }
-                }
-                configFileContents += configRequestMap.get(parts[0]) + "=\"" + parts[1] + "\"\n";
-            }
-
-            // Change path depending on where it should be going
-            if (request.getRequestType() == RequestType.IMPACT || request.getRequestType() == RequestType.EXOME) {
-                dataClinicalPath = String.valueOf(request.getOutputPath()).replaceAll("BIC/manifests", "CMO") + "\n";
-            } else {
-                dataClinicalPath = String.valueOf(request.getOutputPath()).replaceAll("manifests", replaceText) + "\n";
-            }
-        }
-        // Now add all the fields that can't be grabbed from the request file
-        configFileContents += "project=\"" + request.getId() + "\"\n";
-        configFileContents += "groups=\"" + groups + "\"\n";
-        configFileContents += "cna_seg=\"\"\n";
-        configFileContents += "cna_seg_desc=\"Somatic CNA data (copy number ratio from tumor samples minus ratio from" +
-                " matched normals).\"\n";
-        configFileContents += "cna=\"\"\n";
-        configFileContents += "maf=\"\"\n";
-        configFileContents += "inst=\"cmo\"\n";
-        configFileContents += "maf_desc=\"" + assay + " sequencing of tumor/normal samples\"\n";
-        if (!dataClinicalPath.isEmpty()) {
-            configFileContents += String.format("data_clinical=\"%s/%s_sample_data_clinical.txt\"\n",
-                    dataClinicalPath, Utils.getFullProjectNameWithPrefix(request.getId()));
-        } else {
-            String message = String.format("Cannot find path to data clinical file: %s. Not included in portal " +
-                    "config", dataClinicalPath);
-            logWarning(message);
-            configFileContents += "data_clinical=\"\"\n";
-        }
-        File configFile = null;
-
-        try {
-            configFileContents = filterToAscii(configFileContents);
-            configFile = new File(String.format("%s/%s_portal_conf.txt", request.getOutputPath(), Utils
-                    .getFullProjectNameWithPrefix(request.getId())));
-            PrintWriter pW = new PrintWriter(new FileWriter(configFile, false), false);
-            pW.write(configFileContents);
-            pW.close();
-        } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while creating portal config file: %s", configFile), e);
-        }
-    }
-
     public void logWarning(String message) {
         PM_LOGGER.log(PmLogPriority.WARNING, message);
         DEV_LOGGER.warn(message);
@@ -357,4 +280,5 @@ public class RequestFilePrinter extends FilePrinter {
         PM_LOGGER.log(pmLogLevel, message);
         DEV_LOGGER.log(devLogLevel, message);
     }
+
 }

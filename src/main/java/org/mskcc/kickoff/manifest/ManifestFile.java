@@ -21,7 +21,8 @@ public enum ManifestFile {
     REQUEST("Request file"),
     README("Readme file"),
     MANIFEST("Manifest file"),
-    C_TO_P_MAPPING("C to p mapping file");
+    C_TO_P_MAPPING("C to p mapping file"),
+    PORTAL_CONF("Portal config file");
 
     private static List<ManifestFile> requiredFiles = new ArrayList<>();
 
@@ -117,6 +118,9 @@ public enum ManifestFile {
         @Autowired
         private PairingInfoValidPredicate pairingInfoValidPredicate;
 
+        @Autowired
+        private PortalConfPrinter portalConfPrinter;
+
         @PostConstruct
         public void init() {
             initObservers();
@@ -130,6 +134,7 @@ public enum ManifestFile {
             ManifestFile.README.setFilePrinter(readMePrinter);
             ManifestFile.C_TO_P_MAPPING.setFilePrinter(cidToPidMappingPrinter);
             ManifestFile.MANIFEST.setFilePrinter(manifestFilePrinter);
+            ManifestFile.PORTAL_CONF.setFilePrinter(portalConfPrinter);
         }
 
         private void initObservers() {

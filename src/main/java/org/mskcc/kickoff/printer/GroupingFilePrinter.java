@@ -43,6 +43,7 @@ public class GroupingFilePrinter extends FilePrinter {
         this.maxSamplesValidator = maxSamplesValidator;
     }
 
+    @Override
     public void print(KickoffRequest kickoffRequest) {
         String filename = getFilePath(kickoffRequest);
         DEV_LOGGER.info(String.format("Starting to create file: %s", filename));
