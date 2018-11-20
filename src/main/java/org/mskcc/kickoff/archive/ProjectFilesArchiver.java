@@ -25,6 +25,8 @@ public class ProjectFilesArchiver {
     }
 
     public void archive(KickoffRequest request, String dateDir, String suffix) {
+        DEV_LOGGER.info(String.format("Archiving files for request: %s", request.getId()));
+
         File curDir = new File(request.getOutputPath());
         File projDir = new File(String.format("%s/%s/%s", archivePath, Utils.getFullProjectNameWithPrefix(request.getId()), dateDir));
 

@@ -24,11 +24,7 @@ import org.mskcc.kickoff.upload.jira.*;
 import org.mskcc.kickoff.upload.jira.state.BadInputsIssueStatus;
 import org.mskcc.kickoff.upload.jira.state.HoldIssueStatus;
 import org.mskcc.kickoff.upload.jira.state.StatusFactory;
-import org.mskcc.kickoff.validator.ErrorRepository;
-import org.mskcc.kickoff.validator.InMemoryErrorRepository;
-import org.mskcc.kickoff.validator.MaxSamplesValidator;
-import org.mskcc.kickoff.validator.RequestValidator;
-import org.mskcc.kickoff.validator.StrandValidator;
+import org.mskcc.kickoff.validator.*;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -68,9 +64,12 @@ public class ManifestFilesGeneratorTestConfiguration {
     @Autowired
     private StatusFactory statusFactory;
 
+    @Autowired
+    private ErrorRepository errorRepository;
+
     @Bean
     public FilesValidator filesValidator() {
-        return new RequiredFilesValidator(errorRepository());
+        return new RequiredFilesValidator(errorRepository);
     }
 
     @Bean
@@ -95,7 +94,7 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Bean
     public RequestFilePrinter requestFilePrinter() {
-        return new RequestFilePrinter(observerManager(), errorRepository());
+        return new RequestFilePrinter(observerManager(), errorRepository);
     }
 
     @Bean
@@ -145,12 +144,12 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Bean
     public MaxSamplesValidator maxSamplesValidator() {
-        return new MaxSamplesValidator(errorRepository());
+        return new MaxSamplesValidator(errorRepository);
     }
 
     @Bean
     public FileGenerationStatusManifestFileObserver fileGenerationStatusManifestFileObserver() {
-        return new FileGenerationStatusManifestFileObserver(errorRepository());
+        return new FileGenerationStatusManifestFileObserver(errorRepository);
     }
 
     @Bean
@@ -167,6 +166,11 @@ public class ManifestFilesGeneratorTestConfiguration {
     @Bean
     public MappingFilePrinter mappingFilePrinter() {
         return new MappingFilePrinter(pairednessValidPredicate, pairednessResolver, observerManager());
+    }
+
+    @Bean
+    public PortalConfPrinter portalConfPrinter() {
+        return new PortalConfPrinter(observerManager());
     }
 
     @Bean
@@ -247,7 +251,7 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Bean
     public StrandValidator strandValidator() {
-        return new StrandValidator(errorRepository());
+        return new StrandValidator(errorRepository);
     }
 
     public class MockJiraFileUploader extends JiraFileUploader {
