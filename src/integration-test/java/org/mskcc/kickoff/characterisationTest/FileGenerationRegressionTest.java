@@ -71,7 +71,7 @@ public class FileGenerationRegressionTest {
     @After
     public void tearDown() {
         resetPatientGroupNumber();
-        // deleteOldDirectory();
+        deleteOldDirectory();
     }
 
     @Test
