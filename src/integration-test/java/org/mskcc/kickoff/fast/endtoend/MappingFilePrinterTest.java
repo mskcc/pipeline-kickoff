@@ -16,6 +16,7 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.fast.sampleset.SampleSetIntegrationTest;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.lims.SampleInfo;
+import org.mskcc.kickoff.printer.FastqPathsRetriever;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
@@ -75,6 +76,11 @@ public class MappingFilePrinterTest {
         this.projectId = projectId;
     }
 
+    @Parameterized.Parameters(name = "Testing mapping file content for projectId: {0}")
+    public static Iterable<String> params() {
+        return Lists.newArrayList("06302_D", "04430_AI", "set_07737_C", "set_09049_D_1");
+    }
+
     @Before public void setUp() throws Exception {
         veloxProjectProxy = new VeloxProjectProxy(getVeloxConnectionData(connectionFile), archiverMock,
                 requestsRetrieverFactory);
@@ -88,17 +94,13 @@ public class MappingFilePrinterTest {
         );
         openConnection();
 
-        mappingFilePrinter = new MappingFilePrinter(new PairednessValidPredicate(), new PairednessResolver(), mock(ObserverManager.class));
+        mappingFilePrinter = new MappingFilePrinter(new PairednessValidPredicate(), new PairednessResolver(), mock
+                (ObserverManager.class), mock(FastqPathsRetriever.class));
         ReflectionTestUtils.setField(mappingFilePrinter, "fastq_path", fastq_path);
     }
 
     @After public void tearDown() throws Exception {
         closeConnection();
-    }
-
-    @Parameterized.Parameters(name = "Testing mapping file content for projectId: {0}")
-    public static Iterable<String> params() {
-        return Lists.newArrayList("06302_D", "04430_AI", "set_07737_C", "set_09049_D_1");
     }
 
     @Test public void whenSampleHasSequencingRuns_shouldReturnItsUniqueRunFolderForEachSample() throws Exception{
