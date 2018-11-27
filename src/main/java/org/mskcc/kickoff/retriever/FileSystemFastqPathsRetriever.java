@@ -85,12 +85,12 @@ public class FileSystemFastqPathsRetriever implements FastqPathsRetriever {
         return stringBuilder.toString();
     }
 
-    private String getPattern(Sample sample, String runIDFull, File dir, String samplePattern) {
+    private String getPattern(Sample sample, String runIDFull, File fastqDir, String samplePattern) {
         String pattern;
         if (sample.isPooledNormal()) {
-            pattern = String.format("%s/%s*/Proj*/Sample_%s*", dir.toString(), runIDFull, samplePattern);
+            pattern = String.format("%s/%s*/Proj*/Sample_%s*", fastqDir.toString(), runIDFull, samplePattern);
         } else {
-            pattern = String.format("%s/%s*/Proj*%s/Sample_%s", dir.toString(), runIDFull, sample.getRequestId()
+            pattern = String.format("%s/%s*/Proj*%s/Sample_%s", fastqDir.toString(), runIDFull, sample.getRequestId()
                     .replaceFirst("^0+(?!$)", ""), samplePattern);
         }
         return pattern;
