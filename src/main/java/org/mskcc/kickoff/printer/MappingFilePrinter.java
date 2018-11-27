@@ -15,6 +15,7 @@ import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
+import org.mskcc.kickoff.retriever.FastqPathsRetriever;
 import org.mskcc.kickoff.retriever.FileSystemFastqPathsRetriever;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;

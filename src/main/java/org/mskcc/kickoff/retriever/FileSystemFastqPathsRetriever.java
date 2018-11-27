@@ -8,7 +8,6 @@ import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
-import org.mskcc.kickoff.printer.FastqPathsRetriever;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.util.Constants;
 

@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.printer;
+package org.mskcc.kickoff.retriever;
 
 import org.mskcc.domain.Request;
 import org.mskcc.domain.sample.Sample;

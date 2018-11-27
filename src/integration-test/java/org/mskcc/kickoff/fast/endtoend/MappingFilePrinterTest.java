@@ -7,7 +7,6 @@ import org.apache.log4j.Logger;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -17,10 +16,10 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.fast.sampleset.SampleSetIntegrationTest;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.lims.SampleInfo;
-import org.mskcc.kickoff.printer.FastqPathsRetriever;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
+import org.mskcc.kickoff.retriever.FastqPathsRetriever;
 import org.mskcc.kickoff.retriever.FileSystemFastqPathsRetriever;
 import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
@@ -79,6 +78,20 @@ public class MappingFilePrinterTest {
         this.projectId = projectId;
     }
 
+    @Parameterized.Parameters(name = "Testing mapping file content for projectId: {0}")
+    public static Iterable<String> params() throws IOException {
+        loadProperty();
+        return Lists.newArrayList("06302_D", "04430_AI", "set_07737_C", "set_09049_D_1");
+    }
+
+    private static void loadProperty() throws IOException {
+        Properties prop = new Properties();
+        prop.load(new FileInputStream("src/main/resources/application-dev.properties"));
+        fastq_path = prop.getProperty("fastq_path");
+        designFilePath = prop.getProperty("designFilePath");
+        resultsPathPrefix = prop.getProperty("resultsPathPrefix");
+    }
+
     @Before public void setUp() throws Exception {
         veloxProjectProxy = new VeloxProjectProxy(getVeloxConnectionData(connectionFile), archiverMock,
                 requestsRetrieverFactory);
@@ -98,20 +111,6 @@ public class MappingFilePrinterTest {
 
     @After public void tearDown() throws Exception {
         closeConnection();
-    }
-
-    @Parameterized.Parameters(name = "Testing mapping file content for projectId: {0}")
-    public static Iterable<String> params() throws IOException {
-        loadProperty();
-        return Lists.newArrayList("06302_D", "04430_AI", "set_07737_C", "set_09049_D_1");
-    }
-
-    private static void loadProperty() throws IOException {
-        Properties prop = new Properties();
-        prop.load(new FileInputStream("src/main/resources/application-dev.properties"));
-        fastq_path=prop.getProperty("fastq_path");
-        designFilePath = prop.getProperty("designFilePath");
-        resultsPathPrefix =prop.getProperty("resultsPathPrefix");
     }
 
     @Test public void whenSampleHasSequencingRuns_shouldReturnItsUniqueRunFolderForEachSample() throws Exception{
