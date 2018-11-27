@@ -7,6 +7,7 @@ import org.apache.log4j.Logger;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -20,6 +21,7 @@ import org.mskcc.kickoff.printer.FastqPathsRetriever;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
+import org.mskcc.kickoff.retriever.FileSystemFastqPathsRetriever;
 import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.sampleset.SampleSetProjectInfoConverter;
@@ -33,6 +35,7 @@ import org.mskcc.kickoff.velox.VeloxProjectProxy;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.function.BiPredicate;
@@ -48,9 +51,9 @@ public class MappingFilePrinterTest {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private static final String connectionFile = "/lims-tango-dev.properties";
     private static final String connectionFileTest = "/lims-tango-test.properties";
-    private static final String fastq_path="/ifs/archive/GCL";
-    private static final String designFilePath = "/ifs/projects/CMO/targets/designs";
-    private static final String resultsPathPrefix = "/ifs/solres/seq";
+    private static String fastq_path;
+    private static String designFilePath;
+    private static String resultsPathPrefix;
 
     private final String projectId;
     private KickoffRequest request;
@@ -70,15 +73,10 @@ public class MappingFilePrinterTest {
     private VeloxProjectProxy veloxProjectProxy;
     private MappingFilePrinter mappingFilePrinter;
     private VeloxConnection connection;
+    private FastqPathsRetriever fastqPathsRetriever;
 
-    public
-    MappingFilePrinterTest(String projectId) {
+    public MappingFilePrinterTest(String projectId) {
         this.projectId = projectId;
-    }
-
-    @Parameterized.Parameters(name = "Testing mapping file content for projectId: {0}")
-    public static Iterable<String> params() {
-        return Lists.newArrayList("06302_D", "04430_AI", "set_07737_C", "set_09049_D_1");
     }
 
     @Before public void setUp() throws Exception {
@@ -94,13 +92,26 @@ public class MappingFilePrinterTest {
         );
         openConnection();
 
-        mappingFilePrinter = new MappingFilePrinter(new PairednessValidPredicate(), new PairednessResolver(), mock
-                (ObserverManager.class), mock(FastqPathsRetriever.class));
-        ReflectionTestUtils.setField(mappingFilePrinter, "fastq_path", fastq_path);
+        fastqPathsRetriever = new FileSystemFastqPathsRetriever(String.format("%s/hiseq/FASTQ/", fastq_path));
+        mappingFilePrinter = new MappingFilePrinter(new PairednessValidPredicate(), new PairednessResolver(), mock(ObserverManager.class), fastqPathsRetriever);
     }
 
     @After public void tearDown() throws Exception {
         closeConnection();
+    }
+
+    @Parameterized.Parameters(name = "Testing mapping file content for projectId: {0}")
+    public static Iterable<String> params() throws IOException {
+        loadProperty();
+        return Lists.newArrayList("06302_D", "04430_AI", "set_07737_C", "set_09049_D_1");
+    }
+
+    private static void loadProperty() throws IOException {
+        Properties prop = new Properties();
+        prop.load(new FileInputStream("src/main/resources/application-dev.properties"));
+        fastq_path=prop.getProperty("fastq_path");
+        designFilePath = prop.getProperty("designFilePath");
+        resultsPathPrefix =prop.getProperty("resultsPathPrefix");
     }
 
     @Test public void whenSampleHasSequencingRuns_shouldReturnItsUniqueRunFolderForEachSample() throws Exception{
