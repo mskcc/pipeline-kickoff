@@ -1,23 +1,22 @@
 package org.mskcc.kickoff.retriever;
 
 import org.assertj.core.api.Assertions;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.util.*;
 
-import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.mock;
 
 public class FileSystemFastqPathsRetrieverTest {
@@ -48,6 +47,13 @@ public class FileSystemFastqPathsRetrieverTest {
         sample.put(Constants.SEQ_IGO_ID, seqIgoId);
         sample.put(Constants.IGO_ID, igoId);
         sample.put(Constants.MANIFEST_SAMPLE_ID, "IGO_" + igoId);
+    }
+
+    @After
+    public void tearDown() {
+        if (temporaryFolder != null) {
+            temporaryFolder.delete();
+        }
     }
 
     @Test
@@ -81,8 +87,8 @@ public class FileSystemFastqPathsRetrieverTest {
         List<String> fastqs = retriever.retrieve(request, sample, runId1, samplePattern);
 
         //then
-        Assert.assertThat(fastqs.size(), is(1));
-        Assert.assertThat(fastqs.get(0), is(sampleFastqs.getPath()));
+        Assertions.assertThat(fastqs.size()).isEqualTo(1);
+        Assertions.assertThat(fastqs.get(0)).isEqualTo(sampleFastqs.getPath());
     }
 
     @Test
@@ -97,8 +103,8 @@ public class FileSystemFastqPathsRetrieverTest {
         List<String> fastqs = retriever.retrieve(request, sample, runId1, samplePattern);
 
         //then
-        Assert.assertThat(fastqs.size(), is(1));
-        Assert.assertThat(fastqs.get(0), is(sampleFastqs.getPath()));
+        Assertions.assertThat(fastqs.size()).isEqualTo(1);
+        Assertions.assertThat(fastqs.get(0)).isEqualTo(sampleFastqs.getPath());
     }
 
     @Test
@@ -151,14 +157,83 @@ public class FileSystemFastqPathsRetrieverTest {
                         + "_IGO_" + seqIgoId).getPath()
         );
 
-        Assert.assertThat(sample.get(Constants.MANIFEST_SAMPLE_ID), is("IGO_" + igoId));
+        Assertions.assertThat(sample.get(Constants.MANIFEST_SAMPLE_ID)).isEqualTo("IGO_" + igoId);
 
         //when
         List<String> fastqs = retriever.retrieve(request, sample, runId1, samplePattern);
 
         //then
         Assertions.assertThat(fastqs).containsOnlyElementsOf(correctFastqDirs);
-        Assert.assertThat(sample.get(Constants.MANIFEST_SAMPLE_ID), is("IGO_" + seqIgoId));
+        Assertions.assertThat(sample.get(Constants.MANIFEST_SAMPLE_ID)).isEqualTo("IGO_" + seqIgoId);
+    }
+
+    @Test
+    public void whenSequencingRunFolderNotFoundForRunId_shouldThrowException() {
+        // given
+
+        // when
+        //then
+        Assertions.assertThatThrownBy(() ->
+                retriever.getRunId(mock(KickoffRequest.class), new HashSet<>(), request, runId1))
+                .isInstanceOf(MappingFilePrinter.NoSequencingRunFolderFoundException.class);
+    }
+
+    @Test
+    public void whenOneSequencingRunFolderFoundForRunId_shouldReturnFoundOneRunID() throws Exception {
+        //given
+        createSubfolders(runId1, Utils.getFullProjectNameWithPrefix(reqId1), "Sample_" +
+                samplePattern);
+
+        //when
+        Optional<String> optionalRunIDFull = retriever.getRunId(mock(KickoffRequest.class), new HashSet<>(), request, runId1);
+
+        //then
+        Assertions.assertThat(optionalRunIDFull).isPresent();
+        Assertions.assertThat(optionalRunIDFull.get()).isEqualTo(runId1);
+    }
+
+    @Test
+    public void whenTwoSequencingRunFoldersFoundForRunIdAndProjectExistInBoth_shouldReturnLatestRunID() throws Exception {
+        //given
+        File runId1Dir = createSubfolders(runId1, "Project_" + reqId1, "Sample_" +
+                samplePattern);
+        createSubfolders(runId1 + "_A1", "Project_" + reqId1, "Sample_" +
+                samplePattern);
+        //when
+        Files.setLastModifiedTime(runId1Dir.getParentFile().getParentFile().toPath(),
+                FileTime.from(Instant.now().minusSeconds(10)));
+        Optional<String> optionalRunIDFull = retriever.getRunId(mock(KickoffRequest.class), new HashSet<>(), request, runId1);
+
+        //then
+        Assertions.assertThat(optionalRunIDFull).isPresent();
+        Assertions.assertThat(optionalRunIDFull.get()).isEqualTo(runId1 + "_A1");
+    }
+
+    @Test
+    public void whenTwoSequencingRunFoldersFoundForRunIdAndProjectExistInNeither_shouldException() throws Exception {
+        //given
+        createSubfolders(runId1, "Project_" + reqId2, "Sample_" + samplePattern);
+        createSubfolders(runId1 + "_A1", "Project_" + reqId2, "Sample_" + samplePattern);
+
+        //when
+        //then
+        Assertions.assertThatThrownBy(() ->
+                retriever.getRunId(mock(KickoffRequest.class), new HashSet<>(), request, runId1))
+                .isInstanceOf(MappingFilePrinter.NoSequencingRunFolderFoundException.class);
+    }
+
+    @Test
+    public void whenTwoSequencingRunFoldersFoundForRunIdAndProjectExistInOneOfThem_shouldOneRunID() throws Exception {
+        //given
+        createSubfolders(runId1, "Project_" + reqId2, "Sample_" + samplePattern);
+        createSubfolders(runId1 + "_A1", "Project_" + reqId1, "Sample_" + samplePattern);
+
+        //when
+        Optional<String> optionalRunIDFull = retriever.getRunId(mock(KickoffRequest.class), new HashSet<>(), request, runId1);
+
+        //then
+        Assertions.assertThat(optionalRunIDFull).isPresent();
+        Assertions.assertThat(optionalRunIDFull.get()).isEqualTo(runId1 + "_A1");
     }
 
     private File createSubfolders(String runId, String projectId, String sampleId) throws IOException {
@@ -170,5 +245,4 @@ public class FileSystemFastqPathsRetrieverTest {
         temporaryFolder.create();
         temporaryFolder.newFile(fastqName);
     }
-
 }
