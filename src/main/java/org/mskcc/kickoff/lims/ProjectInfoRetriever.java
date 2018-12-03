@@ -276,18 +276,19 @@ public class ProjectInfoRetriever {
             firstName = temp[1].trim();
             lastName = temp[0].trim();
         } else if (temp.length == 3) {
-            firstName = temp[2]; lastName = temp[0].trim();
+            firstName = temp[2].trim();
+            lastName = temp[0].trim();
         } else {
             DEV_LOGGER.warn(String.format("Not valid full name: <%s>.", projectManagerFullName));
         }
 
-        Optional<String> optionalS = Optional.empty();
+        Optional<String> optionalPmEmail= Optional.empty();
         try {
-            optionalS = queryDatabaseForProjectManagerEmail(dataRecordManager, apiUser, firstName, lastName);
+            optionalPmEmail = queryDatabaseForProjectManagerEmail(dataRecordManager, apiUser, firstName, lastName);
         } catch (Exception e) {
             DEV_LOGGER.warn(e.getMessage());
         }
-        return optionalS.orElse(Constants.NA);
+        return optionalPmEmail.orElse(Constants.NA);
     }
 
     Optional<String> queryDatabaseForProjectManagerEmail(DataRecordManager dataRecordManager, User apiUser, String firstName, String lastName) throws ServerException, RemoteException {
