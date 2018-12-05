@@ -3,12 +3,14 @@ package org.mskcc.kickoff.lims;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
+import com.velox.api.util.ServerException;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
+import java.rmi.RemoteException;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -16,6 +18,7 @@ import static org.mskcc.util.VeloxConstants.*;
 
 public class SampleInfoExome extends SampleInfoImpact {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+    private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private Map<String, String> baitSetToDesignFileMapping;
 
     public SampleInfoExome(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample
@@ -88,11 +91,11 @@ public class SampleInfoExome extends SampleInfoImpact {
             } else if (libConc > 0 && (this.LIBRARY_YIELD == null || this.LIBRARY_YIELD.startsWith("#"))) {
                 this.LIBRARY_YIELD = String.valueOf(libVol * libConc);
             }
-            processCaptureInfo(drm, rec, apiUser, libConc, true, kickoffRequest);
+            processCaptureInfo(drm, rec, apiUser, libConc, true, kickoffRequest, sample);
         } else {
             // Here I can just be simple like the good old times and pull stuff from the
             // Nimb protocol
-            processCaptureInfo(drm, rec, apiUser, -1, false, kickoffRequest);
+            processCaptureInfo(drm, rec, apiUser, -1, false, kickoffRequest, sample);
         }
         if (this.LIBRARY_YIELD.startsWith("#")) {
             this.LIBRARY_YIELD = "-2";
@@ -100,14 +103,14 @@ public class SampleInfoExome extends SampleInfoImpact {
     }
 
     private void processCaptureInfo(DataRecordManager drm, DataRecord rec, User apiUser, double libConc, boolean
-            afterDate, KickoffRequest kickoffRequest) {
+            afterDate, KickoffRequest kickoffRequest, Sample sample) {
 
         if (shouldValidateKapaProtocols(kickoffRequest)) {
             // This should set Lib Yield, Capt Input, Capt Name, Bait Set
             List<DataRecord> requestAsList = new ArrayList<>();
 
-            List<List<Map<String, Object>>> kapa1FieldsList = null;
-            List<List<Map<String, Object>>> kapa2FieldsList = null;
+            List<List<Map<String, Object>>> kapa1FieldsList = new ArrayList<>();
+            List<List<Map<String, Object>>> kapa2FieldsList = new ArrayList<>();
             try {
                 requestAsList.add(rec);
                 kapa1FieldsList = drm.getFieldsForDescendantsOfType(requestAsList, KAPA_AGILENT_CAPTURE_PROTOCOL_1,
@@ -118,20 +121,35 @@ public class SampleInfoExome extends SampleInfoImpact {
                 DEV_LOGGER.error("Exception thrown while retrieving information about process capture", e);
             }
 
-            if (kapa1FieldsList == null || kapa1FieldsList.size() == 0 || kapa1FieldsList.get(0) == null ||
+            if (sample.isTransfer()) {
+                if (kapa1FieldsList.size() == 0 || kapa1FieldsList.get(0) == null || kapa1FieldsList.get(0).size() == 0) {
+                    kapa1FieldsList = getKapaAgilentCaptureProtocolFromPrevSamps(
+                            drm, rec, apiUser, KAPA_AGILENT_CAPTURE_PROTOCOL_1);
+                }
+                if (kapa2FieldsList.size() == 0 || kapa2FieldsList.get(0) == null || kapa2FieldsList.get(0).size() == 0) {
+                    kapa2FieldsList = getKapaAgilentCaptureProtocolFromPrevSamps(
+                            drm, rec, apiUser, KAPA_AGILENT_CAPTURE_PROTOCOL_2);
+                }
+                String msg = String.format("Sample <%s> is a transfer from another request, " +
+                                "fetched <%d> kapa1 protocol(s), <%d> kapa2 protocol(s) from ancestor sample(s).",
+                        sample.getIgoId(), kapa1FieldsList.size(), kapa2FieldsList.size());
+                DEV_LOGGER.info(msg);
+            }
+
+            if (kapa1FieldsList.size() == 0 || kapa1FieldsList.get(0) == null ||
                     kapa1FieldsList.get(0).size() == 0) {
                 this.CAPTURE_INPUT = this.CAPTURE_BAIT_SET = "#NoKAPACaptureProtocol1";
-                logError(String.format("No Valid KAPACaptureProtocol for sample %s. The baitset, Capture Input, " +
+                DEV_LOGGER.info(String.format("No Valid KAPACaptureProtocol1 for sample %s. The baitset, Capture Input, " +
                         "Library " +
 
                         "Yield will be unavailable. ", this.CMO_SAMPLE_ID));
-            } else if (kapa2FieldsList == null || kapa2FieldsList.size() == 0 || kapa2FieldsList.get(0) == null ||
+            } else if (kapa2FieldsList.size() == 0 || kapa2FieldsList.get(0) == null ||
                     kapa2FieldsList.get(0).size() == 0) {
                 this.CAPTURE_INPUT = this.CAPTURE_BAIT_SET = "#NoKAPACaptureProtocol2";
-                logError(String.format("No Valid KAPACaptureProtocol2 for sample %s(Should be present). The baitset, " +
+                DEV_LOGGER.info(String.format("No Valid KAPACaptureProtocol2 for sample %s(Should be present). The baitset, " +
                         "Capture Input, Library Yield will be unavailable. ", this.CMO_SAMPLE_ID));
             } else {
-                // there was only one sample in the reqeusts as list so you just need the first list of maps.
+                // there was only one sample in the requests as list so you just need the first list of maps.
                 List<Map<String, Object>> kapa2Fields = kapa2FieldsList.get(0);
                 List<Map<String, Object>> kapa1Fields = kapa1FieldsList.get(0);
 
@@ -171,7 +189,7 @@ public class SampleInfoExome extends SampleInfoImpact {
                             this.CAPTURE_BAIT_SET = (String) kapa1Map.get(AGILENT_CAPTURE_BAIT_SET);
                             if (afterDate) {
                                 String message = "No KAPAAgilentCaptureProtocol2 had a valid key, but it should!";
-                                logWarning(message);
+                                DEV_LOGGER.info(message);
                             }
                         }
 
@@ -208,6 +226,26 @@ public class SampleInfoExome extends SampleInfoImpact {
         this.BAIT_VERSION = this.CAPTURE_BAIT_SET;
     }
 
+    private List<List<Map<String, Object>>> getKapaAgilentCaptureProtocolFromPrevSamps(DataRecordManager drm, DataRecord sampleRec, User apiUser, String kapaProtocolVersion) {
+        Set<List<Map<String, Object>>> kapaFieldsSet = new HashSet<>();
+        try {
+            // use Ancestors instead of parents
+            List<DataRecord> ancestors = sampleRec.getAncestorsOfType(VeloxConstants.SAMPLE, apiUser);
+            List<List<Map<String, Object>>> kapaFieldsList = drm.getFieldsForDescendantsOfType(ancestors, kapaProtocolVersion, apiUser);
+            for (List<Map<String, Object>> list: kapaFieldsList) {
+                if (list != null && list.size() != 0) {
+                    kapaFieldsSet.add(list);
+                }
+            }
+        } catch (RemoteException | ServerException e) {
+            String msg = "Exception thrown while retrieving Kapa Agilent Capture Protocol from ancestor samples:";
+            DEV_LOGGER.error(msg, e);
+            PM_LOGGER.error(msg, e);
+        }
+
+        return new ArrayList<>(kapaFieldsSet);
+    }
+
     private boolean shouldValidateKapaProtocols(KickoffRequest kickoffRequest) {
         return kickoffRequest.getCreationDate() == null || kickoffRequest.getCreationDate().isAfter
                 (kapaProtocolStartDate);
@@ -240,8 +278,9 @@ public class SampleInfoExome extends SampleInfoImpact {
                 baitSetToDesignFile.put(baitSet, designFileName);
             }
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Unable to retrieve Bait set to design file name mapping from record: %s",
-                    Constants.BAIT_SET_TO_DESIGN_FILE_MAPPING), e);
+            String msg = String.format("Unable to retrieve Bait set to design file name mapping from record: %s",
+                    Constants.BAIT_SET_TO_DESIGN_FILE_MAPPING);
+            DEV_LOGGER.warn(msg, e);
         }
 
         return baitSetToDesignFile;
