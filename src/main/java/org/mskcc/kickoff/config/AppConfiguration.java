@@ -23,9 +23,7 @@ import org.mskcc.kickoff.pairing.SampleSetPairingInfoValidPredicate;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.proxy.RequestProxy;
 import org.mskcc.kickoff.resolver.PairednessResolver;
-import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
-import org.mskcc.kickoff.retriever.RequestDataPropagator;
-import org.mskcc.kickoff.retriever.ServiceReadOnlyExternalSamplesRepository;
+import org.mskcc.kickoff.retriever.*;
 import org.mskcc.kickoff.sampleset.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.sampleset.SampleSetProjectPredicate;
 import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
@@ -122,6 +120,9 @@ public class AppConfiguration {
     private String externalSampleRestPassword;
     @Value("#{'${pairing.assay.compatibility}'.split(',')}")
     private List<String> baitSetCompatibility;
+    @Value("${fastq_path}")
+    private String fastqPath;
+
     @Autowired
     private ClientHttpRequestInterceptor loggingClientHttpRequestInterceptor;
     @Autowired
@@ -364,6 +365,11 @@ public class AppConfiguration {
     }
 
     @Bean
+    public FastqPathsRetriever fastqPathsRetriever() {
+        return new FileSystemFastqPathsRetriever(String.format("%s/hiseq/FASTQ/", fastqPath));
+    }
+
+    @Bean
     @Profile(Constants.PROD_PROFILE)
     @Qualifier("jiraRestTemplate")
     public RestTemplate jiraRestTemplate() {
@@ -418,7 +424,8 @@ public class AppConfiguration {
 
     @Bean
     public BiPredicate<Sample, Sample> sampleSetPairingInfoValidPredicate() {
-        return new SampleSetPairingInfoValidPredicate(singleRequestPairingInfoValidPredicate(), sampleSetBaitSetCompatibilityPredicate());
+        return new SampleSetPairingInfoValidPredicate(singleRequestPairingInfoValidPredicate(),
+                sampleSetBaitSetCompatibilityPredicate());
     }
 
     @Bean

@@ -17,6 +17,8 @@ import org.mskcc.kickoff.printer.*;
 import org.mskcc.kickoff.printer.observer.FileGenerationStatusManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
+import org.mskcc.kickoff.retriever.FastqPathsRetriever;
+import org.mskcc.kickoff.retriever.FileSystemFastqPathsRetriever;
 import org.mskcc.kickoff.upload.FileDeletionException;
 import org.mskcc.kickoff.upload.FilesValidator;
 import org.mskcc.kickoff.upload.RequiredFilesValidator;
@@ -54,6 +56,9 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Value("${jira.roslin.project.name}")
     private String jiraRoslinProjectName;
+
+    @Value("${fast_path}")
+    private String fastqDir;
 
     @Autowired
     private Predicate<Set<Pairedness>> pairednessValidPredicate;
@@ -165,7 +170,8 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Bean
     public MappingFilePrinter mappingFilePrinter() {
-        return new MappingFilePrinter(pairednessValidPredicate, pairednessResolver, observerManager());
+        return new MappingFilePrinter(pairednessValidPredicate, pairednessResolver, observerManager(),
+                fastqPathsRetriever());
     }
 
     @Bean
@@ -252,6 +258,11 @@ public class ManifestFilesGeneratorTestConfiguration {
     @Bean
     public StrandValidator strandValidator() {
         return new StrandValidator(errorRepository);
+    }
+
+    @Bean
+    public FastqPathsRetriever fastqPathsRetriever() {
+        return new FileSystemFastqPathsRetriever(fastqDir);
     }
 
     public class MockJiraFileUploader extends JiraFileUploader {
