@@ -32,7 +32,7 @@ import static org.mskcc.kickoff.util.Utils.getJoinedCollection;
 public class RequestFilePrinter extends FilePrinter {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
-    private final String manualMappingPinfoToRequestFile = "Alternate_E-mails:DeliverTo,Lab_Head:PI_Name," +
+    private final String manualMappingPinfoToRequestFile = "Lab_Head:PI_Name," +
             "Lab_Head_E-mail:PI,Requestor:Investigator_Name,Requestor_E-mail:Investigator,CMO_Project_ID:ProjectName," +
             "Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
     private final Set<String> requiredProjectInfoFields = new HashSet<>();
