@@ -4,6 +4,9 @@ import com.sampullara.cli.Args;
 import com.sampullara.cli.Argument;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
+import com.velox.api.sqlbuilder.Column;
+import com.velox.api.sqlbuilder.SqlBuilder;
+import com.velox.api.sqlbuilder.Table;
 import com.velox.api.user.User;
 import com.velox.api.util.ServerException;
 import org.apache.commons.lang3.StringUtils;
@@ -15,6 +18,7 @@ import org.mskcc.kickoff.util.Utils;
 import org.mskcc.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
+import java.rmi.RemoteException;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -24,8 +28,8 @@ import java.util.regex.Pattern;
  * @author Krista Kaz
  */
 public class ProjectInfoRetriever {
-    private static final Logger DEV_LOGGER = Logger.getLogger(ProjectInfoRetriever.class);
-    private static final LinkedHashMap<String, String> pmEmail = new LinkedHashMap<>();
+    private static final Logger DEV_LOGGER = Logger.getLogger(org.mskcc.kickoff.util.Constants.DEV_LOGGER);
+
     @Argument(alias = "p", description = "Project to get samples for")
     private final HashSet<String> platforms = new HashSet<>();
     private Map<String, String> projectInfo = new LinkedHashMap<>();
@@ -49,17 +53,13 @@ public class ProjectInfoRetriever {
     }
 
     public Map<String, String> queryProjectInfo(User apiUser, DataRecordManager drm, KickoffRequest kickoffRequest) {
-        // Adding PM emails to the hashmap
-        pmEmail.put("Bouvier, Nancy", "bouviern@mskcc.org");
-        pmEmail.put("Selcuklu, S. Duygu", "selcukls@mskcc.org");
-        pmEmail.put("Bourque, Caitlin", "bourquec@mskcc.org");
 
         // If request ID includes anything besides A-Za-z_0-9 exit
         Pattern reqPattern = Pattern.compile("^[0-9]{5,}[A-Z_]*$");
         String requestID = kickoffRequest.getId();
         if (!reqPattern.matcher(requestID).matches()) {
-            DEV_LOGGER.error("Malformed request ID.");
-            return null;
+            DEV_LOGGER.error(String.format("Malformed request ID: <%s>.", requestID));
+            return Collections.emptyMap();
         }
 
         try {
@@ -137,12 +137,12 @@ public class ProjectInfoRetriever {
                             ("CMOProjectBrief", apiUser).replace("\n", "").replace("\r", ""));
                 }
 
-                projectInfo.put(Constants.ProjectInfo.PROJECT_MANAGER, requestDataRecord.getPickListVal
-                        ("ProjectManager", apiUser));
-                projectInfo.put(Constants.ProjectInfo.PROJECT_MANAGER_EMAIL, String.valueOf(pmEmail.get
-                        (requestDataRecord.getPickListVal("ProjectManager", apiUser))));
-                projectInfo.put(Constants.ProjectInfo.README_INFO, requestDataRecord.getStringVal("ReadMe", apiUser));
-
+                String projectManager = requestDataRecord.getPickListVal("ProjectManager", apiUser);
+                String projectManagerEmail = getProjectManagerEmail(drm, apiUser, projectManager);
+                projectInfo.put(Constants.ProjectInfo.PROJECT_MANAGER, projectManager);
+                projectInfo.put(Constants.ProjectInfo.PROJECT_MANAGER_EMAIL, projectManagerEmail.trim());
+                projectInfo.put(Constants.ProjectInfo.README_INFO,
+                        requestDataRecord.getStringVal("ReadMe", apiUser));
 
                 // ******************************* NEW FIELDS - will probably be moved
                 // Bioinformatic Request: FASTQ and BICAnalysis (bools, request specific)
@@ -172,7 +172,6 @@ public class ProjectInfoRetriever {
                     projectInfo.put(Constants.ProjectInfo.REQUESTOR, RequesterName[1] + ", " + RequesterName[0]);
                 }
                 projectInfo.put(Constants.ProjectInfo.REQUESTOR_E_MAIL, InvestigatorEmail);
-
 
                 // Get the Child e-mail records, if there are any
                 List<DataRecord> emailList = Arrays.asList(requestDataRecord.getChildrenOfType(VeloxConstants.EMAIL, apiUser));
@@ -262,6 +261,57 @@ public class ProjectInfoRetriever {
         return reqType;
     }
 
+    String getProjectManagerEmail(DataRecordManager dataRecordManager, User apiUser, String projectManagerFullName) {
+        String firstName = "";
+        String lastName = "";
+
+        String[] temp = projectManagerFullName
+                .replaceAll(",", "")
+                .replace(".", "")
+                .split("\\s+");
+
+        if (temp.length == 1) {
+            DEV_LOGGER.warn(String.format("Not valid full name: <%s>.", projectManagerFullName));
+        } else if (temp.length == 2) {
+            firstName = temp[1].trim();
+            lastName = temp[0].trim();
+        } else if (temp.length == 3) {
+            firstName = temp[2].trim();
+            lastName = temp[0].trim();
+        } else {
+            DEV_LOGGER.warn(String.format("Not valid full name: <%s>.", projectManagerFullName));
+        }
+
+        Optional<String> optionalPmEmail= Optional.empty();
+        try {
+            optionalPmEmail = queryDatabaseForProjectManagerEmail(dataRecordManager, apiUser, firstName, lastName);
+        } catch (Exception e) {
+            DEV_LOGGER.warn(e.getMessage());
+        }
+        return optionalPmEmail.orElse(Constants.NA);
+    }
+
+    Optional<String> queryDatabaseForProjectManagerEmail(DataRecordManager dataRecordManager, User apiUser, String firstName, String lastName) throws ServerException, RemoteException {
+        SqlBuilder sqlBuilder = new SqlBuilder();
+        Table limsuserTable = new Table("limsuser");
+        Column emailaddressColumn = new Column(limsuserTable, "EMAILADDRESS");
+        Column firstnameColumn = new Column(limsuserTable, "FIRSTNAME");
+        Column lastnameColumn = new Column(limsuserTable, "LASTNAME");
+        sqlBuilder.select(emailaddressColumn)
+                .from(limsuserTable)
+                .where(firstnameColumn.equalTo(firstName)
+                        .and(lastnameColumn.equalTo(lastName)));
+
+        List<Map<Column, Object>> limsUsers = dataRecordManager.queryDatabase(sqlBuilder, apiUser);
+
+        if (limsUsers.size() >= 1) {
+            return Optional.of((String) limsUsers.get(0).get(emailaddressColumn));
+        } else {
+            DEV_LOGGER.warn(String.format("<%d> lims user found for <%s %s>.", limsUsers.size(), firstName, lastName));
+        }
+        return Optional.empty();
+    }
+
     private Map<String, String> getTransformedProjectInfo(Map<String, String> projectInfo) {
         Map<String, String> transformedProjectInfo = new HashMap<>();
         for (Map.Entry<String, String> entry : projectInfo.entrySet()) {
@@ -278,5 +328,3 @@ public class ProjectInfoRetriever {
     }
 
 }
-
-
