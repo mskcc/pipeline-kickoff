@@ -53,11 +53,6 @@ public class SampleSetProjectInfoConverterTest {
     }
 
     @Test
-    public void whenConvertingProjectInfo_shouldAssignAlternateEmailsFromPrimeRequest() {
-        assertPropertyIsResolvedFromPrimeRequest(Constants.ProjectInfo.ALTERNATE_EMAILS);
-    }
-
-    @Test
     public void whenPrimaryRequestHasNoFinalProjectTitle_shouldThrowAnException() {
         assertExceptionThrownOnMissingPrimaryRequestProperty(Constants.ProjectInfo.FINAL_PROJECT_TITLE);
     }
@@ -330,7 +325,6 @@ public class SampleSetProjectInfoConverterTest {
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.TUMOR_TYPE, "tumorType");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.REQUESTOR, "requestor");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.REQUESTOR_E_MAIL, "requestor@example.com");
-        kickoffRequest.addProjectProperty(Constants.ProjectInfo.ALTERNATE_EMAILS, "some@example.com");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.DATA_ANALYST, "Some Analyst");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.DATA_ANALYST_EMAIL, "analust@example.com");
 

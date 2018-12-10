@@ -72,10 +72,6 @@ public class SampleSetProjectInfoConverter {
         return sampleSet.getBaitSet();
     }
 
-    private String getAlternateEmails(KickoffSampleSet sampleSet) {
-        return getPropertyFromPrimaryRequest(sampleSet, ProjectInfo.ALTERNATE_EMAILS);
-    }
-
     private String getIgoProjectId(KickoffSampleSet sampleSet) {
         return sampleSet.getName();
     }
