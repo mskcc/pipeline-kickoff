@@ -24,7 +24,6 @@ public class SampleSetProjectInfoConverter {
         projectInfo.put(ProjectInfo.REQUESTOR, getRequestor(sampleSet));
         projectInfo.put(ProjectInfo.REQUESTOR_E_MAIL, getRequestorEmail(sampleSet));
         projectInfo.put(ProjectInfo.PLATFORM, getPlatform(sampleSet));
-        projectInfo.put(ProjectInfo.ALTERNATE_EMAILS, getAlternateEmails(sampleSet));
         projectInfo.put(ProjectInfo.IGO_PROJECT_ID, getIgoProjectId(sampleSet));
         projectInfo.put(ProjectInfo.FINAL_PROJECT_TITLE, getFinalProjectTitle(sampleSet));
         projectInfo.put(ProjectInfo.CMO_PROJECT_ID, getCmoProjectId(sampleSet));
