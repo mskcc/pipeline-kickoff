@@ -381,6 +381,10 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                 kickoffRequest.setRequestType(RequestType.IMPACT);
             }
 
+            if (kickoffRequest.getName().matches("(.*)WES(.*)")) {
+                kickoffRequest.setRequestType(RequestType.EXOME);
+            }
+
             if (isSmarterAmpSeqRecipe(recipe)) {
                 kickoffRequest.getLibTypes().add(LibType.SMARTER_AMPLIFICATION);
                 kickoffRequest.getStrands().add(Strand.NONE);
@@ -393,8 +397,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                 } else if (runAsExome) {
                     kickoffRequest.setRequestType(RequestType.EXOME);
                 } else {
-                    logWarning("Request Name doesn't match one of the supported request types: " + kickoffRequest
-                            .getName() + ". Information will be pulled as if it is an rnaseq/unknown run.");
+                    logWarning(String.format("Request Name %s doesn't match one of the supported request types. Set request type as OTHER: information will be pulled as if it is an rnaseq/unknown run.",
+                            kickoffRequest.getName()));
                     kickoffRequest.setRequestType(RequestType.OTHER);
                 }
             }
