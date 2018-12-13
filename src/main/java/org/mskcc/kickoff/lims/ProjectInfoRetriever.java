@@ -71,7 +71,6 @@ public class ProjectInfoRetriever {
                     Constants.ProjectInfo.REQUESTOR,
                     Constants.ProjectInfo.REQUESTOR_E_MAIL,
                     Constants.ProjectInfo.PLATFORM,
-                    Constants.ProjectInfo.ALTERNATE_EMAILS,
                     Constants.ProjectInfo.IGO_PROJECT_ID,
                     Constants.ProjectInfo.FINAL_PROJECT_TITLE,
                     Constants.ProjectInfo.CMO_PROJECT_ID,
@@ -172,33 +171,6 @@ public class ProjectInfoRetriever {
                     projectInfo.put(Constants.ProjectInfo.REQUESTOR, RequesterName[1] + ", " + RequesterName[0]);
                 }
                 projectInfo.put(Constants.ProjectInfo.REQUESTOR_E_MAIL, InvestigatorEmail);
-
-                // Get the Child e-mail records, if there are any
-                List<DataRecord> emailList = Arrays.asList(requestDataRecord.getChildrenOfType(VeloxConstants.EMAIL, apiUser));
-                if (emailList.size() > 0) {
-                    List<String> allELists = new LinkedList<>();
-                    for (DataRecord email : emailList) {
-                        // Grab main email
-                        String email_to_add = email.getStringVal(VeloxConstants.EMAIL, apiUser).toLowerCase();
-                        if (!email_to_add.equals(LabHeadEmail) &&
-                                !email_to_add.equals(InvestigatorEmail) &&
-                                !allELists.contains(email_to_add) && email_to_add.length() != 0) {
-                            allELists.add(email_to_add);
-                        }
-                        // Grab AlternateEmail
-                        email_to_add = email.getStringVal("AlternateEmail", apiUser).toLowerCase();
-                        if (!email_to_add.equals(LabHeadEmail) &&
-                                !email_to_add.equals(InvestigatorEmail) &&
-                                !allELists.contains(email_to_add) && email_to_add.length() != 0) {
-                            allELists.add(email_to_add);
-                        }
-
-                    }
-                    if (allELists.size() > 0) {
-                        String AlternateEmails = StringUtils.join(allELists, ",");
-                        projectInfo.put(Constants.ProjectInfo.ALTERNATE_EMAILS, AlternateEmails);
-                    }
-                }
             }
 
             return getTransformedProjectInfo(projectInfo);

@@ -20,8 +20,6 @@ import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.retriever.FastqPathsRetriever;
 import org.mskcc.kickoff.retriever.FileSystemFastqPathsRetriever;
 import org.mskcc.kickoff.upload.FileDeletionException;
-import org.mskcc.kickoff.upload.FilesValidator;
-import org.mskcc.kickoff.upload.RequiredFilesValidator;
 import org.mskcc.kickoff.upload.jira.*;
 import org.mskcc.kickoff.upload.jira.state.BadInputsIssueStatus;
 import org.mskcc.kickoff.upload.jira.state.HoldIssueStatus;
@@ -31,10 +29,7 @@ import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.*;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 
 import java.util.Set;
@@ -43,21 +38,10 @@ import java.util.function.Predicate;
 import static org.mockito.Mockito.mock;
 
 @Configuration
-@Import(AppConfiguration.class)
-public class ManifestFilesGeneratorTestConfiguration {
-    @Value("${jira.url}")
-    private String jiraUrl;
+@PropertySource("file:src/integration-test/resources/integrationtest.properties")
+public class ManifestFilesGeneratorTestConfiguration extends AppConfiguration {
 
-    @Value("${jira.username}")
-    private String jiraUsername;
-
-    @Value("${jira.password}")
-    private String jiraPassword;
-
-    @Value("${jira.roslin.project.name}")
-    private String jiraRoslinProjectName;
-
-    @Value("${fast_path}")
+    @Value("${test.integration.fastq_path}")
     private String fastqDir;
 
     @Autowired
@@ -71,11 +55,6 @@ public class ManifestFilesGeneratorTestConfiguration {
 
     @Autowired
     private ErrorRepository errorRepository;
-
-    @Bean
-    public FilesValidator filesValidator() {
-        return new RequiredFilesValidator(errorRepository);
-    }
 
     @Bean
     public HoldIssueStatus holdJiraIssueState() {
@@ -174,6 +153,11 @@ public class ManifestFilesGeneratorTestConfiguration {
                 fastqPathsRetriever());
     }
 
+    @Override
+    public FastqPathsRetriever fastqPathsRetriever() {
+        return new FileSystemFastqPathsRetriever(String.format("%s/hiseq/FASTQ/", fastqDir));
+    }
+
     @Bean
     public PortalConfPrinter portalConfPrinter() {
         return new PortalConfPrinter(observerManager());
@@ -258,11 +242,6 @@ public class ManifestFilesGeneratorTestConfiguration {
     @Bean
     public StrandValidator strandValidator() {
         return new StrandValidator(errorRepository);
-    }
-
-    @Bean
-    public FastqPathsRetriever fastqPathsRetriever() {
-        return new FileSystemFastqPathsRetriever(fastqDir);
     }
 
     public class MockJiraFileUploader extends JiraFileUploader {
