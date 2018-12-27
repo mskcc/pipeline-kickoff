@@ -12,6 +12,7 @@ import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.retriever.PooledNormalsRetriever;
 import org.mskcc.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
@@ -52,7 +53,6 @@ public class SampleInfoImpact extends SampleInfo {
     private String CAPTURE_CONCENTRATION; // = "#EMPTY";
     private String CAPTURE_NAME; // = "#EMPTY";
     private String SPIKE_IN_GENES; // = "na";
-    private static List<DataRecord> potentialPooledNormalsQcs;
 
     /**
      * This is the method that CreateManifestSheet calls.<br>First it looks at parent class's method, then uses new
@@ -814,12 +814,13 @@ public class SampleInfoImpact extends SampleInfo {
      Nimblgen Pulling
      */
     private void processNimbInfo(DataRecordManager drm, DataRecord rec, User apiUser, double libVol, double libConc,
-                                 boolean poolNormal, boolean afterDate, Sample sample, KickoffRequest kickoffRequest) {
+                                 boolean isPoolNormal, boolean afterDate, Sample sample, KickoffRequest
+                                         kickoffRequest) {
         // This should set Lib Yield, Capt Input, Capt Name, Bait Set, Spike ins
         List<DataRecord> nimbProtocols = new ArrayList<>();
-        List<Object> valid = new ArrayList<>();
-        List<Object> poolName = new ArrayList<>();
-        List<Object> igoId = new ArrayList<>();
+        List<Object> validities = new ArrayList<>();
+        List<Object> poolNames = new ArrayList<>();
+        List<Object> igoIds = new ArrayList<>();
         Map<String, Object> nimbRec = new HashMap<>();
         // If libVol & libConc not null or negative make LibYield
         if (libVol > 0 && libConc > 0 && this.LIBRARY_YIELD.startsWith("#")) {
@@ -831,9 +832,9 @@ public class SampleInfoImpact extends SampleInfo {
         // Fields from the good record.
         try {
             nimbProtocols = rec.getDescendantsOfType("NimbleGenHybProtocol", apiUser);
-            valid = drm.getValueList(nimbProtocols, "Valid", apiUser);
-            poolName = drm.getValueList(nimbProtocols, "Protocol2Sample", apiUser);
-            igoId = drm.getValueList(nimbProtocols, VeloxConstants.SAMPLE_ID, apiUser);
+            validities = drm.getValueList(nimbProtocols, "Valid", apiUser);
+            poolNames = drm.getValueList(nimbProtocols, "Protocol2Sample", apiUser);
+            igoIds = drm.getValueList(nimbProtocols, VeloxConstants.SAMPLE_ID, apiUser);
         } catch (Exception e) {
             DEV_LOGGER.error(e);
 
@@ -850,43 +851,36 @@ public class SampleInfoImpact extends SampleInfo {
         // doesn't break out of this because I want to pick the LAST valid one.
 
         // First check for valid, containing a child sample pool name, and THIS.IGO_ID is found in SampleId
-        for (int a = 0; a < nimbProtocols.size(); a++) {
-            Boolean validity;
-            try {
-                validity = (boolean) valid.get(a);
-            } catch (NullPointerException e) {
-                validity = false;
-            }
-            String igoIdGiven = (String) igoId.get(a);
+        for (int i = 0; i < nimbProtocols.size(); i++) {
+            boolean isValid = getIsValid(validities, i);
+            String igoIdGiven = (String) igoIds.get(i);
+
             if (!igoIdGiven.contains(this.IGO_ID)) {
                 logWarning("Nimblegen D.R. has a different igo id than this sample: Nimb: " + igoIdGiven + ", this " +
                         "sample: " + this.IGO_ID);
                 continue;
             }
-            String pool = (String) poolName.get(a);
-            if (validity && !pool.isEmpty() && !pool.equals(Constants.NULL)) {
-                if (poolNormal) {
-                    if (poolNameList.contains(pool)) {
-                        chosenRec = nimbProtocols.get(a);
+
+            String poolName = (String) poolNames.get(i);
+
+            if (isValid && !poolName.isEmpty() && !poolName.equals(Constants.NULL)) {
+                if (isPoolNormal) {
+                    if (poolNameList.contains(poolName)) {
+                        chosenRec = nimbProtocols.get(i);
                         break;
                     }
                 } else {
-                    chosenRec = nimbProtocols.get(a);
-                    poolNameList.add(pool);
+                    chosenRec = nimbProtocols.get(i);
+                    poolNameList.add(poolName);
                 }
             }
         }
         // check again
         if (chosenRec == null) {
-            for (int a = 0; a < nimbProtocols.size(); a++) {
-                Boolean validity;
-                try {
-                    validity = (boolean) valid.get(a);
-                } catch (NullPointerException e) {
-                    validity = false;
-                }
-                if (validity) {
-                    chosenRec = nimbProtocols.get(a);
+            for (int i = 0; i < nimbProtocols.size(); i++) {
+                boolean isValid = getIsValid(validities, i);
+                if (isValid) {
+                    chosenRec = nimbProtocols.get(i);
                     break;
                 }
             }
@@ -901,7 +895,7 @@ public class SampleInfoImpact extends SampleInfo {
         sample.setHasNimbleGen(true);
 
         populatePoolNormals(chosenRec, apiUser);
-        populatePoolNormals(apiUser, drm, kickoffRequest);
+        PooledNormalsRetriever.populatePoolNormals(apiUser, drm, kickoffRequest);
 
         try {
             nimbRec = chosenRec.getFields(apiUser);
@@ -953,16 +947,28 @@ public class SampleInfoImpact extends SampleInfo {
             this.BAIT_VERSION = this.CAPTURE_BAIT_SET;
         }
 
-        if (!poolNormal) {
+        if (!isPoolNormal) {
             ConsensusBaitSet = this.CAPTURE_BAIT_SET;
             ConsensusSpikeIn = this.SPIKE_IN_GENES;
         }
     }
 
+    private boolean getIsValid(List<Object> valid, int i) {
+        boolean validity = false;
+
+        try {
+            validity = (boolean) valid.get(i);
+        } catch (NullPointerException e) {
+            validity = false;
+        }
+
+        return validity;
+    }
+
     private void populatePoolNormals(DataRecord nimblegenRecord, User apiUser) {
         try {
-            DataRecord nimbParentSamples = nimblegenRecord.getParentsOfType(VeloxConstants.SAMPLE, apiUser).get(0);
-            List<DataRecord> nimbSiblingSamples = Arrays.asList(nimbParentSamples.getChildrenOfType(VeloxConstants
+            DataRecord nimbParentSample = nimblegenRecord.getParentsOfType(VeloxConstants.SAMPLE, apiUser).get(0);
+            List<DataRecord> nimbSiblingSamples = Arrays.asList(nimbParentSample.getChildrenOfType(VeloxConstants
                     .SAMPLE, apiUser));
             for (DataRecord nimbSiblingSample : nimbSiblingSamples) {
                 // HERE check tos ee if it was added ot a flowcell?
@@ -974,7 +980,7 @@ public class SampleInfoImpact extends SampleInfo {
 
                 List<DataRecord> parentSamples = nimbSiblingSample.getParentsOfType(VeloxConstants.SAMPLE, apiUser);
                 for (DataRecord parentSample : parentSamples) {
-                    if (isPooledNormal(apiUser, parentSample))
+                    if (PooledNormalsRetriever.isPooledNormal(apiUser, parentSample))
                         addPooledNormal(apiUser, nimbSiblingSample, parentSample);
                 }
             }
@@ -992,101 +998,6 @@ public class SampleInfoImpact extends SampleInfo {
         pooledNormals.put(parentSample, pooledNormalId);
     }
 
-    private void populatePoolNormals(User apiUser, DataRecordManager dataRecordManager, KickoffRequest kickoffRequest) {
-        try {
-            if(potentialPooledNormalsQcs == null)
-                potentialPooledNormalsQcs = getPotentialPooledNormalQCs(apiUser, dataRecordManager);
-
-            for (DataRecord potentialPooledNormalQc : potentialPooledNormalsQcs) {
-                if (!isSampleRun(potentialPooledNormalQc, apiUser, kickoffRequest))
-                    continue;
-
-                List<DataRecord> parentSamples = potentialPooledNormalQc.getParentsOfType(VeloxConstants.SAMPLE,
-                        apiUser);
-
-                if (parentSamples.size() == 0) {
-                    DEV_LOGGER.warn(String.format("No parent sample for Sample Level Qc %s. This Pooled normal won't " +
-                                    "be added.",
-                            potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser)));
-                    return;
-                }
-
-                if (parentSamples.size() > 1) {
-                    DEV_LOGGER.warn(String.format("Multiple parent samples for Sample Level Qc %s. This Pooled normal" +
-                                    " won't be " +
-                                    "added.",
-                            potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser)));
-                    return;
-                }
-
-                DataRecord parentSample = parentSamples.get(0);
-
-                String pooledNormalRecipe = parentSample.getStringVal(VeloxConstants.RECIPE, apiUser);
-
-                boolean isSameRecipe = Objects.equals(pooledNormalRecipe, kickoffRequest.getRecipe().getValue());
-
-                if (StringUtils.isEmpty(pooledNormalRecipe))
-                    DEV_LOGGER.warn("empty recipe: " + parentSample.getRecordId());
-                if (!isSameRecipe)
-                    continue;
-
-                String otherSampleId = parentSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
-
-                Set<String> samplesPreservations = kickoffRequest.getSamples().values().stream()
-                        .map(s -> s.getPreservation())
-                        .collect(Collectors.toSet());
-
-                boolean isSamePreservation = samplesPreservations.stream()
-                        .anyMatch(s -> otherSampleId.toLowerCase().startsWith(SPECIMEN_PRESERVATION_TYPE.toLowerCase
-                                ()));
-
-                if (!isSamePreservation)
-                    continue;
-
-                if (isPooledNormal(apiUser, parentSample)) {
-                    String pooledNormalId = parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
-                    if (!pooledNormals.containsKey(parentSample))
-                        DEV_LOGGER.info(String.format("Adding pooled normal: %s", pooledNormalId));
-
-                    pooledNormals.put(parentSample, pooledNormalId);
-                }
-            }
-        } catch (Exception e) {
-            DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
-        }
-    }
-
-    private List<DataRecord> getPotentialPooledNormalQCs(User apiUser, DataRecordManager dataRecordManager) throws Exception {
-        String query = String.format("%s LIKE '%s'", VeloxConstants.OTHER_SAMPLE_ID, "%POOLEDNORMAL%");
-
-        DEV_LOGGER.info(String.format("Query used to look for pooled normals: %s", query));
-        return dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC,
-                query, apiUser);
-    }
-
-
-    private boolean isSampleRun(DataRecord potentialPooledNormalQc, User apiUser, KickoffRequest kickoffRequest)
-            throws NotFound, RemoteException {
-        String sampleId = potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
-
-        try {
-            String runFolder = potentialPooledNormalQc.getStringVal(VeloxConstants.SEQUENCER_RUN_FOLDER, apiUser);
-
-            boolean isSampleRun = kickoffRequest.getAllValidSamples().values().stream()
-                    .flatMap(s -> s.getValidRunIds().stream())
-                    .anyMatch(r -> runFolder.startsWith(r));
-
-            return isSampleRun;
-        } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Error while trying to get pooled normal run id: %s. This pooled normal " +
-                    "won't be added.", sampleId), e);
-            return false;
-        }
-    }
-
-    private boolean isPooledNormal(User apiUser, DataRecord parentSample) throws NotFound, RemoteException {
-        return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL");
-    }
 
     /*
      Capture Concentration

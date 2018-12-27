@@ -58,14 +58,20 @@ public class RequestsRetrieverFactory {
 
     private RequestsRetriever getSampleSetRequestsRetriever(User user, DataRecordManager dataRecordManager, String
             projectId, VeloxPairingsRetriever veloxPairingsRetriever) {
+        RequestTypeResolver requestTypeResolver = new RequestTypeResolver();
+        PooledNormalsRetriever pooledNormalsRetriever = new PooledNormalsRetriever();
+
         SingleRequestRetriever requestsRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager,
-                projectInfoRetriever);
+                requestTypeResolver, projectInfoRetriever, pooledNormalsRetriever);
+
         DataRecord sampleSetRecord = getSampleSetRecord(projectId, dataRecordManager, user);
+
         SampleSetProxy veloxSampleSetProxy = new VeloxSampleSetProxy(sampleSetRecord, user, requestsRetriever,
                 externalSamplesRepository);
 
         SamplesToRequestsConverter samplesToRequestsConverter = new SamplesToRequestsConverter(new
-                VeloxSingleRequestRetriever(user, dataRecordManager, projectInfoRetriever));
+                VeloxSingleRequestRetriever(user, dataRecordManager, requestTypeResolver, projectInfoRetriever,
+                pooledNormalsRetriever));
         SampleSetRetriever sampleSetRetriever = new SampleSetRetriever(veloxSampleSetProxy, samplesToRequestsConverter);
 
         return new SampleSetRequestRetriever(sampleSetRequestDataPropagator, sampleSetToRequestConverter, sampleSetRetriever,
