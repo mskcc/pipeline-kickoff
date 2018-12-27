@@ -12,7 +12,7 @@ import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
-import org.mskcc.kickoff.retriever.PooledNormalsRetriever;
+import org.mskcc.kickoff.poolednormals.ImpactExomePooledNormalsRetriever;
 import org.mskcc.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
@@ -62,13 +62,18 @@ public class SampleInfoImpact extends SampleInfo {
      * @see #getSpreadOutInfo
      * @see #addPooledNormalDefaults
      **/
-    public SampleInfoImpact(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest,
-                            Sample sample, LocalDateTime kapaProtocolStartDate) {
-        super(apiUser, drm, rec, kickoffRequest, sample);
+    public SampleInfoImpact(User apiUser,
+                            DataRecordManager drm,
+                            DataRecord sampleRecord,
+                            KickoffRequest kickoffRequest,
+                            Sample sample,
+                            LocalDateTime kapaProtocolStartDate) {
+        super(apiUser, drm, sampleRecord, kickoffRequest, sample);
         this.kapaProtocolStartDate = kapaProtocolStartDate;
-        getSpreadOutInfo(apiUser, drm, rec, kickoffRequest, sample);
+
+        getSpreadOutInfo(apiUser, drm, sampleRecord, kickoffRequest, sample);
         if (sample.isPooledNormal()) {
-            addPooledNormalDefaults(rec, apiUser, drm, kickoffRequest);
+            addPooledNormalDefaults(sampleRecord, apiUser, drm, kickoffRequest);
         }
     }
 
@@ -895,7 +900,6 @@ public class SampleInfoImpact extends SampleInfo {
         sample.setHasNimbleGen(true);
 
         populatePoolNormals(chosenRec, apiUser);
-        PooledNormalsRetriever.populatePoolNormals(apiUser, drm, kickoffRequest);
 
         try {
             nimbRec = chosenRec.getFields(apiUser);
@@ -980,7 +984,7 @@ public class SampleInfoImpact extends SampleInfo {
 
                 List<DataRecord> parentSamples = nimbSiblingSample.getParentsOfType(VeloxConstants.SAMPLE, apiUser);
                 for (DataRecord parentSample : parentSamples) {
-                    if (PooledNormalsRetriever.isPooledNormal(apiUser, parentSample))
+                    if (ImpactExomePooledNormalsRetriever.isPooledNormal(apiUser, parentSample))
                         addPooledNormal(apiUser, nimbSiblingSample, parentSample);
                 }
             }

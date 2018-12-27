@@ -21,8 +21,11 @@ public class SampleInfoExome extends SampleInfoImpact {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private Map<String, String> baitSetToDesignFileMapping;
 
-    public SampleInfoExome(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample
-            sample, LocalDateTime kapaProtocolStartDate) {
+    public SampleInfoExome(User apiUser,
+                           DataRecordManager drm,
+                           DataRecord rec,
+                           KickoffRequest kickoffRequest, Sample sample,
+                           LocalDateTime kapaProtocolStartDate) {
         super(apiUser, drm, rec, kickoffRequest, sample, kapaProtocolStartDate);
     }
 

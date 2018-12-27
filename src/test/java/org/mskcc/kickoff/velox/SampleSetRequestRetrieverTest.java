@@ -9,6 +9,7 @@ import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.NormalProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
+import org.mskcc.kickoff.sampleset.SampleSetRequestRetriever;
 import org.mskcc.kickoff.sampleset.SampleSetRetriever;
 import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
 

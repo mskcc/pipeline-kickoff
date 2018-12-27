@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.velox;
+package org.mskcc.kickoff.sampleset;
 
 import com.velox.api.datarecord.DataRecord;
 import org.mskcc.domain.sample.Sample;
@@ -7,8 +7,8 @@ import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.retriever.RequestsRetriever;
-import org.mskcc.kickoff.sampleset.SampleSetRetriever;
-import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
+import org.mskcc.kickoff.velox.VeloxPairingsRetriever;
+import org.mskcc.kickoff.velox.VeloxProjectProxy;
 
 import java.util.function.BiPredicate;
 

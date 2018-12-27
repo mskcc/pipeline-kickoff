@@ -5,6 +5,7 @@ import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
+import org.mskcc.kickoff.poolednormals.PooledNormalsRetrieverFactory;
 import org.mskcc.kickoff.retriever.*;
 import org.mskcc.kickoff.sampleset.*;
 import org.mskcc.kickoff.validator.ErrorRepository;
@@ -59,10 +60,9 @@ public class RequestsRetrieverFactory {
     private RequestsRetriever getSampleSetRequestsRetriever(User user, DataRecordManager dataRecordManager, String
             projectId, VeloxPairingsRetriever veloxPairingsRetriever) {
         RequestTypeResolver requestTypeResolver = new RequestTypeResolver();
-        PooledNormalsRetriever pooledNormalsRetriever = new PooledNormalsRetriever();
 
         SingleRequestRetriever requestsRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager,
-                requestTypeResolver, projectInfoRetriever, pooledNormalsRetriever);
+                requestTypeResolver, projectInfoRetriever, new PooledNormalsRetrieverFactory());
 
         DataRecord sampleSetRecord = getSampleSetRecord(projectId, dataRecordManager, user);
 
@@ -70,8 +70,8 @@ public class RequestsRetrieverFactory {
                 externalSamplesRepository);
 
         SamplesToRequestsConverter samplesToRequestsConverter = new SamplesToRequestsConverter(new
-                VeloxSingleRequestRetriever(user, dataRecordManager, requestTypeResolver, projectInfoRetriever,
-                pooledNormalsRetriever));
+                VeloxSingleRequestRetriever(user, dataRecordManager, requestTypeResolver, projectInfoRetriever, new
+                PooledNormalsRetrieverFactory()));
         SampleSetRetriever sampleSetRetriever = new SampleSetRetriever(veloxSampleSetProxy, samplesToRequestsConverter);
 
         return new SampleSetRequestRetriever(sampleSetRequestDataPropagator, sampleSetToRequestConverter, sampleSetRetriever,

@@ -17,9 +17,10 @@ import org.mskcc.kickoff.lims.SampleInfo;
 import org.mskcc.kickoff.lims.SampleInfoExome;
 import org.mskcc.kickoff.lims.SampleInfoImpact;
 import org.mskcc.kickoff.logger.PmLogPriority;
+import org.mskcc.kickoff.poolednormals.PooledNormalsRetriever;
+import org.mskcc.kickoff.poolednormals.PooledNormalsRetrieverFactory;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
-import org.mskcc.kickoff.retriever.PooledNormalsRetriever;
 import org.mskcc.kickoff.retriever.SequencerIdentifierRetriever;
 import org.mskcc.kickoff.retriever.SingleRequestRetriever;
 import org.mskcc.kickoff.util.Constants;
@@ -47,16 +48,19 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private final RequestTypeResolver requestTypeResolver;
     private ProjectInfoRetriever projectInfoRetriever;
     private LocalDateTime kapaProtocolStartDate = LocalDateTime.of(2015, 8, 3, 0, 0, 0);
+    private PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory;
     private PooledNormalsRetriever pooledNormalsRetriever;
 
-    public VeloxSingleRequestRetriever(User user, DataRecordManager dataRecordManager, RequestTypeResolver
-            requestTypeResolver, ProjectInfoRetriever
-                                               projectInfoRetriever, PooledNormalsRetriever pooledNormalsRetriever) {
+    public VeloxSingleRequestRetriever(User user,
+                                       DataRecordManager dataRecordManager,
+                                       RequestTypeResolver requestTypeResolver,
+                                       ProjectInfoRetriever projectInfoRetriever,
+                                       PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory) {
         this.user = user;
         this.dataRecordManager = dataRecordManager;
         this.requestTypeResolver = requestTypeResolver;
         this.projectInfoRetriever = projectInfoRetriever;
-        this.pooledNormalsRetriever = pooledNormalsRetriever;
+        this.pooledNormalsRetrieverFactory = pooledNormalsRetrieverFactory;
     }
 
     @Override
@@ -80,7 +84,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             setProperties(kickoffRequest, dataRecordRequest);
 
             getLibTypes(kickoffRequest, dataRecordRequest);
-            requestTypeResolver.resolve(kickoffRequest);
+            setRequestType(kickoffRequest);
 
             //@TODO check if I cant pool after process samples
             addPoolSeqQc(kickoffRequest, dataRecordRequest, originalSampRec);
@@ -95,6 +99,11 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             return kickoffRequest;
         }
         throw new RuntimeException(String.format("Request: %s doesn't exist", requestId));
+    }
+
+    private void setRequestType(KickoffRequest kickoffRequest) {
+        RequestType requestType = requestTypeResolver.resolve(kickoffRequest);
+        kickoffRequest.setRequestType(requestType);
     }
 
     @Override
@@ -249,7 +258,9 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private void processPooledNormals(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         try {
-            Map<DataRecord, Collection<String>> pooledNormals = pooledNormalsRetriever.getAllPooledNormals(kickoffRequest, user, dataRecordManager);
+            PooledNormalsRetriever pooledNormalsRetriever = getPooledNormalsRetriever(kickoffRequest);
+            Map<DataRecord, Collection<String>> pooledNormals = pooledNormalsRetriever.getAllPooledNormals
+                    (kickoffRequest, user, dataRecordManager);
 
             if (pooledNormals.size() > 0) {
                 DEV_LOGGER.info(String.format("Number of Pooled Normal Samples: %d", pooledNormals.size()));
@@ -325,6 +336,12 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
         }
+    }
+
+    private PooledNormalsRetriever getPooledNormalsRetriever(KickoffRequest kickoffRequest) {
+        if (pooledNormalsRetriever == null)
+            pooledNormalsRetriever = pooledNormalsRetrieverFactory.getPooledNormalsRetriever(kickoffRequest);
+        return pooledNormalsRetriever;
     }
 
     private void addPooledNormalSeqNames(Sample sample, DataRecord pooledNormalRecord) {

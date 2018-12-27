@@ -6,8 +6,12 @@ import com.velox.api.user.User;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
+import org.mskcc.kickoff.poolednormals.PooledNormalsRetrieverFactory;
 import org.mskcc.kickoff.process.ProcessingType;
-import org.mskcc.kickoff.retriever.*;
+import org.mskcc.kickoff.retriever.RequestDataPropagator;
+import org.mskcc.kickoff.retriever.RequestNotFoundException;
+import org.mskcc.kickoff.retriever.RequestsRetriever;
+import org.mskcc.kickoff.retriever.SingleRequestRetriever;
 
 import java.util.Arrays;
 import java.util.List;
@@ -35,7 +39,7 @@ public class UniRequestsRetriever implements RequestsRetriever {
         this.veloxPairingsRetriever = veloxPairingsRetriever;
         this.singleRequestRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager, new
                 RequestTypeResolver(), projectInfoRetriever,
-                new PooledNormalsRetriever());
+                new PooledNormalsRetrieverFactory());
         this.pairingValidPredicate = pairingValidPredicate;
     }
 

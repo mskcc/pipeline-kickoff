@@ -18,7 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiPredicate;
 
-class VeloxPairingsRetriever {
+public class VeloxPairingsRetriever {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     private final User user;
