@@ -4,6 +4,7 @@ import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
 import com.velox.api.util.ServerException;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
@@ -122,11 +123,11 @@ public class SampleInfoExome extends SampleInfoImpact {
             }
 
             if (sample.isTransfer()) {
-                if (kapa1FieldsList.size() == 0 || kapa1FieldsList.get(0) == null || kapa1FieldsList.get(0).size() == 0) {
+                if (!hasKapaAgilentCaptureProtocol(kapa1FieldsList)) {
                     kapa1FieldsList = getKapaAgilentCaptureProtocolFromPrevSamps(
                             drm, rec, apiUser, KAPA_AGILENT_CAPTURE_PROTOCOL_1);
                 }
-                if (kapa2FieldsList.size() == 0 || kapa2FieldsList.get(0) == null || kapa2FieldsList.get(0).size() == 0) {
+                if (!hasKapaAgilentCaptureProtocol(kapa2FieldsList)) {
                     kapa2FieldsList = getKapaAgilentCaptureProtocolFromPrevSamps(
                             drm, rec, apiUser, KAPA_AGILENT_CAPTURE_PROTOCOL_2);
                 }
@@ -136,18 +137,18 @@ public class SampleInfoExome extends SampleInfoImpact {
                 DEV_LOGGER.info(msg);
             }
 
-            if (kapa1FieldsList.size() == 0 || kapa1FieldsList.get(0) == null ||
-                    kapa1FieldsList.get(0).size() == 0) {
-                this.CAPTURE_INPUT = this.CAPTURE_BAIT_SET = "#NoKAPACaptureProtocol1";
-                DEV_LOGGER.info(String.format("No Valid KAPACaptureProtocol1 for sample %s. The baitset, Capture Input, " +
-                        "Library " +
-
-                        "Yield will be unavailable. ", this.CMO_SAMPLE_ID));
-            } else if (kapa2FieldsList.size() == 0 || kapa2FieldsList.get(0) == null ||
-                    kapa2FieldsList.get(0).size() == 0) {
-                this.CAPTURE_INPUT = this.CAPTURE_BAIT_SET = "#NoKAPACaptureProtocol2";
-                DEV_LOGGER.info(String.format("No Valid KAPACaptureProtocol2 for sample %s(Should be present). The baitset, " +
-                        "Capture Input, Library Yield will be unavailable. ", this.CMO_SAMPLE_ID));
+            if (!hasKapaAgilentCaptureProtocol(kapa1FieldsList)) {
+                this.CAPTURE_INPUT = this.CAPTURE_BAIT_SET = Constants.NoKAPACaptureProtocol1;
+                String message = String.format("No Valid KAPACaptureProtocol1 for sample %s (Should be present). " +
+                        "The baitset, Capture Input, Library Yield will be unavailable. ", this.CMO_SAMPLE_ID);
+                PM_LOGGER.log(Level.WARN, message);
+                DEV_LOGGER.log(Level.WARN, message);
+            } else if (!hasKapaAgilentCaptureProtocol(kapa2FieldsList)) {
+                this.CAPTURE_INPUT = this.CAPTURE_BAIT_SET = Constants.NoKAPACaptureProtocol2;
+                String message = String.format("No Valid KAPACaptureProtocol2 for sample %s (Should be present). " +
+                        "The baitset, Capture Input, Library Yield will be unavailable. ", this.CMO_SAMPLE_ID);
+                PM_LOGGER.log(Level.WARN, message);
+                DEV_LOGGER.log(Level.WARN, message);
             } else {
                 // there was only one sample in the requests as list so you just need the first list of maps.
                 List<Map<String, Object>> kapa2Fields = kapa2FieldsList.get(0);
@@ -249,6 +250,14 @@ public class SampleInfoExome extends SampleInfoImpact {
     private boolean shouldValidateKapaProtocols(KickoffRequest kickoffRequest) {
         return kickoffRequest.getCreationDate() == null || kickoffRequest.getCreationDate().isAfter
                 (kapaProtocolStartDate);
+    }
+
+    private boolean hasKapaAgilentCaptureProtocol(List<List<Map<String, Object>>> kapaFieldsList) {
+        if (kapaFieldsList.size() == 0 || kapaFieldsList.get(0) == null || kapaFieldsList.get(0).size() == 0) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     private String getCaptureBaitSet(DataRecordManager dataRecordManager, User apiUser) {

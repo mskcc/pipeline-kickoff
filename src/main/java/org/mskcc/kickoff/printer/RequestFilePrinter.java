@@ -174,15 +174,28 @@ public class RequestFilePrinter extends FilePrinter {
         Map<String, String> projectInfo = request.getProjectInfo();
 
         for (String requiredProjectInfoField : requiredProjectInfoFields) {
-            if (!projectInfo.containsKey(requiredProjectInfoField) || StringUtils.isEmpty(projectInfo.get
-                    (requiredProjectInfoField)) || projectInfo.get(requiredProjectInfoField).equals(Constants.NA)) {
+            String fieldValue = projectInfo.get(requiredProjectInfoField);
+            if (StringUtils.isBlank(fieldValue) || Constants.NA.equals(fieldValue)) {
                 String message = String.format("No %s available for request: %s. Pipeline won't be able to run " +
                         "without this information.", requiredProjectInfoField, request.getId());
-
                 DEV_LOGGER.warn(message);
-
                 observerManager.notifyObserversOfError(ManifestFile.REQUEST, new GenerationError(message, ErrorCode
                         .REQUEST_INFO_MISSING));
+                continue;
+            }
+
+            switch (requiredProjectInfoField) {
+                case Constants.ASSAY:
+                    if (Constants.NoKAPACaptureProtocol1.equals(fieldValue)
+                            || Constants.NoKAPACaptureProtocol2.equals(fieldValue)) {
+                        String message = String.format("No %s available for request: %s; value found: %s. " +
+                                        "Pipeline won't be able to run without this information.",
+                                requiredProjectInfoField, request.getId(), fieldValue);
+                        DEV_LOGGER.warn(message);
+                        observerManager.notifyObserversOfError(ManifestFile.REQUEST, new GenerationError(message, ErrorCode
+                                .REQUEST_INFO_MISSING));
+                    }
+                    break;
             }
         }
     }
