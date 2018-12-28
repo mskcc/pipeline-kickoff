@@ -7,6 +7,7 @@ import com.velox.api.util.ServerException;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.retriever.NimblegenResolver;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
@@ -25,8 +26,9 @@ public class SampleInfoExome extends SampleInfoImpact {
                            DataRecordManager drm,
                            DataRecord rec,
                            KickoffRequest kickoffRequest, Sample sample,
-                           LocalDateTime kapaProtocolStartDate) {
-        super(apiUser, drm, rec, kickoffRequest, sample, kapaProtocolStartDate);
+                           LocalDateTime kapaProtocolStartDate,
+                           NimblegenResolver nimblegenResolver) {
+        super(apiUser, drm, rec, kickoffRequest, sample, kapaProtocolStartDate, nimblegenResolver);
     }
 
     /*

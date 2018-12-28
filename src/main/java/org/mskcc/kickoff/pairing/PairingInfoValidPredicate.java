@@ -6,6 +6,7 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ public class PairingInfoValidPredicate implements BiPredicate<Sample, Sample> {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private final ObserverManager observerManager;
 
+    @Autowired
     public PairingInfoValidPredicate(ObserverManager observerManager) {
         this.observerManager = observerManager;
     }

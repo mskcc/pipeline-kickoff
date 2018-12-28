@@ -9,7 +9,6 @@ import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.annotation.ComponentScan;
 
 import java.util.Objects;
 
@@ -19,7 +18,6 @@ import static org.mskcc.kickoff.config.Arguments.toPrintable;
 /**
  * @author Krista Kaz (most of the framing of this script was copied from Aaron and Dmitri's examples/scripts)
  */
-@ComponentScan(basePackages = "org.mskcc.kickoff")
 class CreateManifestSheet {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 

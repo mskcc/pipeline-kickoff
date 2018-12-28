@@ -32,6 +32,7 @@ import org.mskcc.kickoff.upload.RequiredFilesValidator;
 import org.mskcc.kickoff.upload.jira.state.*;
 import org.mskcc.kickoff.validator.*;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
+import org.mskcc.kickoff.velox.Sample2DataRecordMap;
 import org.mskcc.kickoff.velox.VeloxConnectionData;
 import org.mskcc.kickoff.velox.VeloxProjectProxy;
 import org.mskcc.util.Constants;
@@ -42,10 +43,7 @@ import org.mskcc.util.email.JavaxEmailSender;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.*;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
@@ -61,6 +59,7 @@ import java.util.function.Predicate;
 
 @Configuration
 @Import({ProdConfiguration.class, DevConfiguration.class, TestConfiguration.class})
+@ComponentScan(basePackages = "org.mskcc.kickoff")
 public class AppConfiguration {
     private static final Logger LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private static final String PAIR_DELIMITER = ":";
@@ -136,6 +135,18 @@ public class AppConfiguration {
     @Autowired
     private DoubleSlashNewLineStrategy doubleSlashNewLineStrategy;
     private String regeneratedStatus = "Files Regenerated";
+
+    @Autowired
+    private ProjectInfoRetriever projectInfoRetriever;
+
+    @Autowired
+    private PairingInfoValidPredicate singleRequestPairingInfoValidPredicate;
+
+    @Autowired
+    private NimblegenResolver nimblegenResolver;
+
+    @Autowired
+    private Sample2DataRecordMap sample2DataRecordMap;
 
     public static void configureLogger(String loggerPropertiesName) {
         LogManager.resetConfiguration();
@@ -229,11 +240,6 @@ public class AppConfiguration {
     }
 
     @Bean
-    public ProjectInfoRetriever projectInfoRetriever() {
-        return new ProjectInfoRetriever();
-    }
-
-    @Bean
     public SampleSetToRequestConverter sampleSetToRequestConverter() {
         return new SampleSetToRequestConverter(
                 projectInfoConverter(),
@@ -249,14 +255,16 @@ public class AppConfiguration {
     @Bean
     public RequestsRetrieverFactory requestsRetrieverFactory() {
         return new RequestsRetrieverFactory(
-                projectInfoRetriever(),
+                projectInfoRetriever,
                 sampleSetRequestDataPropagator(),
                 singleRequestRequestDataPropagator(),
                 sampleSetToRequestConverter(),
                 readOnlyExternalSamplesRepository(),
                 sampleSetPairingInfoValidPredicate(),
-                singleRequestPairingInfoValidPredicate(),
-                errorRepository);
+                singleRequestPairingInfoValidPredicate,
+                errorRepository,
+                nimblegenResolver,
+                sample2DataRecordMap);
     }
 
     @Bean
@@ -370,7 +378,7 @@ public class AppConfiguration {
     }
 
     @Bean
-    @Profile(Constants.PROD_PROFILE)
+    @Profile("prod")
     @Qualifier("jiraRestTemplate")
     public RestTemplate jiraRestTemplate() {
         RestTemplate restTemplate = new RestTemplate();
@@ -418,13 +426,8 @@ public class AppConfiguration {
     }
 
     @Bean
-    public PairingInfoValidPredicate singleRequestPairingInfoValidPredicate() {
-        return new PairingInfoValidPredicate(observerManager);
-    }
-
-    @Bean
     public BiPredicate<Sample, Sample> sampleSetPairingInfoValidPredicate() {
-        return new SampleSetPairingInfoValidPredicate(singleRequestPairingInfoValidPredicate(),
+        return new SampleSetPairingInfoValidPredicate(singleRequestPairingInfoValidPredicate,
                 sampleSetBaitSetCompatibilityPredicate());
     }
 

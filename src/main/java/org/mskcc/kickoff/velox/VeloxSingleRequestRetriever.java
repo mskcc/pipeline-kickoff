@@ -21,6 +21,7 @@ import org.mskcc.kickoff.poolednormals.PooledNormalsRetriever;
 import org.mskcc.kickoff.poolednormals.PooledNormalsRetrieverFactory;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
+import org.mskcc.kickoff.retriever.NimblegenResolver;
 import org.mskcc.kickoff.retriever.SequencerIdentifierRetriever;
 import org.mskcc.kickoff.retriever.SingleRequestRetriever;
 import org.mskcc.kickoff.util.Constants;
@@ -43,13 +44,14 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private final User user;
     private final DataRecordManager dataRecordManager;
 
-    private final Map<Sample, DataRecord> sampleToDataRecord = new HashMap<>();
     private final SequencerIdentifierRetriever sequencerIdentifierRetriever = new SequencerIdentifierRetriever();
     private final RequestTypeResolver requestTypeResolver;
     private ProjectInfoRetriever projectInfoRetriever;
     private LocalDateTime kapaProtocolStartDate = LocalDateTime.of(2015, 8, 3, 0, 0, 0);
     private PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory;
     private PooledNormalsRetriever pooledNormalsRetriever;
+    private NimblegenResolver nimblegenResolver;
+    private Sample2DataRecordMap sample2DataRecordMap = new Sample2DataRecordMap();
 
     public VeloxSingleRequestRetriever(User user,
                                        DataRecordManager dataRecordManager,
@@ -229,7 +231,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private void addSampleInfo(KickoffRequest kickoffRequest) {
         for (Sample sample : kickoffRequest.getValidNonPooledNormalSamples().values()) {
-            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(sampleToDataRecord.get(sample), sample,
+            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(sample2DataRecordMap.get(sample), sample,
                     kickoffRequest);
             sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
             sample.setProperties(sampleInfo);
@@ -434,7 +436,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             }
 
             setIsTransfer(dataRecordSample, sample);
-            sampleToDataRecord.put(sample, dataRecordSample);
+
+            sample2DataRecordMap.put(sample, dataRecordSample);
             setSeqName(sample);
         } else {
             DEV_LOGGER.warn(String.format("Skipping %s because the sample is failed: %s", cmoSampleId, status));
@@ -848,10 +851,10 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         SampleInfo sampleInfo;
         if (kickoffRequest.getRequestType() == RequestType.IMPACT || sample.isPooledNormal()) {
             sampleInfo = new SampleInfoImpact(user, dataRecordManager, dataRecord, kickoffRequest, sample,
-                    kapaProtocolStartDate);
+                    kapaProtocolStartDate, nimblegenResolver);
         } else if (kickoffRequest.getRequestType() == RequestType.EXOME) {
             sampleInfo = new SampleInfoExome(user, dataRecordManager, dataRecord, kickoffRequest, sample,
-                    kapaProtocolStartDate);
+                    kapaProtocolStartDate, new NimblegenResolver());
         } else {
             sampleInfo = new SampleInfo(user, dataRecordManager, dataRecord, kickoffRequest, sample);
         }

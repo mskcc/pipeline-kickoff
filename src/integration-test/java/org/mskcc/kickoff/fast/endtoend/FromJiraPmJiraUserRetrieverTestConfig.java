@@ -7,6 +7,7 @@ import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
@@ -19,6 +20,7 @@ import java.util.Collections;
 import java.util.List;
 
 @Configuration
+@Profile("test")
 public class FromJiraPmJiraUserRetrieverTestConfig {
     private static String jiraUsername;
     private static String jiraPassword;

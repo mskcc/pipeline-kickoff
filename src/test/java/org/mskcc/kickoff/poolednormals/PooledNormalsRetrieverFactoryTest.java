@@ -6,11 +6,14 @@ import org.junit.Test;
 import org.mskcc.domain.RequestType;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.process.ProcessingType;
+import org.mskcc.kickoff.retriever.NimblegenResolver;
+import org.mskcc.kickoff.velox.Sample2DataRecordMap;
 
 import static org.mockito.Mockito.mock;
 
 public class PooledNormalsRetrieverFactoryTest {
-    private PooledNormalsRetrieverFactory factory = new PooledNormalsRetrieverFactory();
+    private PooledNormalsRetrieverFactory factory = new PooledNormalsRetrieverFactory(mock(NimblegenResolver.class),
+            mock(Sample2DataRecordMap.class));
     private KickoffRequest kickoffRequest;
 
     @Before

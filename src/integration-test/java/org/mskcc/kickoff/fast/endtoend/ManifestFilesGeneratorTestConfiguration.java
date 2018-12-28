@@ -38,7 +38,8 @@ import java.util.function.Predicate;
 import static org.mockito.Mockito.mock;
 
 @Configuration
-@PropertySource("file:src/integration-test/resources/integrationtest.properties")
+@PropertySource("file:/src/integration-test/resources/integrationtest.properties")
+@Profile("test")
 public class ManifestFilesGeneratorTestConfiguration extends AppConfiguration {
 
     @Value("${test.integration.fastq_path}")
@@ -72,7 +73,7 @@ public class ManifestFilesGeneratorTestConfiguration extends AppConfiguration {
     }
 
     @Bean
-    public ToHoldTransitioner toHoldTransitioner() {
+    public Transitioner toHoldTransitioner() {
         return new DummyTransitioner();
     }
 

@@ -19,16 +19,14 @@ import org.mskcc.kickoff.lims.SampleInfo;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
-import org.mskcc.kickoff.retriever.FastqPathsRetriever;
-import org.mskcc.kickoff.retriever.FileSystemFastqPathsRetriever;
-import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
-import org.mskcc.kickoff.retriever.RequestDataPropagator;
+import org.mskcc.kickoff.retriever.*;
 import org.mskcc.kickoff.sampleset.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.validator.PairednessValidPredicate;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
+import org.mskcc.kickoff.velox.Sample2DataRecordMap;
 import org.mskcc.kickoff.velox.VeloxConnectionData;
 import org.mskcc.kickoff.velox.VeloxProjectProxy;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -68,7 +66,9 @@ public class MappingFilePrinterTest {
             mock(ErrorRepository.class));
     private RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever,
             reqDataPropagator, reqDataPropagator, sampleSetToReqConv, mock(ReadOnlyExternalSamplesRepository.class),
-            mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class));
+            mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class), mock(NimblegenResolver
+            .class),
+            mock(Sample2DataRecordMap.class));
     private VeloxProjectProxy veloxProjectProxy;
     private MappingFilePrinter mappingFilePrinter;
     private VeloxConnection connection;

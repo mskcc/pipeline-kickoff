@@ -12,10 +12,7 @@ import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.upload.jira.JiraFileUploader;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.PropertySource;
+import org.springframework.context.annotation.*;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.mockito.Mockito.mock;
@@ -23,7 +20,8 @@ import static org.mockito.Mockito.mock;
 @Configuration
 @ActiveProfiles({"test", "tango"})
 @ComponentScan(basePackages = "org.mskcc.kickoff.validator")
-@PropertySource("file:src/integration-test/resources/integrationtest.properties")
+@PropertySource("file:/src/integration-test/resources/integrationtest.properties")
+@Profile("test")
 public class RegressionTestConfig extends AppConfiguration {
 
     @Value("${test.integration.manifestOutputFilePath}")
