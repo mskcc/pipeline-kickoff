@@ -22,14 +22,16 @@ import org.mskcc.kickoff.retriever.FileSystemFastqPathsRetriever;
 import org.mskcc.kickoff.upload.FileDeletionException;
 import org.mskcc.kickoff.upload.jira.*;
 import org.mskcc.kickoff.upload.jira.state.BadInputsIssueStatus;
-import org.mskcc.kickoff.upload.jira.state.HoldIssueStatus;
 import org.mskcc.kickoff.upload.jira.state.StatusFactory;
 import org.mskcc.kickoff.validator.*;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.context.annotation.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.context.annotation.Scope;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 
 import java.util.Set;
@@ -37,7 +39,6 @@ import java.util.function.Predicate;
 
 import static org.mockito.Mockito.mock;
 
-@Configuration
 @PropertySource("classpath:integrationtest.properties")
 @Profile("test")
 public class ManifestFilesGeneratorTestConfiguration extends AppConfiguration {
@@ -58,11 +59,6 @@ public class ManifestFilesGeneratorTestConfiguration extends AppConfiguration {
     private ErrorRepository errorRepository;
 
     @Bean
-    public HoldIssueStatus holdJiraIssueState() {
-        return new HoldIssueStatus();
-    }
-
-    @Bean
     public ToBadInputsTransitioner toBadInputsTransitioner() {
         return new ToBadInputsTransitioner();
     }
@@ -70,11 +66,6 @@ public class ManifestFilesGeneratorTestConfiguration extends AppConfiguration {
     @Bean
     public BadInputsIssueStatus badInputsJiraIssueState() {
         return new BadInputsIssueStatus();
-    }
-
-    @Bean
-    public Transitioner toHoldTransitioner() {
-        return new DummyTransitioner();
     }
 
     @Bean

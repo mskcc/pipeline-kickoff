@@ -12,12 +12,14 @@ import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.upload.jira.JiraFileUploader;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.mockito.Mockito.mock;
 
-@Configuration
 @ActiveProfiles({"test", "tango"})
 @ComponentScan(basePackages = "org.mskcc.kickoff.validator")
 @PropertySource("classpath:integrationtest.properties")
