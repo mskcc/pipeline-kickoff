@@ -38,7 +38,7 @@ import java.util.function.Predicate;
 import static org.mockito.Mockito.mock;
 
 @Configuration
-@PropertySource("file:/src/integration-test/resources/integrationtest.properties")
+@PropertySource("classpath:integrationtest.properties")
 @Profile("test")
 public class ManifestFilesGeneratorTestConfiguration extends AppConfiguration {
 

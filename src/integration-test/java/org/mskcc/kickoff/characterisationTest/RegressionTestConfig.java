@@ -20,7 +20,7 @@ import static org.mockito.Mockito.mock;
 @Configuration
 @ActiveProfiles({"test", "tango"})
 @ComponentScan(basePackages = "org.mskcc.kickoff.validator")
-@PropertySource("file:/src/integration-test/resources/integrationtest.properties")
+@PropertySource("classpath:integrationtest.properties")
 @Profile("test")
 public class RegressionTestConfig extends AppConfiguration {
 

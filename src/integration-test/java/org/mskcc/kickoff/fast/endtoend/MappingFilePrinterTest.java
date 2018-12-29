@@ -86,7 +86,7 @@ public class MappingFilePrinterTest {
 
     private static void loadProperty() throws IOException {
         Properties prop = new Properties();
-        prop.load(new FileInputStream("src/main/resources/application-dev.properties"));
+        prop.load(MappingFilePrinterTest.class.getClassLoader().getResourceAsStream("application-dev.properties"));
         fastq_path = prop.getProperty("fastq_path");
         designFilePath = prop.getProperty("designFilePath");
         resultsPathPrefix = prop.getProperty("resultsPathPrefix");

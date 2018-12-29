@@ -22,7 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
@@ -38,8 +38,7 @@ import static org.mockito.Mockito.*;
 @ContextConfiguration(classes = FileManifestGeneratorTest.TestAppConfiguration.class)
 @ActiveProfiles("test")
 @PropertySource("classpath:application-dev.properties")
-public class
-FileManifestGeneratorTest {
+public class FileManifestGeneratorTest {
     private final String projectId = "12345_T";
     private final String outputDir = "";
     @Autowired
@@ -63,8 +62,7 @@ FileManifestGeneratorTest {
     @Autowired
     @Qualifier("singleSlash")
     private NotificationFormatter notificationFormatter;
-    @Autowired
-    private SpyFileUploader fileUploader;
+
     private KickoffRequest request;
 
     @Before
@@ -150,7 +148,6 @@ FileManifestGeneratorTest {
         verify(emailNotificator, times(1)).notifyMessage(eq(projectId), any());
     }
 
-    @Configuration
     public static class TestAppConfiguration {
         @Bean
         public OutputFilesPrinter outputFilesPrinter() {
@@ -199,6 +196,7 @@ FileManifestGeneratorTest {
         }
 
         @Bean
+        @Primary
         public SpyFileUploader spyFileUploader() {
             return new SpyFileUploader();
         }

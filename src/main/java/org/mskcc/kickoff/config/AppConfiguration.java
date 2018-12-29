@@ -438,7 +438,7 @@ public class AppConfiguration {
 
     @Bean
     public List<Predicate<KickoffRequest>> validators() {
-        return Arrays.asList(
+        List<Predicate<KickoffRequest>> predicates = Arrays.asList(
                 new AutoGenerabilityValidator(errorRepository),
                 new BarcodeValidator(),
                 new OutputDirValidator(),
@@ -451,5 +451,6 @@ public class AppConfiguration {
                 new SequencingRunsValidator(errorRepository),
                 new StrandValidator(errorRepository)
         );
+        return predicates;
     }
 }
