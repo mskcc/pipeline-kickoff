@@ -17,8 +17,11 @@ import org.mskcc.kickoff.lims.SampleInfo;
 import org.mskcc.kickoff.lims.SampleInfoExome;
 import org.mskcc.kickoff.lims.SampleInfoImpact;
 import org.mskcc.kickoff.logger.PmLogPriority;
+import org.mskcc.kickoff.poolednormals.PooledNormalsRetriever;
+import org.mskcc.kickoff.poolednormals.PooledNormalsRetrieverFactory;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
+import org.mskcc.kickoff.retriever.NimblegenResolver;
 import org.mskcc.kickoff.retriever.SequencerIdentifierRetriever;
 import org.mskcc.kickoff.retriever.SingleRequestRetriever;
 import org.mskcc.kickoff.util.Constants;
@@ -33,7 +36,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static org.mskcc.kickoff.config.Arguments.forced;
-import static org.mskcc.kickoff.config.Arguments.runAsExome;
 
 public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
@@ -42,16 +44,25 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private final User user;
     private final DataRecordManager dataRecordManager;
 
-    private final Map<Sample, DataRecord> sampleToDataRecord = new HashMap<>();
     private final SequencerIdentifierRetriever sequencerIdentifierRetriever = new SequencerIdentifierRetriever();
+    private final RequestTypeResolver requestTypeResolver;
     private ProjectInfoRetriever projectInfoRetriever;
     private LocalDateTime kapaProtocolStartDate = LocalDateTime.of(2015, 8, 3, 0, 0, 0);
+    private PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory;
+    private PooledNormalsRetriever pooledNormalsRetriever;
+    private NimblegenResolver nimblegenResolver;
+    private Sample2DataRecordMap sample2DataRecordMap = new Sample2DataRecordMap();
 
-    public VeloxSingleRequestRetriever(User user, DataRecordManager dataRecordManager, ProjectInfoRetriever
-            projectInfoRetriever) {
+    public VeloxSingleRequestRetriever(User user,
+                                       DataRecordManager dataRecordManager,
+                                       RequestTypeResolver requestTypeResolver,
+                                       ProjectInfoRetriever projectInfoRetriever,
+                                       PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory) {
         this.user = user;
         this.dataRecordManager = dataRecordManager;
+        this.requestTypeResolver = requestTypeResolver;
         this.projectInfoRetriever = projectInfoRetriever;
+        this.pooledNormalsRetrieverFactory = pooledNormalsRetrieverFactory;
     }
 
     @Override
@@ -75,9 +86,9 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             setProperties(kickoffRequest, dataRecordRequest);
 
             getLibTypes(kickoffRequest, dataRecordRequest);
-            setReqType(kickoffRequest);
+            setRequestType(kickoffRequest);
 
-            //@TODO cehck if I cant pool after process samples
+            //@TODO check if I cant pool after process samples
             addPoolSeqQc(kickoffRequest, dataRecordRequest, originalSampRec);
             processPlates(kickoffRequest, dataRecordRequest);
             processSamples(kickoffRequest, dataRecordRequest, sampleIds);
@@ -90,6 +101,11 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             return kickoffRequest;
         }
         throw new RuntimeException(String.format("Request: %s doesn't exist", requestId));
+    }
+
+    private void setRequestType(KickoffRequest kickoffRequest) {
+        RequestType requestType = requestTypeResolver.resolve(kickoffRequest);
+        kickoffRequest.setRequestType(requestType);
     }
 
     @Override
@@ -215,7 +231,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private void addSampleInfo(KickoffRequest kickoffRequest) {
         for (Sample sample : kickoffRequest.getValidNonPooledNormalSamples().values()) {
-            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(sampleToDataRecord.get(sample), sample,
+            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(sample2DataRecordMap.get(sample), sample,
                     kickoffRequest);
             sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
             sample.setProperties(sampleInfo);
@@ -244,8 +260,10 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private void processPooledNormals(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
         try {
-            Map<DataRecord, Collection<String>> pooledNormals = new LinkedHashMap<>(SampleInfoImpact.getPooledNormals
-                    ());
+            PooledNormalsRetriever pooledNormalsRetriever = getPooledNormalsRetriever(kickoffRequest);
+            Map<DataRecord, Collection<String>> pooledNormals = pooledNormalsRetriever.getAllPooledNormals
+                    (kickoffRequest, user, dataRecordManager);
+
             if (pooledNormals.size() > 0) {
                 DEV_LOGGER.info(String.format("Number of Pooled Normal Samples: %d", pooledNormals.size()));
 
@@ -322,6 +340,12 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         }
     }
 
+    private PooledNormalsRetriever getPooledNormalsRetriever(KickoffRequest kickoffRequest) {
+        if (pooledNormalsRetriever == null)
+            pooledNormalsRetriever = pooledNormalsRetrieverFactory.getPooledNormalsRetriever(kickoffRequest);
+        return pooledNormalsRetriever;
+    }
+
     private void addPooledNormalSeqNames(Sample sample, DataRecord pooledNormalRecord) {
         try {
             List<DataRecord> sampleQcs = pooledNormalRecord.getDescendantsOfType(VeloxConstants
@@ -371,44 +395,6 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         return runs;
     }
 
-    private void setReqType(KickoffRequest kickoffRequest) {
-        if (kickoffRequest.getRequestType() == null) {
-            // Here I will pull the childs field recipe
-            Recipe recipe = kickoffRequest.getRecipe();
-            logWarning(String.format("RECIPE for request %s is: %s", kickoffRequest.getId(), kickoffRequest.getRecipe
-                    ()));
-            if (kickoffRequest.getName().matches("(.*)PACT(.*)")) {
-                kickoffRequest.setRequestType(RequestType.IMPACT);
-            }
-
-            if (kickoffRequest.getName().matches("(.*)WES(.*)")) {
-                kickoffRequest.setRequestType(RequestType.EXOME);
-            }
-
-            if (isSmarterAmpSeqRecipe(recipe)) {
-                kickoffRequest.getLibTypes().add(LibType.SMARTER_AMPLIFICATION);
-                kickoffRequest.getStrands().add(Strand.NONE);
-                kickoffRequest.setRequestType(RequestType.RNASEQ);
-            }
-            if (kickoffRequest.getRequestType() == null) {
-                if (kickoffRequest.isInnovation()) {
-                    logWarning("05500 project. This should be pulled as an impact.");
-                    kickoffRequest.setRequestType(RequestType.IMPACT);
-                } else if (runAsExome) {
-                    kickoffRequest.setRequestType(RequestType.EXOME);
-                } else {
-                    logWarning(String.format("Request Name %s doesn't match one of the supported request types. Set request type as OTHER: information will be pulled as if it is an rnaseq/unknown run.",
-                            kickoffRequest.getName()));
-                    kickoffRequest.setRequestType(RequestType.OTHER);
-                }
-            }
-        }
-    }
-
-    private boolean isSmarterAmpSeqRecipe(Recipe recipe) {
-        return recipe == Recipe.SMARTER_AMP_SEQ;
-    }
-
     private void processSamples(KickoffRequest kickoffRequest, DataRecord dataRecordRequest, List<String> sampleIds) {
         try {
             List<DataRecord> childSamplesToProcess = new ArrayList<>();
@@ -450,7 +436,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             }
 
             setIsTransfer(dataRecordSample, sample);
-            sampleToDataRecord.put(sample, dataRecordSample);
+
+            sample2DataRecordMap.put(sample, dataRecordSample);
             setSeqName(sample);
         } else {
             DEV_LOGGER.warn(String.format("Skipping %s because the sample is failed: %s", cmoSampleId, status));
@@ -864,10 +851,10 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         SampleInfo sampleInfo;
         if (kickoffRequest.getRequestType() == RequestType.IMPACT || sample.isPooledNormal()) {
             sampleInfo = new SampleInfoImpact(user, dataRecordManager, dataRecord, kickoffRequest, sample,
-                    kapaProtocolStartDate);
+                    kapaProtocolStartDate, nimblegenResolver);
         } else if (kickoffRequest.getRequestType() == RequestType.EXOME) {
             sampleInfo = new SampleInfoExome(user, dataRecordManager, dataRecord, kickoffRequest, sample,
-                    kapaProtocolStartDate);
+                    kapaProtocolStartDate, new NimblegenResolver());
         } else {
             sampleInfo = new SampleInfo(user, dataRecordManager, dataRecord, kickoffRequest, sample);
         }
@@ -901,4 +888,5 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         PM_LOGGER.log(pmLogLevel, message);
         DEV_LOGGER.log(devLogLevel, message);
     }
+
 }

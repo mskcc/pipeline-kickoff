@@ -4,7 +4,6 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 import com.velox.api.datarecord.DataRecord;
 import com.velox.api.datarecord.DataRecordManager;
-import com.velox.api.datarecord.NotFound;
 import com.velox.api.user.User;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
@@ -12,10 +11,10 @@ import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.retriever.NimblegenResolver;
 import org.mskcc.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
-import java.rmi.RemoteException;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -52,7 +51,7 @@ public class SampleInfoImpact extends SampleInfo {
     private String CAPTURE_CONCENTRATION; // = "#EMPTY";
     private String CAPTURE_NAME; // = "#EMPTY";
     private String SPIKE_IN_GENES; // = "na";
-    private static List<DataRecord> potentialPooledNormalsQcs;
+    private final NimblegenResolver nimblegenResolver;
 
     /**
      * This is the method that CreateManifestSheet calls.<br>First it looks at parent class's method, then uses new
@@ -62,13 +61,20 @@ public class SampleInfoImpact extends SampleInfo {
      * @see #getSpreadOutInfo
      * @see #addPooledNormalDefaults
      **/
-    public SampleInfoImpact(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest,
-                            Sample sample, LocalDateTime kapaProtocolStartDate) {
-        super(apiUser, drm, rec, kickoffRequest, sample);
+    public SampleInfoImpact(User apiUser,
+                            DataRecordManager drm,
+                            DataRecord sampleRecord,
+                            KickoffRequest kickoffRequest,
+                            Sample sample,
+                            LocalDateTime kapaProtocolStartDate,
+                            NimblegenResolver nimblegenResolver) {
+        super(apiUser, drm, sampleRecord, kickoffRequest, sample);
         this.kapaProtocolStartDate = kapaProtocolStartDate;
-        getSpreadOutInfo(apiUser, drm, rec, kickoffRequest, sample);
+        this.nimblegenResolver = nimblegenResolver;
+
+        getSpreadOutInfo(apiUser, drm, sampleRecord, kickoffRequest, sample);
         if (sample.isPooledNormal()) {
-            addPooledNormalDefaults(rec, apiUser, drm, kickoffRequest);
+            addPooledNormalDefaults(sampleRecord, apiUser, drm, kickoffRequest);
         }
     }
 
@@ -223,7 +229,6 @@ public class SampleInfoImpact extends SampleInfo {
                 this.ONCOTREE_CODE = "#UNKNOWN";
             }
         }
-
     }
 
     @Override
@@ -307,12 +312,12 @@ public class SampleInfoImpact extends SampleInfo {
             } else if (this.LIBRARY_YIELD.startsWith("#")) {
                 this.LIBRARY_YIELD = "-2";
             }
-            processNimbInfo(drm, rec, apiUser, libVol, libConc, sample.isPooledNormal(), afterDate, sample,
-                    kickoffRequest);
+            processNimbInfo(drm, rec, apiUser, libVol, libConc, sample.isPooledNormal(), afterDate, sample
+            );
         } else {
             // Here I can just be simple like the good old times and pull stuff from the
             // Nimb protocol
-            processNimbInfo(drm, rec, apiUser, -1, -1, sample.isPooledNormal(), afterDate, sample, kickoffRequest);
+            processNimbInfo(drm, rec, apiUser, -1, -1, sample.isPooledNormal(), afterDate, sample);
         }
     }
 
@@ -809,283 +814,82 @@ public class SampleInfoImpact extends SampleInfo {
         return conc_ng;
     }
 
-
-    /*
-     Nimblgen Pulling
-     */
     private void processNimbInfo(DataRecordManager drm, DataRecord rec, User apiUser, double libVol, double libConc,
-                                 boolean poolNormal, boolean afterDate, Sample sample, KickoffRequest kickoffRequest) {
-        // This should set Lib Yield, Capt Input, Capt Name, Bait Set, Spike ins
-        List<DataRecord> nimbProtocols = new ArrayList<>();
-        List<Object> valid = new ArrayList<>();
-        List<Object> poolName = new ArrayList<>();
-        List<Object> igoId = new ArrayList<>();
-        Map<String, Object> nimbRec = new HashMap<>();
-        // If libVol & libConc not null or negative make LibYield
-        if (libVol > 0 && libConc > 0 && this.LIBRARY_YIELD.startsWith("#")) {
-            this.LIBRARY_YIELD = String.valueOf(df.format(libVol * libConc));
-        }
-
-        // get all nimb protocols from this sample record
-        // Grab valid and pool name first to find a good record. Then grab all
-        // Fields from the good record.
+                                 boolean isPoolNormal, boolean afterDate, Sample sample) {
         try {
-            nimbProtocols = rec.getDescendantsOfType("NimbleGenHybProtocol", apiUser);
-            valid = drm.getValueList(nimbProtocols, "Valid", apiUser);
-            poolName = drm.getValueList(nimbProtocols, "Protocol2Sample", apiUser);
-            igoId = drm.getValueList(nimbProtocols, VeloxConstants.SAMPLE_ID, apiUser);
-        } catch (Exception e) {
-            DEV_LOGGER.error(e);
+            DataRecord chosenRec = nimblegenResolver.resolve(drm, rec, apiUser, isPoolNormal);
+            sample.setHasNimbleGen(true);
+            Map<String, Object> nimbRec = new HashMap<>();
 
-        }
-
-        DataRecord chosenRec = null;
-        // Look for issues
-        if (nimbProtocols == null && nimbProtocols.size() == 0) {
-            logError("No NoNymbHybProtocol DataRecord found for " + this.CMO_SAMPLE_ID + "(" + this.IGO_ID + "). The " +
-                    "baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ");
-            return;
-        }
-        // only one sample (rec) that was checked for
-        // doesn't break out of this because I want to pick the LAST valid one.
-
-        // First check for valid, containing a child sample pool name, and THIS.IGO_ID is found in SampleId
-        for (int a = 0; a < nimbProtocols.size(); a++) {
-            Boolean validity;
             try {
-                validity = (boolean) valid.get(a);
-            } catch (NullPointerException e) {
-                validity = false;
+                nimbRec = chosenRec.getFields(apiUser);
+            } catch (Exception e) {
+                DEV_LOGGER.error("Exception thrown while getting fields for record", e);
+
             }
-            String igoIdGiven = (String) igoId.get(a);
-            if (!igoIdGiven.contains(this.IGO_ID)) {
-                logWarning("Nimblegen D.R. has a different igo id than this sample: Nimb: " + igoIdGiven + ", this " +
-                        "sample: " + this.IGO_ID);
-                continue;
-            }
-            String pool = (String) poolName.get(a);
-            if (validity && !pool.isEmpty() && !pool.equals(Constants.NULL)) {
-                if (poolNormal) {
-                    if (poolNameList.contains(pool)) {
-                        chosenRec = nimbProtocols.get(a);
-                        break;
-                    }
-                } else {
-                    chosenRec = nimbProtocols.get(a);
-                    poolNameList.add(pool);
-                }
-            }
-        }
-        // check again
-        if (chosenRec == null) {
-            for (int a = 0; a < nimbProtocols.size(); a++) {
-                Boolean validity;
-                try {
-                    validity = (boolean) valid.get(a);
-                } catch (NullPointerException e) {
-                    validity = false;
-                }
-                if (validity) {
-                    chosenRec = nimbProtocols.get(a);
-                    break;
-                }
-            }
-            if (chosenRec == null) {
-                logError(String.format("No VALID NimblgenHybridizationProtocol DataRecord found for %s(%s). %s The " +
-                        "baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ", this
-                        .CMO_SAMPLE_ID, this.IGO_ID, poolNameList));
+
+            if (nimbRec == null || nimbRec.size() == 0) {
+                logError("Unknown error while pulling getFields");
                 return;
             }
-        }
 
-        sample.setHasNimbleGen(true);
+            // If libVol & libConc not null or negative make LibYield
+            if (libVol > 0 && libConc > 0 && this.LIBRARY_YIELD.startsWith("#")) {
+                this.LIBRARY_YIELD = String.valueOf(df.format(libVol * libConc));
+            }
 
-        populatePoolNormals(chosenRec, apiUser);
-        populatePoolNormals(apiUser, drm, kickoffRequest);
-
-        try {
-            nimbRec = chosenRec.getFields(apiUser);
-        } catch (Exception e) {
-            DEV_LOGGER.error("Exception thrown while getting fields for record", e);
-
-        }
-        // another check
-        if (nimbRec == null || nimbRec.size() == 0) {
-            logError("Unknown error while pulling getFields");
-            return;
-        }
-
-        //Deal with if lib yield is not filled out
-        if (this.LIBRARY_YIELD.startsWith("#") && !afterDate) {
-            if (libVol <= 0) {
-                // now I have to get the vol from the data record
-                double vol = Double.parseDouble(setFromMap("-1", "StartingVolume", nimbRec));
-                double conc = Double.parseDouble(setFromMap("-1", "StartingConcentration", nimbRec));
-                if (vol > 0 && conc > 0) {
-                    this.LIBRARY_YIELD = String.valueOf(df.format(vol * conc));
+            //Deal with if lib yield is not filled out
+            if (this.LIBRARY_YIELD.startsWith("#") && !afterDate) {
+                if (libVol <= 0) {
+                    // now I have to get the vol from the data record
+                    double vol = Double.parseDouble(setFromMap("-1", "StartingVolume", nimbRec));
+                    double conc = Double.parseDouble(setFromMap("-1", "StartingConcentration", nimbRec));
+                    if (vol > 0 && conc > 0) {
+                        this.LIBRARY_YIELD = String.valueOf(df.format(vol * conc));
+                    }
+                } else {
+                    //Only need concentration
+                    double conc = Double.parseDouble(setFromMap("-1", "StartingConcentration", nimbRec));
+                    if (conc > 0) {
+                        this.LIBRARY_YIELD = String.valueOf(df.format(libVol * conc));
+                    }
+                }
+                // for ease, just grab the other thing besides voltoUse
+                this.CAPTURE_INPUT = setFromMap(Constants.EMPTY, "SourceMassToUse", nimbRec);
+            }
+            if (libConc > 0) {
+                double volumetoUse = Double.parseDouble(setFromMap("-1", "VolumeToUse", nimbRec));
+                if (volumetoUse > 0) {
+                    this.CAPTURE_INPUT = String.valueOf(Math.round(libConc * volumetoUse));
                 }
             } else {
-                //Only need concentration
-                double conc = Double.parseDouble(setFromMap("-1", "StartingConcentration", nimbRec));
-                if (conc > 0) {
-                    this.LIBRARY_YIELD = String.valueOf(df.format(libVol * conc));
-                }
+                this.CAPTURE_INPUT = "-2";
             }
-            // for ease, just grab the other thing besides voltoUse
-            this.CAPTURE_INPUT = setFromMap(Constants.EMPTY, "SourceMassToUse", nimbRec);
-        }
-        if (libConc > 0) {
-            double volumetoUse = Double.parseDouble(setFromMap("-1", "VolumeToUse", nimbRec));
-            if (volumetoUse > 0) {
-                this.CAPTURE_INPUT = String.valueOf(Math.round(libConc * volumetoUse));
+            // Now the rest of the stuff
+            this.CAPTURE_NAME = setFromMap(Constants.EMPTY, "Protocol2Sample", nimbRec);
+            this.CAPTURE_BAIT_SET = setFromMap(Constants.EMPTY, VeloxConstants.RECIPE, nimbRec);
+            this.SPIKE_IN_GENES = setFromMap("na", VeloxConstants.SPIKE_IN_GENES, nimbRec);
+
+            if (!Objects.equals(this.SPIKE_IN_GENES, "na") && !this.CAPTURE_BAIT_SET.startsWith("#")) {
+                this.BAIT_VERSION = this.CAPTURE_BAIT_SET + "+" + this.SPIKE_IN_GENES;
+            } else {
+                this.BAIT_VERSION = this.CAPTURE_BAIT_SET;
             }
-        } else {
-            this.CAPTURE_INPUT = "-2";
-        }
-        // Now the rest of the stuff
-        this.CAPTURE_NAME = setFromMap(Constants.EMPTY, "Protocol2Sample", nimbRec);
-        this.CAPTURE_BAIT_SET = setFromMap(Constants.EMPTY, VeloxConstants.RECIPE, nimbRec);
-        this.SPIKE_IN_GENES = setFromMap("na", VeloxConstants.SPIKE_IN_GENES, nimbRec);
 
-        if (!Objects.equals(this.SPIKE_IN_GENES, "na") && !this.CAPTURE_BAIT_SET.startsWith("#")) {
-            this.BAIT_VERSION = this.CAPTURE_BAIT_SET + "+" + this.SPIKE_IN_GENES;
-        } else {
-            this.BAIT_VERSION = this.CAPTURE_BAIT_SET;
-        }
-
-        if (!poolNormal) {
-            ConsensusBaitSet = this.CAPTURE_BAIT_SET;
-            ConsensusSpikeIn = this.SPIKE_IN_GENES;
-        }
-    }
-
-    private void populatePoolNormals(DataRecord nimblegenRecord, User apiUser) {
-        try {
-            DataRecord nimbParentSamples = nimblegenRecord.getParentsOfType(VeloxConstants.SAMPLE, apiUser).get(0);
-            List<DataRecord> nimbSiblingSamples = Arrays.asList(nimbParentSamples.getChildrenOfType(VeloxConstants
-                    .SAMPLE, apiUser));
-            for (DataRecord nimbSiblingSample : nimbSiblingSamples) {
-                // HERE check tos ee if it was added ot a flowcell?
-                List<DataRecord> flowCellLanes = nimbSiblingSample.getDescendantsOfType(VeloxConstants
-                        .FLOW_CELL_LANE, apiUser);
-
-                if (flowCellLanes == null || flowCellLanes.size() == 0)
-                    continue;
-
-                List<DataRecord> parentSamples = nimbSiblingSample.getParentsOfType(VeloxConstants.SAMPLE, apiUser);
-                for (DataRecord parentSample : parentSamples) {
-                    if (isPooledNormal(apiUser, parentSample))
-                        addPooledNormal(apiUser, nimbSiblingSample, parentSample);
-                }
+            if (!isPoolNormal) {
+                ConsensusBaitSet = this.CAPTURE_BAIT_SET;
+                ConsensusSpikeIn = this.SPIKE_IN_GENES;
             }
-        } catch (Exception e) {
-            DEV_LOGGER.error("Exception thrown while retrieving information about pooled normals", e);
+        } catch (NimblegenResolver.NoNimblegenHybProtocolFound e) {
+            logError("No NoNymbHybProtocol DataRecord found for " + SampleInfoImpact.this.CMO_SAMPLE_ID + "(" +
+                    SampleInfoImpact.this.IGO_ID + "). The " +
+                    "baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ");
+        } catch (NimblegenResolver.NoValidNimblegenHybrFound e) {
+            logError(String.format("No VALID NimblgenHybridizationProtocol DataRecord found for %s(%s). %s The " +
+                            "baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ",
+                    SampleInfoImpact.this
+                            .CMO_SAMPLE_ID, SampleInfoImpact.this.IGO_ID, poolNameList));
         }
-    }
-
-    private void addPooledNormal(User apiUser, DataRecord nimbSiblingSample, DataRecord parentSample) throws
-            NotFound, RemoteException {
-        String pooledNormalId = nimbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
-
-        if (!pooledNormals.containsKey(parentSample))
-            DEV_LOGGER.info(String.format("Adding pooled normal: %s", pooledNormalId));
-        pooledNormals.put(parentSample, pooledNormalId);
-    }
-
-    private void populatePoolNormals(User apiUser, DataRecordManager dataRecordManager, KickoffRequest kickoffRequest) {
-        try {
-            if(potentialPooledNormalsQcs == null)
-                potentialPooledNormalsQcs = getPotentialPooledNormalQCs(apiUser, dataRecordManager);
-
-            for (DataRecord potentialPooledNormalQc : potentialPooledNormalsQcs) {
-                if (!isSampleRun(potentialPooledNormalQc, apiUser, kickoffRequest))
-                    continue;
-
-                List<DataRecord> parentSamples = potentialPooledNormalQc.getParentsOfType(VeloxConstants.SAMPLE,
-                        apiUser);
-
-                if (parentSamples.size() == 0) {
-                    DEV_LOGGER.warn(String.format("No parent sample for Sample Level Qc %s. This Pooled normal won't " +
-                                    "be added.",
-                            potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser)));
-                    return;
-                }
-
-                if (parentSamples.size() > 1) {
-                    DEV_LOGGER.warn(String.format("Multiple parent samples for Sample Level Qc %s. This Pooled normal" +
-                                    " won't be " +
-                                    "added.",
-                            potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser)));
-                    return;
-                }
-
-                DataRecord parentSample = parentSamples.get(0);
-
-                String pooledNormalRecipe = parentSample.getStringVal(VeloxConstants.RECIPE, apiUser);
-
-                boolean isSameRecipe = Objects.equals(pooledNormalRecipe, kickoffRequest.getRecipe().getValue());
-
-                if (StringUtils.isEmpty(pooledNormalRecipe))
-                    DEV_LOGGER.warn("empty recipe: " + parentSample.getRecordId());
-                if (!isSameRecipe)
-                    continue;
-
-                String otherSampleId = parentSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
-
-                Set<String> samplesPreservations = kickoffRequest.getSamples().values().stream()
-                        .map(s -> s.getPreservation())
-                        .collect(Collectors.toSet());
-
-                boolean isSamePreservation = samplesPreservations.stream()
-                        .anyMatch(s -> otherSampleId.toLowerCase().startsWith(SPECIMEN_PRESERVATION_TYPE.toLowerCase
-                                ()));
-
-                if (!isSamePreservation)
-                    continue;
-
-                if (isPooledNormal(apiUser, parentSample)) {
-                    String pooledNormalId = parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
-                    if (!pooledNormals.containsKey(parentSample))
-                        DEV_LOGGER.info(String.format("Adding pooled normal: %s", pooledNormalId));
-
-                    pooledNormals.put(parentSample, pooledNormalId);
-                }
-            }
-        } catch (Exception e) {
-            DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
-        }
-    }
-
-    private List<DataRecord> getPotentialPooledNormalQCs(User apiUser, DataRecordManager dataRecordManager) throws Exception {
-        String query = String.format("%s LIKE '%s'", VeloxConstants.OTHER_SAMPLE_ID, "%POOLEDNORMAL%");
-
-        DEV_LOGGER.info(String.format("Query used to look for pooled normals: %s", query));
-        return dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC,
-                query, apiUser);
-    }
-
-
-    private boolean isSampleRun(DataRecord potentialPooledNormalQc, User apiUser, KickoffRequest kickoffRequest)
-            throws NotFound, RemoteException {
-        String sampleId = potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
-
-        try {
-            String runFolder = potentialPooledNormalQc.getStringVal(VeloxConstants.SEQUENCER_RUN_FOLDER, apiUser);
-
-            boolean isSampleRun = kickoffRequest.getAllValidSamples().values().stream()
-                    .flatMap(s -> s.getValidRunIds().stream())
-                    .anyMatch(r -> runFolder.startsWith(r));
-
-            return isSampleRun;
-        } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Error while trying to get pooled normal run id: %s. This pooled normal " +
-                    "won't be added.", sampleId), e);
-            return false;
-        }
-    }
-
-    private boolean isPooledNormal(User apiUser, DataRecord parentSample) throws NotFound, RemoteException {
-        return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL");
     }
 
     /*

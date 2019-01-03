@@ -7,6 +7,7 @@ import com.velox.api.util.ServerException;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.retriever.NimblegenResolver;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
@@ -21,9 +22,13 @@ public class SampleInfoExome extends SampleInfoImpact {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private Map<String, String> baitSetToDesignFileMapping;
 
-    public SampleInfoExome(User apiUser, DataRecordManager drm, DataRecord rec, KickoffRequest kickoffRequest, Sample
-            sample, LocalDateTime kapaProtocolStartDate) {
-        super(apiUser, drm, rec, kickoffRequest, sample, kapaProtocolStartDate);
+    public SampleInfoExome(User apiUser,
+                           DataRecordManager drm,
+                           DataRecord rec,
+                           KickoffRequest kickoffRequest, Sample sample,
+                           LocalDateTime kapaProtocolStartDate,
+                           NimblegenResolver nimblegenResolver) {
+        super(apiUser, drm, rec, kickoffRequest, sample, kapaProtocolStartDate, nimblegenResolver);
     }
 
     /*

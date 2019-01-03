@@ -17,6 +17,7 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.util.Utils;
 import org.mskcc.util.Constants;
 import org.mskcc.util.VeloxConstants;
+import org.springframework.stereotype.Component;
 
 import java.rmi.RemoteException;
 import java.util.*;
@@ -27,6 +28,7 @@ import java.util.regex.Pattern;
  *
  * @author Krista Kaz
  */
+@Component
 public class ProjectInfoRetriever {
     private static final Logger DEV_LOGGER = Logger.getLogger(org.mskcc.kickoff.util.Constants.DEV_LOGGER);
 

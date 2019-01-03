@@ -23,12 +23,14 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
+import org.mskcc.kickoff.retriever.NimblegenResolver;
 import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.sampleset.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.velox.RequestsRetrieverFactory;
+import org.mskcc.kickoff.velox.Sample2DataRecordMap;
 import org.mskcc.kickoff.velox.VeloxConnectionData;
 import org.mskcc.kickoff.velox.VeloxProjectProxy;
 import org.mskcc.util.TestUtils;
@@ -68,7 +70,9 @@ public class SampleSetIntegrationTest {
             mock(ErrorRepository.class));
     private RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever,
             reqDataPropagator, reqDataPropagator, sampleSetToReqConv, mock(ReadOnlyExternalSamplesRepository.class),
-            mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class));
+            mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class), mock(NimblegenResolver
+            .class),
+            mock(Sample2DataRecordMap.class));
     private VeloxProjectProxy veloxProjectProxy;
     private DataRecord sampleSetRecord;
     private VeloxConnection connection;

@@ -15,8 +15,8 @@ import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -58,9 +58,10 @@ public class RegressionTest {
 
     @BeforeClass
     public static void init() throws Exception {
-        FileInputStream input = new FileInputStream("src/main/resources/application-dev.properties");
+        InputStream resource = RegressionTest.class.getClassLoader().getResourceAsStream("application-dev" +
+                ".properties");
         Properties prop = new Properties();
-        prop.load(input);
+        prop.load(resource);
         archivePath = prop.getProperty("manifestArchivePath");
     }
 

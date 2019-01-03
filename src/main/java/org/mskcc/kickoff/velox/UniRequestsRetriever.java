@@ -6,11 +6,9 @@ import com.velox.api.user.User;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
+import org.mskcc.kickoff.poolednormals.PooledNormalsRetrieverFactory;
 import org.mskcc.kickoff.process.ProcessingType;
-import org.mskcc.kickoff.retriever.RequestDataPropagator;
-import org.mskcc.kickoff.retriever.RequestNotFoundException;
-import org.mskcc.kickoff.retriever.RequestsRetriever;
-import org.mskcc.kickoff.retriever.SingleRequestRetriever;
+import org.mskcc.kickoff.retriever.*;
 
 import java.util.Arrays;
 import java.util.List;
@@ -30,13 +28,17 @@ public class UniRequestsRetriever implements RequestsRetriever {
                                 DataRecordManager dataRecordManager,
                                 ProjectInfoRetriever projectInfoRetriever,
                                 RequestDataPropagator requestDataPropagator,
+                                NimblegenResolver nimblegenResolver,
+                                Sample2DataRecordMap sample2DataRecordMap,
                                 VeloxPairingsRetriever veloxPairingsRetriever,
                                 BiPredicate<Sample, Sample> pairingValidPredicate) {
         this.user = user;
         this.dataRecordManager = dataRecordManager;
         this.requestDataPropagator = requestDataPropagator;
         this.veloxPairingsRetriever = veloxPairingsRetriever;
-        this.singleRequestRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager, projectInfoRetriever);
+        this.singleRequestRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager, new
+                RequestTypeResolver(), projectInfoRetriever,
+                new PooledNormalsRetrieverFactory(nimblegenResolver, sample2DataRecordMap));
         this.pairingValidPredicate = pairingValidPredicate;
     }
 

@@ -5,6 +5,7 @@ import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.user.User;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
+import org.mskcc.kickoff.poolednormals.PooledNormalsRetrieverFactory;
 import org.mskcc.kickoff.retriever.*;
 import org.mskcc.kickoff.sampleset.*;
 import org.mskcc.kickoff.validator.ErrorRepository;
@@ -25,6 +26,8 @@ public class RequestsRetrieverFactory {
     private BiPredicate<Sample, Sample> sampleSetPairingValidPredicate;
     private BiPredicate<Sample, Sample> singleRequestPairingValidPredicate;
     private ErrorRepository errorRepository;
+    private NimblegenResolver nimblegenResolver;
+    private Sample2DataRecordMap sample2DataRecordMap;
 
     public RequestsRetrieverFactory(ProjectInfoRetriever projectInfoRetriever,
                                     RequestDataPropagator sampleSetRequestDataPropagator,
@@ -33,11 +36,14 @@ public class RequestsRetrieverFactory {
                                     ReadOnlyExternalSamplesRepository readOnlyExternalSamplesRepository,
                                     BiPredicate<Sample, Sample> sampleSetPairingValidPredicate,
                                     BiPredicate<Sample, Sample> singleRequestPairingValidPredicate,
-                                    ErrorRepository errorRepository) {
+                                    ErrorRepository errorRepository, NimblegenResolver nimblegenResolver,
+                                    Sample2DataRecordMap sample2DataRecordMap) {
         this.projectInfoRetriever = projectInfoRetriever;
         this.sampleSetRequestDataPropagator = sampleSetRequestDataPropagator;
         this.singleRequestRequestDataPropagator = singleRequestRequestDataPropagator;
         this.sampleSetToRequestConverter = sampleSetToRequestConverter;
+        this.nimblegenResolver = nimblegenResolver;
+        this.sample2DataRecordMap = sample2DataRecordMap;
         this.sampleSetProjectPredicate = new SampleSetProjectPredicate();
         this.externalSamplesRepository = readOnlyExternalSamplesRepository;
         this.sampleSetPairingValidPredicate = sampleSetPairingValidPredicate;
@@ -53,19 +59,26 @@ public class RequestsRetrieverFactory {
             return getSampleSetRequestsRetriever(user, dataRecordManager, projectId, veloxPairingsRetriever);
 
         return new UniRequestsRetriever(user, dataRecordManager, projectInfoRetriever, singleRequestRequestDataPropagator,
-                veloxPairingsRetriever, singleRequestPairingValidPredicate);
+
+                nimblegenResolver, sample2DataRecordMap, veloxPairingsRetriever, singleRequestPairingValidPredicate);
     }
 
     private RequestsRetriever getSampleSetRequestsRetriever(User user, DataRecordManager dataRecordManager, String
             projectId, VeloxPairingsRetriever veloxPairingsRetriever) {
+        RequestTypeResolver requestTypeResolver = new RequestTypeResolver();
+
         SingleRequestRetriever requestsRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager,
-                projectInfoRetriever);
+                requestTypeResolver, projectInfoRetriever, new PooledNormalsRetrieverFactory(nimblegenResolver,
+                sample2DataRecordMap));
+
         DataRecord sampleSetRecord = getSampleSetRecord(projectId, dataRecordManager, user);
+
         SampleSetProxy veloxSampleSetProxy = new VeloxSampleSetProxy(sampleSetRecord, user, requestsRetriever,
                 externalSamplesRepository);
 
         SamplesToRequestsConverter samplesToRequestsConverter = new SamplesToRequestsConverter(new
-                VeloxSingleRequestRetriever(user, dataRecordManager, projectInfoRetriever));
+                VeloxSingleRequestRetriever(user, dataRecordManager, requestTypeResolver, projectInfoRetriever, new
+                PooledNormalsRetrieverFactory(nimblegenResolver, sample2DataRecordMap)));
         SampleSetRetriever sampleSetRetriever = new SampleSetRetriever(veloxSampleSetProxy, samplesToRequestsConverter);
 
         return new SampleSetRequestRetriever(sampleSetRequestDataPropagator, sampleSetToRequestConverter, sampleSetRetriever,
