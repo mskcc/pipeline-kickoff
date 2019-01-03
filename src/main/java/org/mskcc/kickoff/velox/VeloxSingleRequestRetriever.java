@@ -235,9 +235,13 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private void addSampleInfo(KickoffRequest kickoffRequest) {
         for (Sample sample : kickoffRequest.getValidNonPooledNormalSamples().values()) {
-            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(sample2DataRecordMap.get(sample.getIgoId()),
-                    sample,
-                    kickoffRequest);
+            DataRecord dataRecord = sample2DataRecordMap.get(sample.getIgoId());
+
+            DEV_LOGGER.info(String.format("Sample record %s retrieved for sample %s", dataRecord.getRecordId(),
+                    sample.getIgoId()));
+
+            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(dataRecord,
+                    sample, kickoffRequest);
             sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
             sample.setProperties(sampleInfo);
 
@@ -443,6 +447,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             setIsTransfer(dataRecordSample, sample);
 
             sample2DataRecordMap.put(sample.getIgoId(), dataRecordSample);
+            DEV_LOGGER.info(String.format("Sample %s saved to cache with record %s", sample.getIgoId(), dataRecordSample.getRecordId()));
             setSeqName(sample);
         } else {
             DEV_LOGGER.warn(String.format("Skipping %s because the sample is failed: %s", cmoSampleId, status));

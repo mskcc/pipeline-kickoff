@@ -7,6 +7,10 @@ import java.util.HashMap;
 
 @Component
 public class Sample2DataRecordMap extends HashMap<String, DataRecord> {
+    public Sample2DataRecordMap() {
+        super();
+    }
+
     @Override
     public DataRecord get(Object key) {
         if (!super.containsKey(key))
