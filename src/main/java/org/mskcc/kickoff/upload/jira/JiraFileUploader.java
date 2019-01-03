@@ -278,7 +278,7 @@ public class JiraFileUploader implements FileUploader {
     }
 
     private void logIfNotSucceeded(Issue issue, ResponseEntity<String> addCommentResponse) {
-        if (addCommentResponse.getStatusCode().is2xxSuccessful())
+        if (!addCommentResponse.getStatusCode().is2xxSuccessful())
             LOGGER.warn(String.format("Comment not added to issue %s. Cause: %s %s", issue.getSummary(),
                     addCommentResponse.getStatusCode(),
                     addCommentResponse.getHeaders().getOrDefault(ERRORS_HEADER_KEY, emptyList())));

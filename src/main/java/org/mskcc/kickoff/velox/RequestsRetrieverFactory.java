@@ -59,7 +59,6 @@ public class RequestsRetrieverFactory {
             return getSampleSetRequestsRetriever(user, dataRecordManager, projectId, veloxPairingsRetriever);
 
         return new UniRequestsRetriever(user, dataRecordManager, projectInfoRetriever, singleRequestRequestDataPropagator,
-
                 nimblegenResolver, sample2DataRecordMap, veloxPairingsRetriever, singleRequestPairingValidPredicate);
     }
 
@@ -67,18 +66,17 @@ public class RequestsRetrieverFactory {
             projectId, VeloxPairingsRetriever veloxPairingsRetriever) {
         RequestTypeResolver requestTypeResolver = new RequestTypeResolver();
 
+        PooledNormalsRetrieverFactory pooledNormRetrFact = new PooledNormalsRetrieverFactory(nimblegenResolver,
+                sample2DataRecordMap);
         SingleRequestRetriever requestsRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager,
-                requestTypeResolver, projectInfoRetriever, new PooledNormalsRetrieverFactory(nimblegenResolver,
-                sample2DataRecordMap));
+                requestTypeResolver, projectInfoRetriever, pooledNormRetrFact, nimblegenResolver, sample2DataRecordMap);
 
         DataRecord sampleSetRecord = getSampleSetRecord(projectId, dataRecordManager, user);
 
         SampleSetProxy veloxSampleSetProxy = new VeloxSampleSetProxy(sampleSetRecord, user, requestsRetriever,
                 externalSamplesRepository);
 
-        SamplesToRequestsConverter samplesToRequestsConverter = new SamplesToRequestsConverter(new
-                VeloxSingleRequestRetriever(user, dataRecordManager, requestTypeResolver, projectInfoRetriever, new
-                PooledNormalsRetrieverFactory(nimblegenResolver, sample2DataRecordMap)));
+        SamplesToRequestsConverter samplesToRequestsConverter = new SamplesToRequestsConverter(requestsRetriever);
         SampleSetRetriever sampleSetRetriever = new SampleSetRetriever(veloxSampleSetProxy, samplesToRequestsConverter);
 
         return new SampleSetRequestRetriever(sampleSetRequestDataPropagator, sampleSetToRequestConverter, sampleSetRetriever,

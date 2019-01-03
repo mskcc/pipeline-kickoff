@@ -1,11 +1,17 @@
 package org.mskcc.kickoff.velox;
 
 import com.velox.api.datarecord.DataRecord;
-import org.mskcc.domain.sample.Sample;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 
 @Component
-public class Sample2DataRecordMap extends HashMap<Sample, DataRecord> {
+public class Sample2DataRecordMap extends HashMap<String, DataRecord> {
+    @Override
+    public DataRecord get(Object key) {
+        if (!super.containsKey(key))
+            throw new RuntimeException(String.format("Sample %s doesn't exist in Sample2DataRecord map", key));
+
+        return super.get(key);
+    }
 }
