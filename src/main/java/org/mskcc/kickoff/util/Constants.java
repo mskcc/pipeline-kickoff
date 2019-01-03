@@ -50,6 +50,9 @@ public class Constants {
     public static final String MOUSEPOOLEDNORMAL = "MOUSEPOOLEDNORMAL";
     public static final String NA = "NA";
     public static final String NA_LOWER_CASE = "na";
+    public static final String NO_PM = "NO PM";
+    public static final String NoKAPACaptureProtocol1 = "#NoKAPACaptureProtocol1";
+    public static final String NoKAPACaptureProtocol2 = "#NoKAPACaptureProtocol2";
     public static final String NORMAL = "Normal";
     public static final String NORMAL_POOL = "NormalPool";
     public static final String NULL = "null";
@@ -91,7 +94,6 @@ public class Constants {
     public static final String UNDER_REVIEW = "Under-Review";
     public static final String UNKNOWN = "Unknown";
     public static final String PAIRED_END = "PE";
-    public static final String NO_PM = "NO PM";
 
     public static class Manifest {
         public static final String SAMPLE_INFO = "SampleInfo";

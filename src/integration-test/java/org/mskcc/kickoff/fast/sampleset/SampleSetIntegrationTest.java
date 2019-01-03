@@ -70,8 +70,8 @@ public class SampleSetIntegrationTest {
             mock(ErrorRepository.class));
     private RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever,
             reqDataPropagator, reqDataPropagator, sampleSetToReqConv, mock(ReadOnlyExternalSamplesRepository.class),
-            mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class), new NimblegenResolver(),
-            new Sample2DataRecordMap());
+            mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class), mock(NimblegenResolv.class),
+            mock(Sample2DataRecordMap.class));
     private VeloxProjectProxy veloxProjectProxy;
     private DataRecord sampleSetRecord;
     private VeloxConnection connection;

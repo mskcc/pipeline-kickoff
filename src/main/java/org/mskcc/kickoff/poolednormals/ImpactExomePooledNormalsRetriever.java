@@ -31,6 +31,10 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
         this.sample2DataRecordMap = sample2DataRecordMap;
     }
 
+    public static boolean isPooledNormal(User apiUser, DataRecord parentSample) throws NotFound, RemoteException {
+        return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL");
+    }
+
     @Override
     public Map<DataRecord, Collection<String>> getAllPooledNormals(KickoffRequest request, User user,
                                                                    DataRecordManager dataRecordManager) {
@@ -87,7 +91,7 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
     private boolean isPooledNormal(User apiUser, DataRecord parentSample) throws NotFound, RemoteException {
         return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL");
     }
-
+  
     private boolean isSampleRun(DataRecord potentialPooledNormalQc, User apiUser, KickoffRequest kickoffRequest)
             throws NotFound, RemoteException {
         String sampleId = potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
