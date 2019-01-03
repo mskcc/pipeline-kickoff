@@ -302,16 +302,22 @@ public class RequestDataPropagator implements DataPropagator {
             if (dir.isDirectory()) {
                 if (request.getRequestType() == RequestType.IMPACT) {
                     String berger = findDesignFileForImpact(request, assay, dir);
-                    if (!StringUtils.isEmpty(berger))
+                    if (!StringUtils.isEmpty(berger)) {
                         return berger;
-                } else
+                    }
+                } else {
                     return findDesignFileForExome(dir, request.getId());
+                }
                 return dir.toString();
+            } else {
+                DEV_LOGGER.info(String.format("Request: %s is %s, but design file is not found.",
+                        request.getId(), request.getRequestType()));
             }
+        } else {
+            DEV_LOGGER.info(String.format("Request: %s is neither EXOME nor IMPACT thus skipping searching design file",
+                    request.getId()));
         }
 
-        DEV_LOGGER.info(String.format("Request: %s is neither EXOME nor IMPACT thus skipping searching design file",
-                request.getId()));
         return Constants.NA;
     }
 
