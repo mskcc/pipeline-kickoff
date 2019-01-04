@@ -28,10 +28,7 @@ import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Profile;
-import org.springframework.context.annotation.PropertySource;
-import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.*;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 
 import java.util.Set;
@@ -39,6 +36,7 @@ import java.util.function.Predicate;
 
 import static org.mockito.Mockito.mock;
 
+@Configuration
 @PropertySource("classpath:integrationtest.properties")
 @Profile("test")
 public class ManifestFilesGeneratorTestConfiguration extends AppConfiguration {

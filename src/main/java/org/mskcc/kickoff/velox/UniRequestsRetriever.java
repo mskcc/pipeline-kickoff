@@ -38,7 +38,8 @@ public class UniRequestsRetriever implements RequestsRetriever {
         this.veloxPairingsRetriever = veloxPairingsRetriever;
         this.singleRequestRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager, new
                 RequestTypeResolver(), projectInfoRetriever,
-                new PooledNormalsRetrieverFactory(nimblegenResolver, sample2DataRecordMap));
+                new PooledNormalsRetrieverFactory(nimblegenResolver, sample2DataRecordMap), nimblegenResolver,
+                sample2DataRecordMap);
         this.pairingValidPredicate = pairingValidPredicate;
     }
 

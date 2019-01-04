@@ -12,7 +12,7 @@ public class RequestTypeResolver {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     public RequestType resolve(Request kickoffRequest) {
-        RequestType requestType = RequestType.OTHER;
+        RequestType requestType = kickoffRequest.getRequestType();
 
         if (kickoffRequest.getRequestType() == null) {
             // Here I will pull the childs field recipe

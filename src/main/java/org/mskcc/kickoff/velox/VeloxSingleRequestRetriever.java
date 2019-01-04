@@ -46,23 +46,27 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private final SequencerIdentifierRetriever sequencerIdentifierRetriever = new SequencerIdentifierRetriever();
     private final RequestTypeResolver requestTypeResolver;
+    private final NimblegenResolver nimblegenResolver;
+    private final Sample2DataRecordMap sample2DataRecordMap;
     private ProjectInfoRetriever projectInfoRetriever;
     private LocalDateTime kapaProtocolStartDate = LocalDateTime.of(2015, 8, 3, 0, 0, 0);
     private PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory;
     private PooledNormalsRetriever pooledNormalsRetriever;
-    private NimblegenResolver nimblegenResolver;
-    private Sample2DataRecordMap sample2DataRecordMap = new Sample2DataRecordMap();
 
     public VeloxSingleRequestRetriever(User user,
                                        DataRecordManager dataRecordManager,
                                        RequestTypeResolver requestTypeResolver,
                                        ProjectInfoRetriever projectInfoRetriever,
-                                       PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory) {
+                                       PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory,
+                                       NimblegenResolver nimblegenResolver,
+                                       Sample2DataRecordMap sample2DataRecordMap) {
         this.user = user;
         this.dataRecordManager = dataRecordManager;
         this.requestTypeResolver = requestTypeResolver;
         this.projectInfoRetriever = projectInfoRetriever;
         this.pooledNormalsRetrieverFactory = pooledNormalsRetrieverFactory;
+        this.nimblegenResolver = nimblegenResolver;
+        this.sample2DataRecordMap = sample2DataRecordMap;
     }
 
     @Override
@@ -231,8 +235,13 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private void addSampleInfo(KickoffRequest kickoffRequest) {
         for (Sample sample : kickoffRequest.getValidNonPooledNormalSamples().values()) {
-            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(sample2DataRecordMap.get(sample), sample,
-                    kickoffRequest);
+            DataRecord dataRecord = sample2DataRecordMap.get(sample.getIgoId());
+
+            DEV_LOGGER.info(String.format("Sample record %s retrieved for sample %s", dataRecord.getRecordId(),
+                    sample.getIgoId()));
+
+            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(dataRecord,
+                    sample, kickoffRequest);
             sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
             sample.setProperties(sampleInfo);
 
@@ -437,7 +446,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
             setIsTransfer(dataRecordSample, sample);
 
-            sample2DataRecordMap.put(sample, dataRecordSample);
+            sample2DataRecordMap.put(sample.getIgoId(), dataRecordSample);
+            DEV_LOGGER.info(String.format("Sample %s saved to cache with record %s", sample.getIgoId(), dataRecordSample.getRecordId()));
             setSeqName(sample);
         } else {
             DEV_LOGGER.warn(String.format("Skipping %s because the sample is failed: %s", cmoSampleId, status));
@@ -854,7 +864,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     kapaProtocolStartDate, nimblegenResolver);
         } else if (kickoffRequest.getRequestType() == RequestType.EXOME) {
             sampleInfo = new SampleInfoExome(user, dataRecordManager, dataRecord, kickoffRequest, sample,
-                    kapaProtocolStartDate, new NimblegenResolver());
+                    kapaProtocolStartDate, nimblegenResolver);
         } else {
             sampleInfo = new SampleInfo(user, dataRecordManager, dataRecord, kickoffRequest, sample);
         }

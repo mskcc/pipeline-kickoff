@@ -31,10 +31,6 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
         this.sample2DataRecordMap = sample2DataRecordMap;
     }
 
-    public static boolean isPooledNormal(User apiUser, DataRecord parentSample) throws NotFound, RemoteException {
-        return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL");
-    }
-
     @Override
     public Map<DataRecord, Collection<String>> getAllPooledNormals(KickoffRequest request, User user,
                                                                    DataRecordManager dataRecordManager) {
@@ -55,7 +51,7 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
 
         try {
             for (Sample sample : kickoffRequest.getValidNonPooledNormalSamples().values()) {
-                DataRecord sampleRec = sample2DataRecordMap.get(sample);
+                DataRecord sampleRec = sample2DataRecordMap.get(sample.getIgoId());
                 DataRecord nimblegenRecord = nimblegenResolver.resolve(dataRecordManager, sampleRec, user, sample
                         .isPooledNormal());
                 DataRecord nimbParentSample = nimblegenRecord.getParentsOfType(VeloxConstants.SAMPLE, user).get(0);
@@ -71,7 +67,7 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
 
                     List<DataRecord> parentSamples = nimbSiblingSample.getParentsOfType(VeloxConstants.SAMPLE, user);
                     for (DataRecord parentSample : parentSamples) {
-                        if (sample.isPooledNormal()) {
+                        if (isPooledNormal(user, parentSample)) {
                             String pooledNormalId = nimbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
 
                             if (!pooledNormals.containsKey(parentSample))
@@ -88,6 +84,10 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
         return pooledNormals.asMap();
     }
 
+    private boolean isPooledNormal(User apiUser, DataRecord parentSample) throws NotFound, RemoteException {
+        return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL");
+    }
+  
     private boolean isSampleRun(DataRecord potentialPooledNormalQc, User apiUser, KickoffRequest kickoffRequest)
             throws NotFound, RemoteException {
         String sampleId = potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);

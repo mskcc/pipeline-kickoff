@@ -212,8 +212,13 @@ public class ManifestFilesGeneratorTest {
         fileManifestGenerator.generate(projectId);
 
         //then
-        assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile
-                .PAIRING, ManifestFile.REQUEST, ManifestFile.CLINICAL));
+        assertFilesUploadedToJira(projectId, Arrays.asList(
+                ManifestFile.MAPPING,
+                ManifestFile.GROUPING,
+                ManifestFile.PAIRING,
+                ManifestFile.REQUEST,
+                ManifestFile.CLINICAL));
+
         assertJiraStatus(filesGeneratedStatus);
     }
 
