@@ -83,7 +83,7 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
             outputText.append(patientNormalization(externalSample.getPatientCmoId()));
             outputText.append("\t");
 
-            outputText.append(sampleNormalization((externalSample.getExternalId())));
+            outputText.append(externalSample.getExternalId());
             outputText.append("\t");
 
             outputText.append(getIfAvailable(externalSample.getSpecimenType()));
@@ -143,7 +143,7 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
     }
 
     private boolean isSampleField(String fieldName) {
-        return Constants.CORRECTED_CMO_ID.equals(fieldName) || Constants.INVESTIGATOR_SAMPLE_ID.equals(fieldName);
+        return Constants.CORRECTED_CMO_ID.equals(fieldName);
     }
 
     private boolean isPatientField(String fieldName) {
