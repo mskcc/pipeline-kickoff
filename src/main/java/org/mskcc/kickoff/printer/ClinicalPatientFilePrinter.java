@@ -18,9 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import static org.mskcc.kickoff.util.Utils.patientNormalization;
-import static org.mskcc.kickoff.util.Utils.sampleNormalization;
-
 public abstract class ClinicalPatientFilePrinter extends FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
@@ -67,9 +64,21 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
         List<Sample> samples = kickoffRequest.getUniqueSamplesByCmoIdLastWin(getSamplePredicate());
         for (Sample sample : samples) {
             for (String fieldName : getManualHeader().values()) {
-                String value = normalizeIfNeeded(fieldName, sample.get(fieldName));
-                outputText.append(value);
-                outputText.append("\t");
+                String fieldValue = sample.get(fieldName);
+                switch (fieldName) {
+                    case Constants.CORRECTED_CMO_ID:
+                        fieldValue = Utils.sampleNormalization(fieldValue);
+                        break;
+                    case Constants.INVESTIGATOR_SAMPLE_ID:
+                        fieldValue = fieldValue.replace('-', '_');
+                        break;
+                    case Constants.CMO_PATIENT_ID:
+                        fieldValue = Utils.patientNormalization(fieldValue);
+                        break;
+                    default:
+                        break;
+                }
+                outputText.append(fieldValue).append("\t");
             }
             outputText.append("\n");
         }
@@ -77,13 +86,13 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
 
     private void writeExternalTumors(KickoffRequest kickoffRequest, StringBuilder outputText) {
         for (KickoffExternalSample externalSample : kickoffRequest.getTumorExternalSamples()) {
-            outputText.append(sampleNormalization(externalSample.getCmoId()));
+            outputText.append(Utils.sampleNormalization(externalSample.getCmoId()));
             outputText.append("\t");
 
-            outputText.append(patientNormalization(externalSample.getPatientCmoId()));
+            outputText.append(Utils.patientNormalization(externalSample.getPatientCmoId()));
             outputText.append("\t");
 
-            outputText.append(sampleNormalization((externalSample.getExternalId())));
+            outputText.append(externalSample.getExternalId().replace('-', '_'));
             outputText.append("\t");
 
             outputText.append(getIfAvailable(externalSample.getSpecimenType()));
@@ -132,21 +141,5 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
         if (StringUtils.isEmpty(field))
             return Constants.NA;
         return field;
-    }
-
-    private String normalizeIfNeeded(String fieldName, String value) {
-        if (isSampleField(fieldName))
-            return sampleNormalization(value);
-        if (isPatientField(fieldName))
-            return Utils.patientNormalization(value);
-        return value;
-    }
-
-    private boolean isSampleField(String fieldName) {
-        return Constants.CORRECTED_CMO_ID.equals(fieldName) || Constants.INVESTIGATOR_SAMPLE_ID.equals(fieldName);
-    }
-
-    private boolean isPatientField(String fieldName) {
-        return Constants.CMO_PATIENT_ID.equals(fieldName);
     }
 }
