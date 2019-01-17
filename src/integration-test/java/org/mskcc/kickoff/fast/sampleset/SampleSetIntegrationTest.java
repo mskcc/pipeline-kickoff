@@ -57,21 +57,7 @@ public class SampleSetIntegrationTest {
     private final String reqId1 = "12345_S";
     private final String reqId2 = "23456_S";
     private String validSampleSetId = "set_SampleSetTest";
-    private String designFilePath = "/ifs/projects/CMO/targets/designs";
-    private String resultsPathPrefix = "/ifs/solres/seq";
-    private ProjectFilesArchiver archiverMock = mock(ProjectFilesArchiver.class);
-    private ProjectInfoRetriever projInfoRetriever = new ProjectInfoRetriever();
-    private RequestDataPropagator reqDataPropagator = new RequestDataPropagator(designFilePath, resultsPathPrefix,
-            mock(ErrorRepository.class), (bs1, bs2) -> true);
-    private SampleSetProjectInfoConverter projInfoConv = new SampleSetProjectInfoConverter();
-    private SampleSetToRequestConverter sampleSetToReqConv = new SampleSetToRequestConverter(
-            projInfoConv,
-            (s1, s2) -> true,
-            mock(ErrorRepository.class));
-    private RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever,
-            reqDataPropagator, reqDataPropagator, sampleSetToReqConv, mock(ReadOnlyExternalSamplesRepository.class),
-            mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class), new NimblegenResolver(),
-            new Sample2DataRecordMap());
+    private static final String resultsPathPrefix = "/ifs/solres/seq";
     private VeloxProjectProxy veloxProjectProxy;
     private DataRecord sampleSetRecord;
     private VeloxConnection connection;
@@ -81,8 +67,7 @@ public class SampleSetIntegrationTest {
 
     @Before
     public void setUp() throws Exception {
-        veloxProjectProxy = new VeloxProjectProxy(getVeloxConnectionData(connectionFile), archiverMock,
-                requestsRetrieverFactory);
+        veloxProjectProxy = getVeloxProjectProxy();
         VeloxConnectionData veloxConnectionData = getVeloxConnectionData(connectionFileTest);
         connection = new VeloxConnection(
                 veloxConnectionData.getHost(),
@@ -97,6 +82,28 @@ public class SampleSetIntegrationTest {
         } catch (Exception e) {
             LOG.error(e);
         }
+    }
+
+    private VeloxProjectProxy getVeloxProjectProxy() throws Exception {
+        Properties prop = new Properties();
+        prop.load(new FileInputStream("src/main/resources/application-dev.properties"));
+        String designFilePath = prop.getProperty("designFilePath");
+
+        ProjectFilesArchiver archiverMock = mock(ProjectFilesArchiver.class);
+        ProjectInfoRetriever projInfoRetriever = new ProjectInfoRetriever();
+        RequestDataPropagator reqDataPropagator = new RequestDataPropagator(designFilePath, resultsPathPrefix,
+                mock(ErrorRepository.class), (bs1, bs2) -> true);
+        SampleSetProjectInfoConverter projInfoConv = new SampleSetProjectInfoConverter();
+        SampleSetToRequestConverter sampleSetToReqConv = new SampleSetToRequestConverter(
+                projInfoConv,
+                (s1, s2) -> true,
+                mock(ErrorRepository.class));
+        RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever,
+                reqDataPropagator, reqDataPropagator, sampleSetToReqConv, mock(ReadOnlyExternalSamplesRepository.class),
+                mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class), new NimblegenResolver(),
+                new Sample2DataRecordMap());
+        return new VeloxProjectProxy(getVeloxConnectionData(connectionFile), archiverMock,
+                requestsRetrieverFactory);
     }
 
     @After
