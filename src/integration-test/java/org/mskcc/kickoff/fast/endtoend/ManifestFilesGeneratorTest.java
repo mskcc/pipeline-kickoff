@@ -111,7 +111,7 @@ public class ManifestFilesGeneratorTest {
     @Autowired
     private ManifestFilesGeneratorTestConfiguration.MockJiraFileUploader fileUploader;
     private String initialTransitionName = "To Do";
-    private String regenerateTransition = "Regeneration Requested";
+    private String regenerateTransition = "Regenerate Inputs";
 
     @Before
     public void setUp() throws Exception {
