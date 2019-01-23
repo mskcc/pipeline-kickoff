@@ -700,6 +700,11 @@ public class VeloxRequestProxy implements RequestProxy {
                         }
                     }
                 }
+                if (checkValidBool(Arrays.asList(rec.getChildrenOfType(VeloxConstants.TS_POLYA_RNA_TO_CDNA_PROTOCOL_1, user)), dataRecordManager, user)) {
+                    request.addLibType(LibType.TRU_SEQ_POLY_A_SELECTION_NON_STRANDED);
+                    request.addStrand(Strand.NONE);
+                    request.setRequestType(Constants.RNASEQ);
+                }
                 if (Arrays.asList(rec.getChildrenOfType(VeloxConstants.TRU_SEQ_RNA_SM_RNA_PROTOCOL_4, user)).size() > 0) {
                     request.addLibType(LibType.TRU_SEQ_SM_RNA);
                     request.addStrand(Strand.EMPTY);
