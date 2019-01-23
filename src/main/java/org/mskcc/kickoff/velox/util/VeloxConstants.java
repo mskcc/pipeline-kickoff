@@ -56,4 +56,5 @@ public class VeloxConstants {
     public static final String TUMOR_ID = "TumorId";
     public static final String NORMAL_ID = "NormalId";
     public static final String TRUE = "true";
+    public static final String TS_POLYA_RNA_TO_CDNA_PROTOCOL_1 = "TSPolyARNAtocDNAProtocol1";
 }
