@@ -14,8 +14,8 @@ import org.apache.commons.lang3.text.WordUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.RequestType;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
-import org.mskcc.util.Constants;
 import org.mskcc.util.VeloxConstants;
 import org.springframework.stereotype.Component;
 
@@ -35,6 +35,24 @@ public class ProjectInfoRetriever {
     @Argument(alias = "p", description = "Project to get samples for")
     private final HashSet<String> platforms = new HashSet<>();
     private Map<String, String> projectInfo = new LinkedHashMap<>();
+    private List<String> projectFields = Arrays.asList(
+            Constants.ProjectInfo.LAB_HEAD,
+            Constants.ProjectInfo.LAB_HEAD_E_MAIL,
+            Constants.ProjectInfo.REQUESTOR,
+            Constants.ProjectInfo.REQUESTOR_E_MAIL,
+            Constants.ProjectInfo.PLATFORM,
+            Constants.ProjectInfo.IGO_PROJECT_ID,
+            Constants.ProjectInfo.FINAL_PROJECT_TITLE,
+            Constants.ProjectInfo.CMO_PROJECT_ID,
+            Constants.ProjectInfo.CMO_PROJECT_BRIEF,
+            Constants.ProjectInfo.PROJECT_MANAGER,
+            Constants.ProjectInfo.README_INFO,
+            Constants.ProjectInfo.DATA_ANALYST,
+            Constants.ProjectInfo.DATA_ANALYST_EMAIL,
+            Constants.ProjectInfo.PI_EMAIL,
+            Constants.ProjectInfo.PI_FIRSTNAME,
+            Constants.ProjectInfo.PI_LASTNAME,
+            Constants.ProjectInfo.CONTACT_NAME);
 
     public static void main(String[] args) throws ServerException {
         ProjectInfoRetriever qe = new ProjectInfoRetriever();
@@ -67,20 +85,6 @@ public class ProjectInfoRetriever {
         try {
             List<DataRecord> requests = drm.queryDataRecords(VeloxConstants.REQUEST, "RequestId = '" + requestID +
                     "'", apiUser);
-            List<String> projectFields = Arrays.asList(
-                    Constants.ProjectInfo.LAB_HEAD,
-                    Constants.ProjectInfo.LAB_HEAD_E_MAIL,
-                    Constants.ProjectInfo.REQUESTOR,
-                    Constants.ProjectInfo.REQUESTOR_E_MAIL,
-                    Constants.ProjectInfo.PLATFORM,
-                    Constants.ProjectInfo.IGO_PROJECT_ID,
-                    Constants.ProjectInfo.FINAL_PROJECT_TITLE,
-                    Constants.ProjectInfo.CMO_PROJECT_ID,
-                    Constants.ProjectInfo.CMO_PROJECT_BRIEF,
-                    Constants.ProjectInfo.PROJECT_MANAGER,
-                    Constants.ProjectInfo.README_INFO,
-                    Constants.ProjectInfo.DATA_ANALYST,
-                    Constants.ProjectInfo.DATA_ANALYST_EMAIL);
 
             //initalizing empty map
             for (String field : projectFields) {
@@ -145,34 +149,15 @@ public class ProjectInfoRetriever {
                 projectInfo.put(Constants.ProjectInfo.README_INFO,
                         requestDataRecord.getStringVal("ReadMe", apiUser));
 
-                // ******************************* NEW FIELDS - will probably be moved
                 // Bioinformatic Request: FASTQ and BICAnalysis (bools, request specific)
                 projectInfo.put(Constants.ProjectInfo.BIOINFORMATIC_REQUEST, requestDataRecord.getPickListVal
                         ("DataDeliveryType", apiUser));
 
                 // Data Analyst, Data Analyst E-mail
-                projectInfo.put(Constants.ProjectInfo.DATA_ANALYST, requestDataRecord.getStringVal("DataAnalyst",
-                        apiUser));
+                projectInfo.put(Constants.ProjectInfo.DATA_ANALYST, requestDataRecord.getStringVal("DataAnalyst", apiUser));
                 projectInfo.put(Constants.ProjectInfo.DATA_ANALYST_EMAIL, requestDataRecord.getStringVal("DataAnalystEmail", apiUser));
 
-                // ******************************* END OF NEW FIELDS
-
-                // Values saved because they will be used to remove duplicated emails in email child
-                String LabHeadEmail = requestDataRecord.getStringVal("LabHeadEmail", apiUser).toLowerCase();
-                String InvestigatorEmail = requestDataRecord.getStringVal("Investigatoremail", apiUser).toLowerCase();
-                String[] LabHeadName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("LaboratoryHead",
-                        apiUser)).split(" ", 2);
-                String[] RequesterName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("Investigator",
-                        apiUser)).split(" ", 2);
-
-                if (LabHeadName.length > 1) {
-                    projectInfo.put(Constants.ProjectInfo.LAB_HEAD, LabHeadName[1] + ", " + LabHeadName[0]);
-                }
-                projectInfo.put(Constants.ProjectInfo.LAB_HEAD_E_MAIL, LabHeadEmail);
-                if (RequesterName.length > 1) {
-                    projectInfo.put(Constants.ProjectInfo.REQUESTOR, RequesterName[1] + ", " + RequesterName[0]);
-                }
-                projectInfo.put(Constants.ProjectInfo.REQUESTOR_E_MAIL, InvestigatorEmail);
+                setUpPIandInvest(requestDataRecord, apiUser, projectInfo);
             }
 
             return getTransformedProjectInfo(projectInfo);
@@ -182,6 +167,45 @@ public class ProjectInfoRetriever {
         }
 
         return Collections.emptyMap();
+    }
+
+    private void setUpPIandInvest(DataRecord request, User apiUser, Map<String, String> projectInfo) throws Exception {
+        // Values saved because they will be used to remove duplicated emails in email child
+        String LabHeadEmail = request.getStringVal("LabHeadEmail", apiUser).toLowerCase();
+        String InvestigatorEmail = request.getStringVal("Investigatoremail", apiUser).toLowerCase();
+        String[] LabHeadName = WordUtils.capitalizeFully(request.getStringVal("LaboratoryHead",
+                apiUser)).split(" ", 2);
+        String[] RequesterName = WordUtils.capitalizeFully(request.getStringVal("Investigator", apiUser)).split(" ", 2);
+
+        if (LabHeadName.length > 1) {
+            projectInfo.put(Constants.ProjectInfo.LAB_HEAD, LabHeadName[1] + ", " + LabHeadName[0]);
+        }
+        projectInfo.put(Constants.ProjectInfo.LAB_HEAD_E_MAIL, LabHeadEmail);
+        if (RequesterName.length > 1) {
+            projectInfo.put(Constants.ProjectInfo.REQUESTOR, RequesterName[1] + ", " + RequesterName[0]);
+        }
+        projectInfo.put(Constants.ProjectInfo.REQUESTOR_E_MAIL, InvestigatorEmail);
+
+        String PIemail = request.getStringVal("PIemail", apiUser);
+        String PIFirstName = request.getStringVal("PIFirstName", apiUser);
+        String PILastName = request.getStringVal("PILastName", apiUser);
+        // contactname is storing cmo email
+        String ContactName = request.getStringVal("ContactName", apiUser);
+        if (StringUtils.isNotBlank(PIemail)) {
+            projectInfo.put(Constants.ProjectInfo.PI_EMAIL, PIemail.trim().toLowerCase());
+        }
+
+        if (StringUtils.isNotBlank(PIFirstName)) {
+            projectInfo.put(Constants.ProjectInfo.PI_FIRSTNAME, WordUtils.capitalize(PIFirstName.trim()));
+        }
+
+        if (StringUtils.isNotBlank(PILastName)) {
+            projectInfo.put(Constants.ProjectInfo.PI_LASTNAME, WordUtils.capitalize(PILastName.trim()));
+        }
+
+        if (StringUtils.isNotBlank(ContactName)) {
+            projectInfo.put(Constants.ProjectInfo.CONTACT_NAME, ContactName.trim().toLowerCase());
+        }
     }
 
     private RequestType figureOutReqType(DataRecord request, User apiUser, DataRecordManager drm) {
@@ -256,7 +280,7 @@ public class ProjectInfoRetriever {
             DEV_LOGGER.warn(String.format("Not valid full name: <%s>.", projectManagerFullName));
         }
 
-        Optional<String> optionalPmEmail= Optional.empty();
+        Optional<String> optionalPmEmail = Optional.empty();
         try {
             optionalPmEmail = queryDatabaseForProjectManagerEmail(dataRecordManager, apiUser, firstName, lastName);
         } catch (Exception e) {

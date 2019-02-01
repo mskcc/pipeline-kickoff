@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.util;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.*;
@@ -19,6 +20,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -178,5 +180,16 @@ public class Utils {
             sample = "p_" + sample;
         }
         return sample;
+    }
+
+    public static boolean isCmoSideProject(String projectManagerName) {
+        if (StringUtils.isBlank(projectManagerName) || Constants.NO_PM.equals(projectManagerName)) {
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean isValidMSKemail(String email) {
+        return Pattern.compile("^(.+)@(.*)mskcc\\.org$").matcher(email.toLowerCase()).matches();
     }
 }

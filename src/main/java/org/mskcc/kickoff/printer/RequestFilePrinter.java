@@ -32,19 +32,14 @@ import static org.mskcc.kickoff.util.Utils.getJoinedCollection;
 public class RequestFilePrinter extends FilePrinter {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
-    private final String manualMappingPinfoToRequestFile = "Lab_Head:PI_Name," +
-            "Lab_Head_E-mail:PI,Requestor:Investigator_Name,Requestor_E-mail:Investigator,CMO_Project_ID:ProjectName," +
+    private final String manualMappingPinfoToRequestFile = "PI_Name:PI_Name," +
+            "PI_E-mail:PI_E-mail,Investigator_E-mail:Investigator_E-mail,CMO_Project_ID:ProjectName," +
             "Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
-    private final Set<String> requiredProjectInfoFields = new HashSet<>();
     private ErrorRepository errorRepository;
     @Value("${pipeline.name}")
     private String pipelineName;
 
     private String fileContents = "";
-
-    {
-        requiredProjectInfoFields.add(Constants.ASSAY);
-    }
 
     @Autowired
     public RequestFilePrinter(ObserverManager observerManager, ErrorRepository errorRepository) {
@@ -56,7 +51,11 @@ public class RequestFilePrinter extends FilePrinter {
     public void print(KickoffRequest request) {
         DEV_LOGGER.info(String.format("Starting to create file: %s", getFilePath(request)));
 
-        validateProjectInfo(request);
+        Set<String> requiredFields = new HashSet<>();
+        Map<String, String> fieldNames = constructFieldNames();
+        Map<String, String> fieldValues = constructFieldValues(request, requiredFields);
+
+        validateFieldValues(requiredFields, fieldValues);
 
         StringBuilder requestFileContents = new StringBuilder();
 
@@ -74,22 +73,8 @@ public class RequestFilePrinter extends FilePrinter {
             requestFileContents.append("Run_Pipeline: other\n");
         }
 
-        Map<String, String> convertFieldNames = new LinkedHashMap<>();
-        for (String conv : manualMappingPinfoToRequestFile.split(",")) {
-            String[] parts = conv.split(":", 2);
-            convertFieldNames.put(parts[0], parts[1]);
-        }
+        addProjectInfoContent(fieldNames, fieldValues, requestFileContents);
 
-        addProjectInfoContent(request, requestFileContents, convertFieldNames);
-
-        if (request.getInvest().isEmpty() || request.getPi().isEmpty()) {
-            logError(String.format("Cannot create run number because PI and/or Investigator is missing. %s %s",
-                    request.getPi(), request.getInvest()), PmLogPriority.SAMPLE_ERROR, Level.ERROR);
-        } else {
-            if (!Objects.equals(request.getRunNumbers(), "0")) {
-                requestFileContents.append("RunNumber: ").append(request.getRunNumbers()).append("\n");
-            }
-        }
         addRerunReason(request, requestFileContents);
         requestFileContents.append("RunID: ").append(getJoinedCollection(request.getRunIds(), ", ")).append("\n");
 
@@ -170,34 +155,100 @@ public class RequestFilePrinter extends FilePrinter {
         }
     }
 
-    private void validateProjectInfo(KickoffRequest request) {
-        Map<String, String> projectInfo = request.getProjectInfo();
+    private void validateFieldValues(Set<String> requiredFields, Map<String, String> fieldValues) {
 
-        for (String requiredProjectInfoField : requiredProjectInfoFields) {
-            String fieldValue = projectInfo.get(requiredProjectInfoField);
+        String requestId = fieldValues.get(Constants.ProjectInfo.IGO_PROJECT_ID);
+        List<String> errors = new ArrayList<>();
+        for (String requiredProjectInfoField : requiredFields) {
+            String fieldValue = fieldValues.get(requiredProjectInfoField);
             if (StringUtils.isBlank(fieldValue) || Constants.NA.equals(fieldValue)) {
                 String message = String.format("No %s available for request: %s. Pipeline won't be able to run " +
-                        "without this information.", requiredProjectInfoField, request.getId());
-                DEV_LOGGER.warn(message);
-                observerManager.notifyObserversOfError(ManifestFile.REQUEST, new GenerationError(message, ErrorCode
-                        .REQUEST_INFO_MISSING));
+                        "without this information.", requiredProjectInfoField, requestId);
+                DEV_LOGGER.error(message);
+                errors.add(message);
                 continue;
             }
 
             switch (requiredProjectInfoField) {
-                case Constants.ASSAY:
+                case Constants.ProjectInfo.ASSAY:
                     if (Constants.NoKAPACaptureProtocol1.equals(fieldValue)
                             || Constants.NoKAPACaptureProtocol2.equals(fieldValue)) {
                         String message = String.format("No %s available for request: %s; value found: %s. " +
                                         "Pipeline won't be able to run without this information.",
-                                requiredProjectInfoField, request.getId(), fieldValue);
-                        DEV_LOGGER.warn(message);
-                        observerManager.notifyObserversOfError(ManifestFile.REQUEST, new GenerationError(message, ErrorCode
-                                .REQUEST_INFO_MISSING));
+                                requiredProjectInfoField, requestId, fieldValue);
+                        DEV_LOGGER.error(message);
+                        errors.add(message);
+                    }
+                    break;
+                case "PI_E-mail":
+                case "Investigator_E-mail":
+                    if (!Utils.isValidMSKemail(fieldValue)) {
+                        String message = "Invalid mskcc email for " + requiredProjectInfoField + ": " + fieldValue;
+                        DEV_LOGGER.error(message);
+                        errors.add(message);
                     }
                     break;
             }
         }
+
+        if (!errors.isEmpty()) {
+            observerManager.notifyObserversOfError(ManifestFile.REQUEST, new GenerationError(
+                    String.join(";", errors), ErrorCode.REQUEST_INFO_MISSING));
+        }
+    }
+
+    private Map<String, String> constructFieldNames() {
+        Map<String, String> convertFieldNames = new LinkedHashMap<>();
+        for (String conv : manualMappingPinfoToRequestFile.split(",")) {
+            String[] parts = conv.split(":", 2);
+            convertFieldNames.put(parts[0], parts[1]);
+        }
+        return convertFieldNames;
+    }
+
+    private Map<String, String> constructFieldValues(KickoffRequest request, Set<String> requiredFields) {
+        Map<String, String> projectInfo = request.getProjectInfo();
+        Map<String, String> fieldValues = new HashMap<>(projectInfo);
+
+        String pi, investigator;
+        if (Utils.isCmoSideProject(fieldValues.get(Constants.ProjectInfo.PROJECT_MANAGER))) {
+            fieldValues.put("PI_Name", projectInfo.get(Constants.ProjectInfo.LAB_HEAD));
+            fieldValues.put("PI_E-mail", projectInfo.get(Constants.ProjectInfo.LAB_HEAD_E_MAIL));
+            pi = projectInfo.get(Constants.ProjectInfo.LAB_HEAD_E_MAIL).split("@")[0];
+            // fieldValues.put("Investigator_Name", projectInfo.get(Constants.ProjectInfo.REQUESTOR));
+            fieldValues.put("Investigator_E-mail", projectInfo.get(Constants.ProjectInfo.REQUESTOR_E_MAIL));
+            investigator = projectInfo.get(Constants.ProjectInfo.REQUESTOR_E_MAIL).split("@")[0];
+        } else {
+            String piFirstName = projectInfo.get(Constants.ProjectInfo.PI_FIRSTNAME);
+            String piLastName = projectInfo.get(Constants.ProjectInfo.PI_LASTNAME);
+            if (!Constants.NA.equalsIgnoreCase(piFirstName) && !Constants.NA.equalsIgnoreCase(piLastName)) {
+                fieldValues.put("PI_Name", String.join(", ", piLastName, piFirstName));
+            } else {
+                fieldValues.put("PI_Name", Constants.NA);
+            }
+
+            fieldValues.put("PI_E-mail", projectInfo.get(Constants.ProjectInfo.PI_EMAIL));
+            pi = projectInfo.get(Constants.ProjectInfo.PI_EMAIL).split("@")[0];
+            // fieldValues.put("Investigator_Name", projectInfo.get(Constants.ProjectInfo.?));
+            fieldValues.put("Investigator_E-mail", projectInfo.get(Constants.ProjectInfo.CONTACT_NAME));
+            investigator = projectInfo.get(Constants.ProjectInfo.CONTACT_NAME).split("@")[0];
+        }
+        fieldValues.put("PI", pi);
+        fieldValues.put("Investigator", investigator);
+        request.setPi(pi);
+        request.setInvest(investigator);
+        fieldValues.remove(Constants.ProjectInfo.LAB_HEAD);
+        fieldValues.remove(Constants.ProjectInfo.LAB_HEAD_E_MAIL);
+        fieldValues.remove(Constants.ProjectInfo.REQUESTOR);
+        fieldValues.remove(Constants.ProjectInfo.REQUESTOR_E_MAIL);
+        fieldValues.remove(Constants.ProjectInfo.PI_LASTNAME);
+        fieldValues.remove(Constants.ProjectInfo.PI_FIRSTNAME);
+        fieldValues.remove(Constants.ProjectInfo.PI_EMAIL);
+        fieldValues.remove(Constants.ProjectInfo.CONTACT_NAME);
+        requiredFields.add(Constants.ProjectInfo.ASSAY);
+        requiredFields.add("PI_E-mail") ;
+        requiredFields.add("Investigator_E-mail");
+        return fieldValues;
     }
 
     private void addRerunReason(KickoffRequest request, StringBuilder requestFileContents) {
@@ -220,29 +271,23 @@ public class RequestFilePrinter extends FilePrinter {
         }
     }
 
-    private void addProjectInfoContent(KickoffRequest request, StringBuilder requestFileContents, Map<String, String>
-            convertFieldNames) {
-        for (Map.Entry<String, String> property : request.getProjectInfo().entrySet()) {
+    private void addProjectInfoContent(Map<String, String> fieldNames, Map<String, String> fieldValues,
+                                       StringBuilder requestFileContents) {
+        for (Map.Entry<String, String> property : fieldValues.entrySet()) {
             String propertyName = property.getKey();
             String value = property.getValue();
 
-            if (value == null)
+            if (value == null) {
                 continue;
-            if (value.isEmpty() || Objects.equals(value, Constants.EMPTY))
-                value = Constants.NA;
+            }
 
-            if (convertFieldNames.containsKey(propertyName)) {
-                if (propertyName.endsWith("_E-mail")) {
-                    if (propertyName.equals("Requestor_E-mail")) {
-                        requestFileContents.append("Investigator_E-mail: ").append(value).append("\n");
-                    }
-                    if (propertyName.equals("Lab_Head_E-mail")) {
-                        requestFileContents.append("PI_E-mail: ").append(value).append("\n");
-                    }
-                    String[] temp = value.split("@");
-                    value = temp[0];
-                }
-                requestFileContents.append(convertFieldNames.get(propertyName)).append(": ").append(value).append("\n");
+            if (value.isEmpty() || Objects.equals(value, Constants.EMPTY)) {
+                value = Constants.NA;
+            }
+
+
+            if (fieldNames.containsKey(propertyName)) {
+                requestFileContents.append(fieldNames.get(propertyName)).append(": ").append(value).append("\n");
             } else if (propertyName.contains("IGO_Project_ID") || propertyName.equals(Constants.PROJECT_ID)) {
                 requestFileContents.append("ProjectID: Proj_").append(value).append("\n");
             } else if (propertyName.contains("Platform") || propertyName.equals("Readme_Info") || propertyName.equals
@@ -258,12 +303,6 @@ public class RequestFilePrinter extends FilePrinter {
                 }
             } else {
                 requestFileContents.append(String.format("%s: %s\n", property.getKey(), property.getValue()));
-            }
-            if (propertyName.equals("Requestor_E-mail")) {
-                request.setInvest(value);
-            }
-            if (propertyName.equals("Lab_Head_E-mail")) {
-                request.setPi(value);
             }
         }
     }
