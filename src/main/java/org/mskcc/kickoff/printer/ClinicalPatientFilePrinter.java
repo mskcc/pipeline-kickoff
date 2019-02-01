@@ -63,6 +63,7 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
     private void writeIgoTumors(KickoffRequest kickoffRequest, StringBuilder outputText) {
         List<Sample> samples = kickoffRequest.getUniqueSamplesByCmoIdLastWin(getSamplePredicate());
         for (Sample sample : samples) {
+            int size = getManualHeader().size();
             for (String fieldName : getManualHeader().values()) {
                 String fieldValue = sample.get(fieldName);
                 switch (fieldName) {
@@ -78,9 +79,12 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
                     default:
                         break;
                 }
-                outputText.append(fieldValue).append("\t");
+                if (size -- > 1) {
+                    outputText.append(fieldValue).append("\t");
+                } else {
+                    outputText.append(fieldValue).append("\n");
+                }
             }
-            outputText.append("\n");
         }
     }
 
