@@ -208,7 +208,7 @@ public class ManifestFilesGeneratorTest {
 
         //then
         assertFilesUploadedToJira(projectId, Arrays.asList(ManifestFile.MAPPING, ManifestFile.GROUPING, ManifestFile.PAIRING, ManifestFile.REQUEST, ManifestFile.CLINICAL));
-        //TODO
+
         assertJiraStatus(regenerateStatus);
 
         assertAttachmentsAreNotChanged(allAttachmentsRun1);

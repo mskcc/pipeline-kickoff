@@ -155,7 +155,7 @@ public class RequestFilePrinter extends FilePrinter {
         }
     }
 
-    private void validateFieldValues(Set<String> requiredFields, Map<String, String> fieldValues) {
+    private boolean validateFieldValues(Set<String> requiredFields, Map<String, String> fieldValues) {
 
         String requestId = fieldValues.get(Constants.ProjectInfo.IGO_PROJECT_ID);
         List<String> errors = new ArrayList<>();
@@ -194,7 +194,9 @@ public class RequestFilePrinter extends FilePrinter {
         if (!errors.isEmpty()) {
             observerManager.notifyObserversOfError(ManifestFile.REQUEST, new GenerationError(
                     String.join(";", errors), ErrorCode.REQUEST_INFO_MISSING));
+            return false;
         }
+        return true;
     }
 
     private Map<String, String> constructFieldNames() {
@@ -215,7 +217,6 @@ public class RequestFilePrinter extends FilePrinter {
             fieldValues.put("PI_Name", projectInfo.get(Constants.ProjectInfo.LAB_HEAD));
             fieldValues.put("PI_E-mail", projectInfo.get(Constants.ProjectInfo.LAB_HEAD_E_MAIL));
             pi = projectInfo.get(Constants.ProjectInfo.LAB_HEAD_E_MAIL).split("@")[0];
-            // fieldValues.put("Investigator_Name", projectInfo.get(Constants.ProjectInfo.REQUESTOR));
             fieldValues.put("Investigator_E-mail", projectInfo.get(Constants.ProjectInfo.REQUESTOR_E_MAIL));
             investigator = projectInfo.get(Constants.ProjectInfo.REQUESTOR_E_MAIL).split("@")[0];
         } else {
@@ -229,7 +230,6 @@ public class RequestFilePrinter extends FilePrinter {
 
             fieldValues.put("PI_E-mail", projectInfo.get(Constants.ProjectInfo.PI_EMAIL));
             pi = projectInfo.get(Constants.ProjectInfo.PI_EMAIL).split("@")[0];
-            // fieldValues.put("Investigator_Name", projectInfo.get(Constants.ProjectInfo.?));
             fieldValues.put("Investigator_E-mail", projectInfo.get(Constants.ProjectInfo.CONTACT_NAME));
             investigator = projectInfo.get(Constants.ProjectInfo.CONTACT_NAME).split("@")[0];
         }

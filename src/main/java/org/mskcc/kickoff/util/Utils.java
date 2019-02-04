@@ -183,10 +183,7 @@ public class Utils {
     }
 
     public static boolean isCmoSideProject(String projectManagerName) {
-        if (StringUtils.isBlank(projectManagerName) || Constants.NO_PM.equals(projectManagerName)) {
-            return true;
-        }
-        return false;
+        return StringUtils.isBlank(projectManagerName) || Constants.NO_PM.equals(projectManagerName);
     }
 
     public static boolean isValidMSKemail(String email) {
