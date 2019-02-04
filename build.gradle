@@ -1,5 +1,5 @@
 group 'org.mskcc.kickoff.lims'
-version '1.1.8'
+version '1.1.9'
 
 apply plugin: 'application'
 apply plugin: "maven"
@@ -26,8 +26,8 @@ dependencies {
     compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.5'
 
     //SAPIO
-    compile group: 'com.velox.internalproducts', name: 'veloxapi', version: '9.5.1-b633'
-    compile group: 'com.velox.internalproducts', name: 'sapioutils', version: '7.1.1-LIMS9.5.0'
+    compile 'com.velox.internalproducts:veloxapi:10.6.1-b777'
+    compile 'com.velox.internalproducts:sapioutils:15.0.0-LIMS10.6.1'
 
     compile group: 'org.mskcc.common', name:'common-domain', version: '1.0.1'
 
