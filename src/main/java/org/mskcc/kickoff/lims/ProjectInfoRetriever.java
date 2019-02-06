@@ -171,40 +171,40 @@ public class ProjectInfoRetriever {
 
     private void setUpPIandInvest(DataRecord request, User apiUser, Map<String, String> projectInfo) throws Exception {
         // Values saved because they will be used to remove duplicated emails in email child
-        String LabHeadEmail = request.getStringVal("LabHeadEmail", apiUser).toLowerCase();
-        String InvestigatorEmail = request.getStringVal("Investigatoremail", apiUser).toLowerCase();
-        String[] LabHeadName = WordUtils.capitalizeFully(request.getStringVal("LaboratoryHead",
+        String labHeadEmail = request.getStringVal("LabHeadEmail", apiUser).toLowerCase();
+        String investigatorEmail = request.getStringVal("Investigatoremail", apiUser).toLowerCase();
+        String[] labHeadName = WordUtils.capitalizeFully(request.getStringVal("LaboratoryHead",
                 apiUser)).split(" ", 2);
-        String[] RequesterName = WordUtils.capitalizeFully(request.getStringVal("Investigator", apiUser)).split(" ", 2);
+        String[] requesterName = WordUtils.capitalizeFully(request.getStringVal("Investigator", apiUser)).split(" ", 2);
 
-        if (LabHeadName.length > 1) {
-            projectInfo.put(Constants.ProjectInfo.LAB_HEAD, LabHeadName[1] + ", " + LabHeadName[0]);
+        if (labHeadName.length > 1) {
+            projectInfo.put(Constants.ProjectInfo.LAB_HEAD, labHeadName[1] + ", " + labHeadName[0]);
         }
-        projectInfo.put(Constants.ProjectInfo.LAB_HEAD_E_MAIL, LabHeadEmail);
-        if (RequesterName.length > 1) {
-            projectInfo.put(Constants.ProjectInfo.REQUESTOR, RequesterName[1] + ", " + RequesterName[0]);
+        projectInfo.put(Constants.ProjectInfo.LAB_HEAD_E_MAIL, labHeadEmail);
+        if (requesterName.length > 1) {
+            projectInfo.put(Constants.ProjectInfo.REQUESTOR, requesterName[1] + ", " + requesterName[0]);
         }
-        projectInfo.put(Constants.ProjectInfo.REQUESTOR_E_MAIL, InvestigatorEmail);
+        projectInfo.put(Constants.ProjectInfo.REQUESTOR_E_MAIL, investigatorEmail);
 
-        String PIemail = request.getStringVal("PIemail", apiUser);
-        String PIFirstName = request.getStringVal("PIFirstName", apiUser);
-        String PILastName = request.getStringVal("PILastName", apiUser);
+        String piemail = request.getStringVal("PIemail", apiUser);
+        String piFirstName = request.getStringVal("PIFirstName", apiUser);
+        String piLastName = request.getStringVal("PILastName", apiUser);
         // contactname is storing cmo email
-        String ContactName = request.getStringVal("ContactName", apiUser);
-        if (StringUtils.isNotBlank(PIemail)) {
-            projectInfo.put(Constants.ProjectInfo.PI_EMAIL, PIemail.trim().toLowerCase());
+        String contactName = request.getStringVal("ContactName", apiUser);
+        if (StringUtils.isNotBlank(piemail)) {
+            projectInfo.put(Constants.ProjectInfo.PI_EMAIL, piemail.trim().toLowerCase());
         }
 
-        if (StringUtils.isNotBlank(PIFirstName)) {
-            projectInfo.put(Constants.ProjectInfo.PI_FIRSTNAME, WordUtils.capitalize(PIFirstName.trim()));
+        if (StringUtils.isNotBlank(piFirstName)) {
+            projectInfo.put(Constants.ProjectInfo.PI_FIRSTNAME, WordUtils.capitalize(piFirstName.trim()));
         }
 
-        if (StringUtils.isNotBlank(PILastName)) {
-            projectInfo.put(Constants.ProjectInfo.PI_LASTNAME, WordUtils.capitalize(PILastName.trim()));
+        if (StringUtils.isNotBlank(piLastName)) {
+            projectInfo.put(Constants.ProjectInfo.PI_LASTNAME, WordUtils.capitalize(piLastName.trim()));
         }
 
-        if (StringUtils.isNotBlank(ContactName)) {
-            projectInfo.put(Constants.ProjectInfo.CONTACT_NAME, ContactName.trim().toLowerCase());
+        if (StringUtils.isNotBlank(contactName)) {
+            projectInfo.put(Constants.ProjectInfo.CONTACT_NAME, contactName.trim().toLowerCase());
         }
     }
 
