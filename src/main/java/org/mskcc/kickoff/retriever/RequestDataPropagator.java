@@ -19,7 +19,9 @@ import java.io.File;
 import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
+import static org.mskcc.kickoff.config.Arguments.forced;
 import static org.mskcc.kickoff.config.Arguments.runAsExome;
 
 public class RequestDataPropagator implements DataPropagator {
@@ -149,22 +151,34 @@ public class RequestDataPropagator implements DataPropagator {
 
     @Override
     public void addSamplesToPatients(KickoffRequest kickoffRequest) {
-        for (Sample sample : kickoffRequest.getAllValidSamples().values()) {
+        Map<String, String> projectInfo = kickoffRequest.getProjectInfo();
+
+        String pm = projectInfo.get(Constants.ProjectInfo.PROJECT_MANAGER);
+        String patientFieldKey = Utils.isCmoSideProject(pm) ?
+                Constants.INVESTIGATOR_PATIENT_ID :
+                Constants.CMO_PATIENT_ID;
+
+        DEV_LOGGER.info("PM is " + pm + ", using key: " + patientFieldKey);
+        Map<String, Sample> sampleMap = kickoffRequest.getAllValidSamples();
+        for (Sample sample: sampleMap.values()) {
             Map<String, String> sampleProperties = sample.getProperties();
-            String patientId = sampleProperties.getOrDefault(Constants.CMO_PATIENT_ID, "");
+            String patientId = sampleProperties.getOrDefault(patientFieldKey, "");
             Patient patient = kickoffRequest.putPatientIfAbsent(patientId);
-            if (!patient.isValid()) {
-                String message = String.format("Patient ID for sample %s is empty or has an issue: %s", sample
-                        .getIgoId(), patientId);
+            if (!isValidPatientId(patientId)) {
+                String message = String.format("Patient ID for sample %s is empty or has an issue: %s",
+                        sample.getIgoId(), patientId);
                 PM_LOGGER.log(PmLogPriority.WARNING, message);
                 DEV_LOGGER.warn(message);
-                //@TODO check how to avoid clearnig patients list
                 kickoffRequest.getPatients().clear();
                 errorRepository.add(new GenerationError(message, ErrorCode.EMPTY_PATIENT));
                 return;
             }
             patient.addSample(sample);
         }
+    }
+
+    private boolean isValidPatientId(String patientId) {
+        return StringUtils.isNotBlank(patientId) && !patientId.startsWith("#");
     }
 
     @Override
