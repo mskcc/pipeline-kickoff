@@ -187,6 +187,7 @@ public class Utils {
     }
 
     public static boolean isValidMSKemail(String email) {
+        if (StringUtils.isBlank(email)) return false;
         return Pattern.compile("^(.+)@(.*)mskcc\\.org$").matcher(email.toLowerCase()).matches();
     }
 }
