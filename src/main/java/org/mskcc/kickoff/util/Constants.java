@@ -133,5 +133,10 @@ public class Constants {
         public static final String SPECIES = "Species";
         public static final String SPIKEIN_DESIGN_FILE = "SpikeinDesignFile";
         public static final String TUMOR_TYPE = "TumorType";
+        public static final String PI_EMAIL = "PIemail";
+        public static final String PI_FIRSTNAME = "PIFirstName";
+        public static final String PI_LASTNAME = "PILastName";
+        public static final String CONTACT_NAME = "ContactName";
+
     }
 }
