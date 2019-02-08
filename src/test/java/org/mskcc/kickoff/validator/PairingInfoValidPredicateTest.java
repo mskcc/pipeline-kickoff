@@ -44,11 +44,17 @@ public class PairingInfoValidPredicateTest {
         assertInstrumentsCompatibility("SCOTT", "SCOTT", true);
         assertInstrumentsCompatibility("MICHELLE", "MICHELLE", true);
 
-        assertInstrumentsCompatibility("JAX", "MICHELLE", false);
         assertInstrumentsCompatibility("MICHELLE", "VIC", false);
         assertInstrumentsCompatibility("SCOTT", "VIC", false);
         assertInstrumentsCompatibility("SCOTT", "MICHELLE", false);
         assertInstrumentsCompatibility("MICHELLE", "SCOTT", false);
+
+        assertInstrumentsCompatibility("JAX", "MICHELLE", true);
+        assertInstrumentsCompatibility( "MICHELLE", "JAX", true);
+        assertInstrumentsCompatibility("PITT", "MICHELLE", true);
+        assertInstrumentsCompatibility("LOLA", "MICHELLE", true);
+        assertInstrumentsCompatibility("BRAD", "MICHELLE", true);
+        assertInstrumentsCompatibility("LIZ", "MICHELLE", true);
     }
 
     private void assertInstrumentsCompatibility(String tumorSequencer, String normalSequencer, boolean expected) {

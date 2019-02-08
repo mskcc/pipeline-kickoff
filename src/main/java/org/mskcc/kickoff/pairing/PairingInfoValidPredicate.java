@@ -21,6 +21,7 @@ public class PairingInfoValidPredicate implements BiPredicate<Sample, Sample> {
 
     @Autowired
     public PairingInfoValidPredicate(ObserverManager observerManager) {
+        InstrumentType.addCompatibility(InstrumentType.NOVASEQ, InstrumentType.HISEQ);
         this.observerManager = observerManager;
     }
 
@@ -28,7 +29,6 @@ public class PairingInfoValidPredicate implements BiPredicate<Sample, Sample> {
     public boolean test(Sample tumor, Sample normal) {
         List<InstrumentType> normalInstrumentTypes = normal.getInstrumentTypes();
         List<InstrumentType> tumorInstrumentTypes = tumor.getInstrumentTypes();
-
         return InstrumentType.isCompatible(normalInstrumentTypes, tumorInstrumentTypes);
     }
 
