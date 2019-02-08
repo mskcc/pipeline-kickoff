@@ -6,6 +6,7 @@ import org.apache.log4j.Logger;
 import org.mskcc.domain.Patient;
 import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.RequestType;
+import org.mskcc.domain.sample.CmoSampleInfo;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
@@ -153,16 +154,23 @@ public class RequestDataPropagator implements DataPropagator {
     public void addSamplesToPatients(KickoffRequest kickoffRequest) {
         Map<String, String> projectInfo = kickoffRequest.getProjectInfo();
 
-        String pm = projectInfo.get(Constants.ProjectInfo.PROJECT_MANAGER);
-        String patientFieldKey = Utils.isCmoSideProject(pm) ?
-                Constants.INVESTIGATOR_PATIENT_ID :
-                Constants.CMO_PATIENT_ID;
+        String patientFieldKey = getPatientFieldKey(kickoffRequest);
+        if (Constants.NA.equals(patientFieldKey)) {
+            String message  = "PM is " + projectInfo.get(Constants.ProjectInfo.PROJECT_MANAGER) +
+                    ", but CMO patient ID or Investigator Patient ID has empty or MRN_REDACTED value. ";
+            PM_LOGGER.log(PmLogPriority.WARNING, message);
+            DEV_LOGGER.warn(message);
+            errorRepository.add(new GenerationError(message, ErrorCode.EMPTY_PATIENT));
+            return;
+        }
 
-        DEV_LOGGER.info("PM is " + pm + ", using key: " + patientFieldKey);
+        DEV_LOGGER.info("PM is " + projectInfo.get(Constants.ProjectInfo.PROJECT_MANAGER) +
+                ", using patient id from: " + patientFieldKey);
+
         Map<String, Sample> sampleMap = kickoffRequest.getAllValidSamples();
         for (Sample sample: sampleMap.values()) {
-            Map<String, String> sampleProperties = sample.getProperties();
-            String patientId = sampleProperties.getOrDefault(patientFieldKey, "");
+            Map<String, Object> sampleProperties = sample.getCmoSampleInfo().getFields();
+            String patientId = (String) sampleProperties.getOrDefault(patientFieldKey, "");
             Patient patient = kickoffRequest.putPatientIfAbsent(patientId);
             if (!isValidPatientId(patientId)) {
                 String message = String.format("Patient ID for sample %s is empty or has an issue: %s",
@@ -174,6 +182,34 @@ public class RequestDataPropagator implements DataPropagator {
                 return;
             }
             patient.addSample(sample);
+        }
+    }
+
+    private String getPatientFieldKey(KickoffRequest request) {
+
+        String pm = request.getProjectInfo().get(Constants.ProjectInfo.PROJECT_MANAGER);
+        if (!Utils.isCmoSideProject(pm)) {
+            return CmoSampleInfo.CMO_PATIENT_ID;
+        }
+
+        Map<String, Sample> sampleMap = request.getAllValidSamples();
+
+        boolean cmoPatientIdBlank = sampleMap.values().stream()
+                .map(s -> s.getCmoSampleInfo().getCmoPatientId())
+                .anyMatch(s -> StringUtils.isBlank(s) || Constants.EMPTY.equals(s));
+
+        boolean investPatientIdBlank = sampleMap.values().stream()
+                .map(s -> s.getCmoSampleInfo().getPatientId())
+                .anyMatch(s -> StringUtils.isBlank(s)
+                        || Constants.EMPTY.equals(s)
+                        || s.equals(Constants.MRN_REDACTED));
+
+        if (!cmoPatientIdBlank) {
+            return CmoSampleInfo.CMO_PATIENT_ID;
+        } else if (!investPatientIdBlank) {
+            return CmoSampleInfo.PATIENT_ID;
+        } else {
+            return Constants.NA;
         }
     }
 
