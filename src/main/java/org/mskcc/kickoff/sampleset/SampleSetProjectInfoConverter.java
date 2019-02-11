@@ -5,22 +5,25 @@ import org.apache.log4j.Logger;
 import org.mskcc.domain.RequestType;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.domain.KickoffSampleSet;
+import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.ConverterUtils;
-import org.mskcc.util.Constants;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.mskcc.util.Constants.ProjectInfo;
+import static org.mskcc.kickoff.util.Constants.ProjectInfo;
 
 public class SampleSetProjectInfoConverter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     public Map<String, String> convert(KickoffSampleSet sampleSet) {
         Map<String, String> projectInfo = new LinkedHashMap<>();
-
         projectInfo.put(ProjectInfo.LAB_HEAD, getLabHead(sampleSet));
         projectInfo.put(ProjectInfo.LAB_HEAD_E_MAIL, getLabHeadEmail(sampleSet));
+        projectInfo.put(ProjectInfo.PI_EMAIL, getPIEmail(sampleSet));
+        projectInfo.put(ProjectInfo.CONTACT_NAME, getContactName(sampleSet));
+        projectInfo.put(ProjectInfo.PI_FIRSTNAME, getPIFirstName(sampleSet));
+        projectInfo.put(ProjectInfo.PI_LASTNAME, getPILastName(sampleSet));
         projectInfo.put(ProjectInfo.REQUESTOR, getRequestor(sampleSet));
         projectInfo.put(ProjectInfo.REQUESTOR_E_MAIL, getRequestorEmail(sampleSet));
         projectInfo.put(ProjectInfo.PLATFORM, getPlatform(sampleSet));
@@ -58,6 +61,22 @@ public class SampleSetProjectInfoConverter {
 
     private String getLabHeadEmail(KickoffSampleSet sampleSet) {
         return getPropertyFromPrimaryRequest(sampleSet, ProjectInfo.LAB_HEAD_E_MAIL);
+    }
+
+    private String getPIEmail(KickoffSampleSet sampleSet) {
+        return getPropertyFromPrimaryRequest(sampleSet, ProjectInfo.PI_EMAIL);
+    }
+
+    private String getContactName(KickoffSampleSet sampleSet) {
+        return getPropertyFromPrimaryRequest(sampleSet, ProjectInfo.CONTACT_NAME);
+    }
+
+    private String getPILastName(KickoffSampleSet sampleSet) {
+        return getPropertyFromPrimaryRequest(sampleSet, ProjectInfo.PI_LASTNAME);
+    }
+
+    private String getPIFirstName(KickoffSampleSet sampleSet) {
+        return getPropertyFromPrimaryRequest(sampleSet, ProjectInfo.PI_FIRSTNAME);
     }
 
     private String getRequestor(KickoffSampleSet sampleSet) {
