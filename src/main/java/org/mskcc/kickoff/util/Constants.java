@@ -48,6 +48,7 @@ public class Constants {
     public static final String MIXED = "mixed";
     public static final String MOUSE_ABREV = "mm10";
     public static final String MOUSEPOOLEDNORMAL = "MOUSEPOOLEDNORMAL";
+    public static final String MRN_REDACTED = "MRN_REDACTED";
     public static final String NA = "NA";
     public static final String NA_LOWER_CASE = "na";
     public static final String NO_PM = "NO PM";
