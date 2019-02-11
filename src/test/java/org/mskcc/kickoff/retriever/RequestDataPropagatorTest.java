@@ -5,6 +5,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.RequestType;
+import org.mskcc.domain.sample.CmoSampleInfo;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.domain.KickoffRequest;
@@ -12,9 +13,9 @@ import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.NormalProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
+import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.validator.InMemoryErrorRepository;
-import org.mskcc.util.Constants;
 
 import java.util.*;
 
@@ -50,16 +51,42 @@ public class RequestDataPropagatorTest {
     }
 
     @Test
-    public void whenPatientIdIsEmpty_shouldAddErrorToErrorRespository() throws Exception {
+    public void whenPMisNOPMandPatientIdIsEmpty_shouldAddErrorToErrorRespository() throws Exception {
         //given
         KickoffRequest kickoffRequest = new KickoffRequest("id", new NormalProcessingType(mock(ProjectFilesArchiver
                 .class)));
-        Sample sampleMock = mock(Sample.class);
-        when(sampleMock.isValid()).thenReturn(true);
-        Map<String, String> properties = new HashMap<>();
-        properties.put(Constants.CMO_PATIENT_ID, Constants.EMPTY);
-        when(sampleMock.getProperties()).thenReturn(properties);
+        Sample sampleMock = new Sample("123", s -> true);
+        Map<String, Object> properties = new HashMap<>();
+        properties.put(Constants.ProjectInfo.PROJECT_MANAGER, Constants.NO_PM);
+        properties.put(CmoSampleInfo.CMO_PATIENT_ID, Constants.EMPTY);
+        properties.put(CmoSampleInfo.PATIENT_ID, "");
 
+        CmoSampleInfo cmoSampleInfo = new CmoSampleInfo();
+        cmoSampleInfo.setFields(properties);
+        sampleMock.setCmoSampleInfo(cmoSampleInfo);
+        kickoffRequest.putSampleIfAbsent(sampleMock);
+
+        //when
+        requestDataPropagator.addSamplesToPatients(kickoffRequest);
+
+        //then
+        assertThat(errorRepository.getErrors().size(), is(1));
+        assertThat(errorRepository.getErrors().get(0).getErrorCode(), is(ErrorCode.EMPTY_PATIENT));
+    }
+
+    @Test
+    public void whenPMisValidAndPatientIdIsEmpty_shouldAddErrorToErrorRespository() throws Exception {
+        //given
+        KickoffRequest kickoffRequest = new KickoffRequest("id", new NormalProcessingType(mock(ProjectFilesArchiver
+                .class)));
+        Sample sampleMock = new Sample("123", s -> true);
+        Map<String, Object> properties = new HashMap<>();
+        properties.put(Constants.ProjectInfo.PROJECT_MANAGER, Constants.NO_PM);
+        properties.put(CmoSampleInfo.CMO_PATIENT_ID, Constants.EMPTY);
+
+        CmoSampleInfo cmoSampleInfo = new CmoSampleInfo();
+        cmoSampleInfo.setFields(properties);
+        sampleMock.setCmoSampleInfo(cmoSampleInfo);
         kickoffRequest.putSampleIfAbsent(sampleMock);
 
         //when

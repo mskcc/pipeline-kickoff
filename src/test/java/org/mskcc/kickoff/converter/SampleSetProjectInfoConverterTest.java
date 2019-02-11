@@ -11,8 +11,8 @@ import org.mskcc.kickoff.domain.KickoffSampleSet;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.sampleset.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
+import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.ConverterUtils;
-import org.mskcc.util.Constants;
 import org.mskcc.util.TestUtils;
 
 import java.util.*;
@@ -315,6 +315,12 @@ public class SampleSetProjectInfoConverterTest {
         KickoffRequest kickoffRequest = new KickoffRequest(requestId, processingType);
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.LAB_HEAD, "labHead");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.LAB_HEAD_E_MAIL, "email");
+
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.PI_FIRSTNAME, "PIfirst");
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.PI_LASTNAME, "PIlast");
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.PI_EMAIL, "pi@mskcc.org");
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.CONTACT_NAME, "fried pi");
+
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.SPECIES, RequestSpecies.XENOGRAFT.getValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.CMO_PROJECT_ID, getRandomValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.CMO_PROJECT_BRIEF, getRandomValue());
