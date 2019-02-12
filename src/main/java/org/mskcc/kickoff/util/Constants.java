@@ -138,6 +138,6 @@ public class Constants {
         public static final String PI_FIRSTNAME = "PIFirstName";
         public static final String PI_LASTNAME = "PILastName";
         public static final String CONTACT_NAME = "ContactName";
-
+        public static final String PROJECT_APPLICATIONS = "Project_Applications";
     }
 }

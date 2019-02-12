@@ -52,7 +52,8 @@ public class ProjectInfoRetriever {
             Constants.ProjectInfo.PI_EMAIL,
             Constants.ProjectInfo.PI_FIRSTNAME,
             Constants.ProjectInfo.PI_LASTNAME,
-            Constants.ProjectInfo.CONTACT_NAME);
+            Constants.ProjectInfo.CONTACT_NAME,
+            Constants.ProjectInfo.PROJECT_APPLICATIONS);
 
     public static void main(String[] args) throws ServerException {
         ProjectInfoRetriever qe = new ProjectInfoRetriever();
@@ -156,6 +157,8 @@ public class ProjectInfoRetriever {
                 // Data Analyst, Data Analyst E-mail
                 projectInfo.put(Constants.ProjectInfo.DATA_ANALYST, requestDataRecord.getStringVal("DataAnalyst", apiUser));
                 projectInfo.put(Constants.ProjectInfo.DATA_ANALYST_EMAIL, requestDataRecord.getStringVal("DataAnalystEmail", apiUser));
+
+                projectInfo.put(Constants.ProjectInfo.PROJECT_APPLICATIONS, requestDataRecord.getStringVal("PlatformApplication", apiUser));
 
                 setUpPIandInvest(requestDataRecord, apiUser, projectInfo);
             }

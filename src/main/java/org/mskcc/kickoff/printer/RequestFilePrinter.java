@@ -273,6 +273,7 @@ public class RequestFilePrinter extends FilePrinter {
 
     private void addProjectInfoContent(Map<String, String> fieldNames, Map<String, String> fieldValues,
                                        StringBuilder requestFileContents) {
+
         for (Map.Entry<String, String> property : fieldValues.entrySet()) {
             String propertyName = property.getKey();
             String value = property.getValue();

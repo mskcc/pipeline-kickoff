@@ -75,7 +75,6 @@ public class RequestFilePrinterTest {
         assertRequiredField(requiredFields);
         Assertions.assertThat(act).containsEntry("PI_E-mail", "pi@mail.com");
         Assertions.assertThat(act).containsEntry("Investigator_E-mail", "con@mail.com");
-        System.out.println(act);
     }
 
     @Test
