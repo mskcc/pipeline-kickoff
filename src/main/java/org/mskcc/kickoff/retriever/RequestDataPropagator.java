@@ -157,7 +157,7 @@ public class RequestDataPropagator implements DataPropagator {
         String patientFieldKey = getPatientFieldKey(kickoffRequest);
         if (Constants.NA.equals(patientFieldKey)) {
             String message  = "PM is " + projectInfo.get(Constants.ProjectInfo.PROJECT_MANAGER) +
-                    ", but CMO patient ID or Investigator Patient ID has empty or MRN_REDACTED value. ";
+                    ", but at least one sample's CMO Patient ID or Investigator Patient ID has empty or MRN_REDACTED value. ";
             PM_LOGGER.log(PmLogPriority.WARNING, message);
             DEV_LOGGER.warn(message);
             errorRepository.add(new GenerationError(message, ErrorCode.EMPTY_PATIENT));
@@ -170,7 +170,14 @@ public class RequestDataPropagator implements DataPropagator {
         Map<String, Sample> sampleMap = kickoffRequest.getAllValidSamples();
         for (Sample sample: sampleMap.values()) {
             Map<String, Object> sampleProperties = sample.getCmoSampleInfo().getFields();
-            String patientId = (String) sampleProperties.getOrDefault(patientFieldKey, "");
+            String patientId = "";
+            if (sample.isPooledNormal()) {
+                patientId = sample.getProperties().getOrDefault(
+                        CmoSampleInfo.CMO_PATIENT_ID.equals(patientFieldKey) ?
+                                Constants.CMO_PATIENT_ID : Constants.INVESTIGATOR_PATIENT_ID, "");
+            } else {
+                patientId = (String) sampleProperties.getOrDefault(patientFieldKey, "");
+            }
             Patient patient = kickoffRequest.putPatientIfAbsent(patientId);
             if (!isValidPatientId(patientId)) {
                 String message = String.format("Patient ID for sample %s is empty or has an issue: %s",
@@ -192,7 +199,7 @@ public class RequestDataPropagator implements DataPropagator {
             return CmoSampleInfo.CMO_PATIENT_ID;
         }
 
-        Map<String, Sample> sampleMap = request.getAllValidSamples();
+        Map<String, Sample> sampleMap = request.getValidNonPooledNormalSamples();
 
         boolean cmoPatientIdBlank = sampleMap.values().stream()
                 .map(s -> s.getCmoSampleInfo().getCmoPatientId())
