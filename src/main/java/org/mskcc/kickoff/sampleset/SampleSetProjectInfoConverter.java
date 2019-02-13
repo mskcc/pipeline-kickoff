@@ -39,6 +39,7 @@ public class SampleSetProjectInfoConverter {
         projectInfo.put(ProjectInfo.NUMBER_OF_SAMPLES, getNumberOfSamples(sampleSet));
         projectInfo.put(ProjectInfo.SPECIES, getSpecies(sampleSet));
         projectInfo.put(ProjectInfo.BIOINFORMATIC_REQUEST, getBioinformaticRequest(sampleSet));
+        projectInfo.put(ProjectInfo.PROJECT_APPLICATIONS, getProjectApplications(sampleSet));
 
         projectInfo.put(ProjectInfo.ASSAY, sampleSet.getBaitSet());
 
@@ -77,6 +78,10 @@ public class SampleSetProjectInfoConverter {
 
     private String getPIFirstName(KickoffSampleSet sampleSet) {
         return getPropertyFromPrimaryRequest(sampleSet, ProjectInfo.PI_FIRSTNAME);
+    }
+
+    private String getProjectApplications(KickoffSampleSet sampleSet) {
+        return getPropertyFromPrimaryRequest(sampleSet, ProjectInfo.PROJECT_APPLICATIONS);
     }
 
     private String getRequestor(KickoffSampleSet sampleSet) {
