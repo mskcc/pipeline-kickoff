@@ -320,6 +320,7 @@ public class SampleSetProjectInfoConverterTest {
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.PI_LASTNAME, "PIlast");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.PI_EMAIL, "pi@mskcc.org");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.CONTACT_NAME, "fried pi");
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.PROJECT_APPLICATIONS, "WES");
 
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.SPECIES, RequestSpecies.XENOGRAFT.getValue());
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.CMO_PROJECT_ID, getRandomValue());

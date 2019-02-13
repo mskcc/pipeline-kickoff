@@ -44,12 +44,10 @@ public class RequestFilePrinterTest {
                 .put(Constants.ProjectInfo.CONTACT_NAME, "con@mail.com")
                 .build();
 
-        Set<String> requiredFields = new HashSet<>();
         request.setProjectInfo(projectInfo);
 
         Map<String, String> act = ReflectionTestUtils.invokeMethod(requestFilePrinter,
-                "constructFieldValues", request, requiredFields);
-        assertRequiredField(requiredFields);
+                "constructFieldValues", request);
         Assertions.assertThat(act).containsEntry("PI_E-mail", "head@mail.com");
         Assertions.assertThat(act).containsEntry("Investigator_E-mail", "req@mail.com");
     }
@@ -67,76 +65,12 @@ public class RequestFilePrinterTest {
                 .put(Constants.ProjectInfo.CONTACT_NAME, "con@mail.com")
                 .build();
 
-        Set<String> requiredFields = new HashSet<>();
         request.setProjectInfo(projectInfo);
 
         Map<String, String> act = ReflectionTestUtils.invokeMethod(requestFilePrinter,
-                "constructFieldValues", request, requiredFields);
-        assertRequiredField(requiredFields);
+                "constructFieldValues", request);
         Assertions.assertThat(act).containsEntry("PI_E-mail", "pi@mail.com");
         Assertions.assertThat(act).containsEntry("Investigator_E-mail", "con@mail.com");
     }
 
-    @Test
-    public void whenPiAndInvestEmailBelongToMskcc_shouldValidReturnTrue() {
-        Set<String> requiredFields = Sets.newHashSet(
-                Constants.ASSAY, "PI_E-mail", "Investigator_E-mail");
-        Map<String, String> fieldValues = ImmutableMap.<String, String>builder()
-                .put(Constants.ASSAY, "zzzzzz")
-                .put("PI_E-mail", "pi@mskcc.org")
-                .put("Investigator_E-mail", "con@mskcc.org")
-                .build();
-        boolean act = ReflectionTestUtils.invokeMethod(requestFilePrinter,
-                "validateFieldValues", requiredFields, fieldValues);
-        Assertions.assertThat(act).isTrue();
-    }
-
-    @Test
-    public void whenPiEmailNotBelongToMskcc_shouldValidReturnFalse() {
-        Set<String> requiredFields = Sets.newHashSet(
-                Constants.ASSAY, "PI_E-mail", "Investigator_E-mail");
-        Map<String, String> fieldValues = ImmutableMap.<String, String>builder()
-                .put(Constants.ASSAY, "zzzzzz")
-                .put("PI_E-mail", "pi@mkscc.org")
-                .put("Investigator_E-mail", "con@mskcc.org")
-                .build();
-        boolean act = ReflectionTestUtils.invokeMethod(requestFilePrinter,
-                "validateFieldValues", requiredFields, fieldValues);
-        Assertions.assertThat(act).isFalse();
-    }
-
-    @Test
-    public void whenInvestEmailNotBelongToMskcc_shouldValidReturnFalse() {
-        Set<String> requiredFields = Sets.newHashSet(
-                Constants.ASSAY, "PI_E-mail", "Investigator_E-mail");
-        Map<String, String> fieldValues = ImmutableMap.<String, String>builder()
-                .put(Constants.ASSAY, "zzzzzz")
-                .put("PI_E-mail", "pi@mskcc.org")
-                .put("Investigator_E-mail", "con@mskcc.com")
-                .build();
-        boolean act = ReflectionTestUtils.invokeMethod(requestFilePrinter,
-                "validateFieldValues", requiredFields, fieldValues);
-        Assertions.assertThat(act).isFalse();
-    }
-
-    @Test
-    public void whenAssayIsNoKAPACaptureProtocol_shouldValidReturnFalse() {
-        Set<String> requiredFields = Sets.newHashSet(
-                Constants.ASSAY, "PI_E-mail", "Investigator_E-mail");
-        Map<String, String> fieldValues = ImmutableMap.<String, String>builder()
-                .put(Constants.ASSAY, "#NoKAPACaptureProtocol1")
-                .put("PI_E-mail", "pi@mskcc.org")
-                .put("Investigator_E-mail", "con@mskcc.org")
-                .build();
-        boolean act = ReflectionTestUtils.invokeMethod(requestFilePrinter,
-                "validateFieldValues", requiredFields, fieldValues);
-        Assertions.assertThat(act).isFalse();
-    }
-
-    private void assertRequiredField(Set<String> requiredFields) {
-        Assertions.assertThat(requiredFields.size()).isEqualTo(3);
-        Assertions.assertThat(requiredFields).contains(Constants.ASSAY);
-        Assertions.assertThat(requiredFields).contains("PI_E-mail");
-        Assertions.assertThat(requiredFields).contains("Investigator_E-mail");
-    }
 }

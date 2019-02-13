@@ -13,6 +13,7 @@ import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.mskcc.kickoff.validator.ErrorRepository;
+import org.mskcc.kickoff.validator.RequestFileValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -36,6 +37,7 @@ public class RequestFilePrinter extends FilePrinter {
             "PI_E-mail:PI_E-mail,Investigator_E-mail:Investigator_E-mail,CMO_Project_ID:ProjectName," +
             "Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
     private ErrorRepository errorRepository;
+    private RequestFileValidator requestFileValidator;
     @Value("${pipeline.name}")
     private String pipelineName;
 
@@ -45,6 +47,7 @@ public class RequestFilePrinter extends FilePrinter {
     public RequestFilePrinter(ObserverManager observerManager, ErrorRepository errorRepository) {
         super(observerManager);
         this.errorRepository = errorRepository;
+        this.requestFileValidator = new RequestFileValidator(observerManager);
     }
 
     @Override
@@ -53,9 +56,9 @@ public class RequestFilePrinter extends FilePrinter {
 
         Set<String> requiredFields = new HashSet<>();
         Map<String, String> fieldNames = constructFieldNames();
-        Map<String, String> fieldValues = constructFieldValues(request, requiredFields);
+        Map<String, String> fieldValues = constructFieldValues(request);
 
-        validateFieldValues(requiredFields, fieldValues);
+        this.requestFileValidator.test(fieldValues);
 
         StringBuilder requestFileContents = new StringBuilder();
 
@@ -155,49 +158,6 @@ public class RequestFilePrinter extends FilePrinter {
         }
     }
 
-    private boolean validateFieldValues(Set<String> requiredFields, Map<String, String> fieldValues) {
-
-        String requestId = fieldValues.get(Constants.ProjectInfo.IGO_PROJECT_ID);
-        List<String> errors = new ArrayList<>();
-        for (String requiredProjectInfoField : requiredFields) {
-            String fieldValue = fieldValues.get(requiredProjectInfoField);
-            if (StringUtils.isBlank(fieldValue) || Constants.NA.equals(fieldValue)) {
-                String message = String.format("No %s available for request: %s. Pipeline won't be able to run " +
-                        "without this information.", requiredProjectInfoField, requestId);
-                DEV_LOGGER.error(message);
-                errors.add(message);
-                continue;
-            }
-
-            switch (requiredProjectInfoField) {
-                case Constants.ProjectInfo.ASSAY:
-                    if (Constants.NoKAPACaptureProtocol1.equals(fieldValue)
-                            || Constants.NoKAPACaptureProtocol2.equals(fieldValue)) {
-                        String message = String.format("No %s available for request: %s; value found: %s. " +
-                                        "Pipeline won't be able to run without this information.",
-                                requiredProjectInfoField, requestId, fieldValue);
-                        DEV_LOGGER.error(message);
-                        errors.add(message);
-                    }
-                    break;
-                case "PI_E-mail":
-                case "Investigator_E-mail":
-                    if (!Utils.isValidMSKemail(fieldValue)) {
-                        String message = "Invalid mskcc email for " + requiredProjectInfoField + ": " + fieldValue;
-                        DEV_LOGGER.error(message);
-                        errors.add(message);
-                    }
-                    break;
-            }
-        }
-
-        if (!errors.isEmpty()) {
-            observerManager.notifyObserversOfError(ManifestFile.REQUEST, new GenerationError(
-                    String.join(";", errors), ErrorCode.REQUEST_INFO_MISSING));
-            return false;
-        }
-        return true;
-    }
 
     private Map<String, String> constructFieldNames() {
         Map<String, String> convertFieldNames = new LinkedHashMap<>();
@@ -208,7 +168,7 @@ public class RequestFilePrinter extends FilePrinter {
         return convertFieldNames;
     }
 
-    private Map<String, String> constructFieldValues(KickoffRequest request, Set<String> requiredFields) {
+    private Map<String, String> constructFieldValues(KickoffRequest request) {
         Map<String, String> projectInfo = request.getProjectInfo();
         Map<String, String> fieldValues = new HashMap<>(projectInfo);
 
@@ -245,9 +205,6 @@ public class RequestFilePrinter extends FilePrinter {
         fieldValues.remove(Constants.ProjectInfo.PI_FIRSTNAME);
         fieldValues.remove(Constants.ProjectInfo.PI_EMAIL);
         fieldValues.remove(Constants.ProjectInfo.CONTACT_NAME);
-        requiredFields.add(Constants.ProjectInfo.ASSAY);
-        requiredFields.add("PI_E-mail") ;
-        requiredFields.add("Investigator_E-mail");
         return fieldValues;
     }
 

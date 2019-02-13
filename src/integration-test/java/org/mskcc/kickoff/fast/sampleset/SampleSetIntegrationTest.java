@@ -271,6 +271,7 @@ public class SampleSetIntegrationTest {
         sampleRecord.setDataField(VeloxConstants.SPECIES, RequestSpecies.HUMAN.getValue(), user);
         sampleRecord.setDataField(Sample.TUMOR_TYPE, "OMGCT,OOVC,VMGCT,VIMT", user);
         sampleRecord.setDataField(VeloxConstants.RECIPE, "IMPACT410", user);
+        sampleRecord.setDataField(Sample.EXEMPLAR_SAMPLE_TYPE, "DNA", user);
 
         addPassedSampleQc(reqId, sampleRecord, otherSampleId);
 
