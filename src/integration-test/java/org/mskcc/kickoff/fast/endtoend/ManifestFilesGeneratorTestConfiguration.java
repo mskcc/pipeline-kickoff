@@ -113,12 +113,7 @@ public class ManifestFilesGeneratorTestConfiguration extends AppConfiguration {
 
     @Bean
     public GroupingFilePrinter groupingFilePrinter() {
-        return new GroupingFilePrinter(observerManager(), maxSamplesValidator());
-    }
-
-    @Bean
-    public MaxSamplesValidator maxSamplesValidator() {
-        return new MaxSamplesValidator(errorRepository);
+        return new GroupingFilePrinter(observerManager());
     }
 
     @Bean

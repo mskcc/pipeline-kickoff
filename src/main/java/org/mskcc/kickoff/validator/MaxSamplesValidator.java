@@ -8,12 +8,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-@Component
 public class MaxSamplesValidator {
     static final int MAX_NUMBER_OF_SAMPLES = 200;
     private ErrorRepository errorRepository;
 
-    @Autowired
     public MaxSamplesValidator(ErrorRepository errorRepository) {
         this.errorRepository = errorRepository;
     }

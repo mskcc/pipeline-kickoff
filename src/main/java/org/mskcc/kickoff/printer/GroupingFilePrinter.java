@@ -11,7 +11,6 @@ import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
-import org.mskcc.kickoff.validator.MaxSamplesValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -33,14 +32,10 @@ public class GroupingFilePrinter extends FilePrinter {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private final DecimalFormat groupNumberFormat = new DecimalFormat("000");
-    private final MaxSamplesValidator maxSamplesValidator;
-
 
     @Autowired
-    public GroupingFilePrinter(ObserverManager observerManager,
-                               MaxSamplesValidator maxSamplesValidator) {
+    public GroupingFilePrinter(ObserverManager observerManager) {
         super(observerManager);
-        this.maxSamplesValidator = maxSamplesValidator;
     }
 
     @Override
@@ -60,8 +55,6 @@ public class GroupingFilePrinter extends FilePrinter {
             }
         }
 
-        validateNumberOfSamples(samples);
-
         if (outputText.length() > 0) {
             try {
                 //@TODO create Printer to deal with printing, closing, etc
@@ -79,10 +72,6 @@ public class GroupingFilePrinter extends FilePrinter {
 
     private List<Sample> getUniqueSamples(Patient patient) {
         return Utils.getUniqueSamplesByCmoIdLastWin(new LinkedList<>(patient.getSamples()));
-    }
-
-    private void validateNumberOfSamples(List<Sample> samples) {
-        maxSamplesValidator.validate(samples);
     }
 
     @Override
