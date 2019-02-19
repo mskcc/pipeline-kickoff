@@ -54,7 +54,6 @@ public class RequestFilePrinter extends FilePrinter {
     public void print(KickoffRequest request) {
         DEV_LOGGER.info(String.format("Starting to create file: %s", getFilePath(request)));
 
-        Set<String> requiredFields = new HashSet<>();
         Map<String, String> fieldNames = constructFieldNames();
         Map<String, String> fieldValues = constructFieldValues(request);
 
@@ -77,7 +76,7 @@ public class RequestFilePrinter extends FilePrinter {
         }
 
         addProjectInfoContent(fieldNames, fieldValues, requestFileContents);
-
+        requestFileContents.append("RunNumber: ").append(request.getRunNumbers()).append("\n");
         addRerunReason(request, requestFileContents);
         requestFileContents.append("RunID: ").append(getJoinedCollection(request.getRunIds(), ", ")).append("\n");
 

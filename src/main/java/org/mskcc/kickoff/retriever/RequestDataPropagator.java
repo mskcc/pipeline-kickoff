@@ -67,6 +67,7 @@ public class RequestDataPropagator implements DataPropagator {
                 setTumorType(request, projectInfo);
             }
             addSamplesToPatients(request);
+            request.setRunNumber(getRunNumber(request));
             request.setReadmeInfo(String.format("%s %s", request.getReadMe(), request.getExtraReadMeInfo()));
         }
     }
@@ -127,8 +128,8 @@ public class RequestDataPropagator implements DataPropagator {
         }
 
         if (oncotreeCodes.isEmpty()) {
-            PM_LOGGER.log(PmLogPriority.WARNING, String.format("I can't figure out the tumor type for request [%s]: no valid Oncotree Code found!",kickoffRequest.getId()));
-            DEV_LOGGER.warn(String.format("I can't figure out the tumor type for request [%s]: no valid Oncotree Code found!",kickoffRequest.getId()));
+            PM_LOGGER.log(PmLogPriority.WARNING, String.format("I can't figure out the tumor type for request [%s]: no valid Oncotree Code found!", kickoffRequest.getId()));
+            DEV_LOGGER.warn(String.format("I can't figure out the tumor type for request [%s]: no valid Oncotree Code found!", kickoffRequest.getId()));
         } else if (oncotreeCodes.size() == 1) {
             ArrayList<String> tumorTypes = new ArrayList<>(oncotreeCodes);
             projectInfo.put(Constants.ProjectInfo.TUMOR_TYPE, tumorTypes.get(0));
@@ -156,7 +157,7 @@ public class RequestDataPropagator implements DataPropagator {
 
         String patientFieldKey = getPatientFieldKey(kickoffRequest);
         if (Constants.NA.equals(patientFieldKey)) {
-            String message  = "PM is " + projectInfo.get(Constants.ProjectInfo.PROJECT_MANAGER) +
+            String message = "PM is " + projectInfo.get(Constants.ProjectInfo.PROJECT_MANAGER) +
                     ", but at least one sample's CMO Patient ID or Investigator Patient ID has empty or MRN_REDACTED value. ";
             PM_LOGGER.log(PmLogPriority.WARNING, message);
             DEV_LOGGER.warn(message);
@@ -168,7 +169,7 @@ public class RequestDataPropagator implements DataPropagator {
                 ", using patient id from: " + patientFieldKey);
 
         Map<String, Sample> sampleMap = kickoffRequest.getAllValidSamples();
-        for (Sample sample: sampleMap.values()) {
+        for (Sample sample : sampleMap.values()) {
             Map<String, Object> sampleProperties = sample.getCmoSampleInfo().getFields();
             String patientId = "";
             if (sample.isPooledNormal()) {
@@ -409,5 +410,37 @@ public class RequestDataPropagator implements DataPropagator {
         }
 
         return "";
+    }
+
+    @Override
+    public int getRunNumber(KickoffRequest kickoffRequest) {
+        File resultDir = new File(String.format("%s/%s/%s", resultsPathPrefix, kickoffRequest.getPi(), kickoffRequest
+                .getInvest()));
+
+        File[] files = resultDir.listFiles((dir, name) -> name.endsWith(kickoffRequest.getId().replaceFirst("^0+(?!$)" +
+                "", "")));
+        if (files != null && files.length == 1) {
+            File projectResultDir = files[0];
+            File[] files2 = projectResultDir.listFiles((dir, name) -> name.startsWith("r_"));
+            if (files2 != null && files2.length > 0) {
+                int[] runs = new int[files2.length];
+                int index = 0;
+                for (File f : files2) {
+                    int pastRuns = Integer.parseInt(f.getName().replaceFirst("^r_", ""));
+                    runs[index] = pastRuns;
+                    index++;
+                }
+
+                Arrays.sort(runs);
+
+                return runs[runs.length - 1] + 1;
+            }
+        }
+        String message = "Could not determine PIPELINE RUN NUMBER from delivery directory. Setting to: 1. If this is " +
+                "incorrect, email cmo-project-start@cbio.mskcc.org";
+        PM_LOGGER.log(PmLogPriority.WARNING, message);
+        DEV_LOGGER.warn(message);
+
+        return 1;
     }
 }

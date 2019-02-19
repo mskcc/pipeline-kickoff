@@ -30,4 +30,6 @@ public interface DataPropagator {
     String findDesignFileForExome(File dir, String requestId);
 
     String findDesignFileForImpact(KickoffRequest request, String assay, File dir);
+
+    int getRunNumber(KickoffRequest kickoffRequest);
 }
