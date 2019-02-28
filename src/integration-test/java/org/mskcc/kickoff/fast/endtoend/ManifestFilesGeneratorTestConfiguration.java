@@ -20,9 +20,11 @@ import org.mskcc.kickoff.resolver.PairednessResolver;
 import org.mskcc.kickoff.retriever.FastqPathsRetriever;
 import org.mskcc.kickoff.retriever.FileSystemFastqPathsRetriever;
 import org.mskcc.kickoff.upload.FileDeletionException;
+import org.mskcc.kickoff.upload.JiraFileUploader;
 import org.mskcc.kickoff.upload.jira.*;
 import org.mskcc.kickoff.upload.jira.state.BadInputsIssueStatus;
 import org.mskcc.kickoff.upload.jira.state.StatusFactory;
+import org.mskcc.kickoff.upload.jira.transitioner.ToBadInputsTransitioner;
 import org.mskcc.kickoff.validator.*;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -237,10 +239,10 @@ public class ManifestFilesGeneratorTestConfiguration extends AppConfiguration {
         }
 
         @Override
-        public void deleteExistingFiles(KickoffRequest request) throws FileDeletionException {
+        public void deleteExistingFiles(KickoffRequest request, String key) throws FileDeletionException {
             if (throwExceptionOnDelete)
                 throw new FileDeletionException("");
-            super.deleteExistingFiles(request);
+            super.deleteExistingFiles(request, key);
         }
     }
 }

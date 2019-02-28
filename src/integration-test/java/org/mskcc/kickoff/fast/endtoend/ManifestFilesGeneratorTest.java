@@ -262,6 +262,15 @@ public class ManifestFilesGeneratorTest {
         assertJiraStatus(badInputsStatus);
     }
 
+    @Test
+    public void whenRequestRetrievalHasError_shouldSetStatusBadInputs() throws Exception {
+        // when
+        fileUploader.upload(projectId, null);
+
+        // then
+        assertJiraStatus(badInputsStatus);
+    }
+    
     private void assertAttachmentsAreNotChanged(List<JiraIssue.Fields.Attachment> allAttachmentsRun1) {
         List<JiraIssue.Fields.Attachment> allAttachmentsRun2 = jiraRestConnection.getAllAttachments(projectId);
 
