@@ -2,7 +2,7 @@ package org.mskcc.kickoff.upload.jira.state;
 
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.upload.FileUploader;
-import org.mskcc.kickoff.upload.jira.JiraFileUploader;
+import org.mskcc.kickoff.upload.JiraFileUploader;
 import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
 
 import java.util.List;
@@ -19,25 +19,25 @@ public class GenerateFilesStatus implements IssueStatus {
     }
 
     @Override
-    public void uploadFiles(KickoffRequest kickoffRequest, FileUploader jiraFileUploader, String requestId) {
-        validateNoManifestFilesExists(kickoffRequest, jiraFileUploader, requestId);
+    public void uploadFiles(KickoffRequest kickoffRequest, FileUploader jiraFileUploader, String key, String summary) {
+        validateNoManifestFilesExists(kickoffRequest, jiraFileUploader, key);
 
-        jiraFileUploader.uploadFiles(kickoffRequest, requestId);
+        jiraFileUploader.uploadFiles(kickoffRequest, key);
         jiraFileUploader.setIssueStatus(nextState);
-        jiraFileUploader.assignUser(kickoffRequest, requestId);
-        jiraFileUploader.changeStatus(transitionName, kickoffRequest.getId());
+        jiraFileUploader.assignUser(kickoffRequest, key);
+        jiraFileUploader.changeStatus(transitionName, key);
     }
 
     @Override
-    public void validateInputs(String issueId, JiraFileUploader jiraFileUploader) {
+    public void validateInputs(String key, String summary, JiraFileUploader jiraFileUploader) {
         throw new IllegalStateException(String.format("Files cannot be validated in state: %s. They haven't been " +
                 "generated yet.", getName()));
     }
 
     private void validateNoManifestFilesExists(KickoffRequest kickoffRequest, FileUploader
-            jiraFileUploader, String requestId) {
+            jiraFileUploader, String key) {
         List<JiraIssue.Fields.Attachment> existingManifestAttachments = jiraFileUploader
-                .getExistingManifestAttachments(kickoffRequest, requestId);
+                .getExistingManifestAttachments(kickoffRequest, key);
 
         if (existingManifestAttachments.size() != 0)
             throw new RuntimeException(String.format("This is initial manifest files generation. No files should be " +

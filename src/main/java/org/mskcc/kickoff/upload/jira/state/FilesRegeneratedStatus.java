@@ -3,8 +3,8 @@ package org.mskcc.kickoff.upload.jira.state;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.upload.FilesValidator;
-import org.mskcc.kickoff.upload.jira.JiraFileUploader;
-import org.mskcc.kickoff.upload.jira.ToBadInputsTransitioner;
+import org.mskcc.kickoff.upload.JiraFileUploader;
+import org.mskcc.kickoff.upload.jira.transitioner.ToBadInputsTransitioner;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class FilesRegeneratedStatus implements IssueStatus {
@@ -21,14 +21,14 @@ public class FilesRegeneratedStatus implements IssueStatus {
     }
 
     @Override
-    public void uploadFiles(KickoffRequest kickoffRequest, FileUploader jiraFileUploader, String requestId) {
+    public void uploadFiles(KickoffRequest kickoffRequest, FileUploader jiraFileUploader, String key, String summary) {
         throw new IllegalStateException(String.format("Files cannot be generated in state: %s", name));
     }
 
     @Override
-    public void validateInputs(String issueId, JiraFileUploader jiraFileUploader) {
-        if (!filesValidator.isValid(issueId))
-            toBadInputsJiraTransitioner.transition(jiraFileUploader, issueId);
+    public void validateInputs(String key, String summary, JiraFileUploader jiraFileUploader) {
+        if (!filesValidator.isValid(summary))
+            toBadInputsJiraTransitioner.transition(jiraFileUploader, key);
     }
 
     @Override

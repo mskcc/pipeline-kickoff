@@ -8,19 +8,20 @@ import org.mskcc.kickoff.upload.jira.state.IssueStatus;
 import java.util.List;
 
 public interface FileUploader {
-    void deleteExistingFiles(KickoffRequest request);
 
-    void uploadSingleFile(KickoffRequest request, ManifestFile manifestFile, String requestId);
+    void upload(String summary, KickoffRequest kickoffRequest);
 
-    void upload(KickoffRequest kickoffRequest);
+    void uploadFiles(KickoffRequest kickoffRequest, String key);
 
-    void uploadFiles(KickoffRequest kickoffRequest, String requestId);
+    void uploadSingleFile(KickoffRequest request, ManifestFile manifestFile, String key);
 
     void setIssueStatus(IssueStatus nextState);
 
-    void assignUser(KickoffRequest kickoffRequest, String requestId);
+    void assignUser(KickoffRequest kickoffRequest, String key);
 
-    void changeStatus(String transitionName, String issueId);
+    void changeStatus(String transitionName, String key);
 
-    List<JiraIssue.Fields.Attachment> getExistingManifestAttachments(KickoffRequest kickoffRequest, String requestId);
+    void deleteExistingFiles(KickoffRequest request, String key);
+
+    List<JiraIssue.Fields.Attachment> getExistingManifestAttachments(KickoffRequest kickoffRequest, String key);
 }

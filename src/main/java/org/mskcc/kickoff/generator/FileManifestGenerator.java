@@ -10,14 +10,18 @@ import org.mskcc.kickoff.config.LogConfigurator;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.notify.NotificationFormatter;
+import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.printer.OutputFilesPrinter;
 import org.mskcc.kickoff.proxy.RequestProxy;
+import org.mskcc.kickoff.retriever.RequestNotFoundException;
 import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.validator.ProjectNameValidator;
 import org.mskcc.kickoff.validator.RequestValidator;
+import org.mskcc.kickoff.velox.ProjectRetrievalException;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -86,6 +90,9 @@ public class FileManifestGenerator implements ManifestGenerator {
             resolveExomeRequestType(kickoffRequest);
 
             saveFiles(kickoffRequest);
+        } catch (RequestNotFoundException | ProjectRetrievalException e) {
+            DEV_LOGGER.error(e.getMessage(), e);
+            errorRepository.add(new GenerationError(e.getMessage(), ErrorCode.PROJECT_RETRIEVE_ERROR));
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
         } finally {
@@ -93,11 +100,11 @@ public class FileManifestGenerator implements ManifestGenerator {
             sendEmailIfFileNotCreated(projectId);
         }
 
-        uploadFiles(kickoffRequest);
+        uploadFiles(projectId, kickoffRequest);
     }
 
-    private void uploadFiles(KickoffRequest kickoffRequest) {
-        fileUploader.upload(kickoffRequest);
+    private void uploadFiles(String projectId, KickoffRequest kickoffRequest) {
+        fileUploader.upload(projectId, kickoffRequest);
     }
 
     private void sendEmailIfFileNotCreated(String projectId) {

@@ -2,7 +2,7 @@ package org.mskcc.kickoff.upload.jira.state;
 
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.upload.FileUploader;
-import org.mskcc.kickoff.upload.jira.JiraFileUploader;
+import org.mskcc.kickoff.upload.JiraFileUploader;
 
 public class RegenerateFilesStatus implements IssueStatus {
     private final String name;
@@ -16,16 +16,16 @@ public class RegenerateFilesStatus implements IssueStatus {
     }
 
     @Override
-    public void uploadFiles(KickoffRequest kickoffRequest, FileUploader fileUploader, String requestId) {
-        fileUploader.deleteExistingFiles(kickoffRequest);
-        fileUploader.uploadFiles(kickoffRequest, requestId);
+    public void uploadFiles(KickoffRequest kickoffRequest, FileUploader fileUploader, String key, String summary) {
+        fileUploader.deleteExistingFiles(kickoffRequest, key);
+        fileUploader.uploadFiles(kickoffRequest, key);
         fileUploader.setIssueStatus(nextState);
-        fileUploader.assignUser(kickoffRequest, requestId);
-        fileUploader.changeStatus(transitionName, requestId);
+        fileUploader.assignUser(kickoffRequest, key);
+        fileUploader.changeStatus(transitionName, key);
     }
 
     @Override
-    public void validateInputs(String issueId, JiraFileUploader jiraFileUploader) {
+    public void validateInputs(String key, String summary, JiraFileUploader jiraFileUploader) {
         throw new IllegalStateException(String.format("Files cannot be validated in state: %s. They haven't been " +
                 "generated yet.", getName()));
     }
