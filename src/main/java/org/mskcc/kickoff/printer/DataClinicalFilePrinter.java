@@ -1,9 +1,12 @@
 package org.mskcc.kickoff.printer;
 
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.kickoff.domain.KickoffExternalSample;
+import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -57,5 +60,40 @@ public class DataClinicalFilePrinter extends ClinicalPatientFilePrinter {
     @Override
     protected void notifyObservers() {
         observerManager.notifyObserversOfFileCreated(ManifestFile.CLINICAL);
+    }
+
+    @Override
+    protected void writeExternalTumors(KickoffRequest kickoffRequest, StringBuilder outputText) {
+        for (KickoffExternalSample externalSample : kickoffRequest.getTumorExternalSamples()) {
+            outputText.append(Utils.sampleNormalization(externalSample.getCmoId()));
+            outputText.append("\t");
+
+            outputText.append(Utils.patientNormalization(externalSample.getPatientCmoId()));
+            outputText.append("\t");
+
+            outputText.append(externalSample.getExternalId().replace('-', '_'));
+            outputText.append("\t");
+
+            outputText.append(getIfAvailable(externalSample.getSpecimenType()));
+            outputText.append("\t");
+
+            outputText.append(getIfAvailable(externalSample.getBaitVersion()));
+            outputText.append("\t");
+
+            outputText.append(getIfAvailable(externalSample.getOncotreeCode()));
+            outputText.append("\t");
+
+            outputText.append(getIfAvailable(externalSample.getSampleClass()));
+            outputText.append("\t");
+
+            outputText.append(getIfAvailable(externalSample.getPreservationType()));
+            outputText.append("\t");
+
+            outputText.append(getIfAvailable(externalSample.getSex()));
+            outputText.append("\t");
+
+            outputText.append(getIfAvailable(externalSample.getTissueSite()));
+            outputText.append("\n");
+        }
     }
 }
