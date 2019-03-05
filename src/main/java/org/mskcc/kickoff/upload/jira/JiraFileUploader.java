@@ -35,6 +35,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -416,14 +417,10 @@ public class JiraFileUploader implements FileUploader {
 
     private Iterable<Issue> getIssues(String summary, JiraRestClient restClient) {
         SearchRestClient searchClient = restClient.getSearchClient();
-        String jql = String.format("project" +
-                " = \"%s\" AND summary ~ \"%s\"", projectName, summary);
+        String jql = formatJqlQuery(projectName, summary);
         Promise<SearchResult> searchResultPromise = searchClient.searchJql(jql);
-
         SearchResult searchResult = searchResultPromise.claim();
-
         Iterable<Issue> issues = searchResult.getIssues();
-
         return issues;
     }
 
@@ -436,6 +433,13 @@ public class JiraFileUploader implements FileUploader {
                     " No files will be uploaded.", projectName, summary));
 
         LOGGER.info(String.format("Found issue with summary: %s in project: %s", summary, projectName));
+    }
+
+    private String formatJqlQuery(String project, String summary) {
+        StringJoiner sj = new StringJoiner(" ", "", "");
+        sj.add("project").add("=").add("\"" + project + "\"").add("AND");
+        sj.add("summary").add("~").add("\\\"" + summary + "\\\"");
+        return sj.toString();
     }
 
     public IssueStatus getIssueStatus() {
