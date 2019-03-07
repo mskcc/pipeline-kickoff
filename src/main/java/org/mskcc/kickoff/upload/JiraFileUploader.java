@@ -37,7 +37,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.List;
+<<<<<<< HEAD:src/main/java/org/mskcc/kickoff/upload/JiraFileUploader.java
 import java.util.Optional;
+=======
+>>>>>>> d2e7caf9aff3f85c8943e22b9ce06aead761a018:src/main/java/org/mskcc/kickoff/upload/jira/JiraFileUploader.java
 import java.util.StringJoiner;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -467,6 +470,13 @@ public class JiraFileUploader implements FileUploader {
                 LOGGER.warn(String.format("Unable to close connection to jira instance: %s", jiraUrl));
             }
         }
+    }
+
+    private String formatJqlQuery(String project, String summary) {
+        StringJoiner sj = new StringJoiner(" ", "", "");
+        sj.add("project").add("=").add("\"" + project + "\"").add("AND");
+        sj.add("summary").add("~").add("\\\"" + summary + "\\\"");
+        return sj.toString();
     }
 
     public IssueStatus getIssueStatus() {

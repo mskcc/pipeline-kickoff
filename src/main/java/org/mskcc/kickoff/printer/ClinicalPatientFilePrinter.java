@@ -49,6 +49,8 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
 
     protected abstract Predicate<Sample> getSamplePredicate();
 
+    protected abstract void writeExternalTumors(KickoffRequest kickoffRequest, StringBuilder output);
+
     @Override
     public void print(KickoffRequest kickoffRequest) {
         StringBuilder outputText = new StringBuilder();
@@ -88,40 +90,6 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
         }
     }
 
-    private void writeExternalTumors(KickoffRequest kickoffRequest, StringBuilder outputText) {
-        for (KickoffExternalSample externalSample : kickoffRequest.getTumorExternalSamples()) {
-            outputText.append(Utils.sampleNormalization(externalSample.getCmoId()));
-            outputText.append("\t");
-
-            outputText.append(Utils.patientNormalization(externalSample.getPatientCmoId()));
-            outputText.append("\t");
-
-            outputText.append(externalSample.getExternalId().replace('-', '_'));
-            outputText.append("\t");
-
-            outputText.append(getIfAvailable(externalSample.getSpecimenType()));
-            outputText.append("\t");
-
-            outputText.append(getIfAvailable(externalSample.getBaitVersion()));
-            outputText.append("\t");
-
-            outputText.append(getIfAvailable(externalSample.getOncotreeCode()));
-            outputText.append("\t");
-
-            outputText.append(getIfAvailable(externalSample.getSampleClass()));
-            outputText.append("\t");
-
-            outputText.append(getIfAvailable(externalSample.getPreservationType()));
-            outputText.append("\t");
-
-            outputText.append(getIfAvailable(externalSample.getSex()));
-            outputText.append("\t");
-
-            outputText.append(getIfAvailable(externalSample.getTissueSite()));
-            outputText.append("\n");
-        }
-    }
-
     private void writeToFile(KickoffRequest kickoffRequest, StringBuilder outputText) {
         if (outputText.length() > 0) {
             try {
@@ -141,7 +109,7 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
         }
     }
 
-    private String getIfAvailable(String field) {
+    protected String getIfAvailable(String field) {
         if (StringUtils.isEmpty(field))
             return Constants.NA;
         return field;
