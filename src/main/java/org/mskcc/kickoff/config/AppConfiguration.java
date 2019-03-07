@@ -330,7 +330,6 @@ public class AppConfiguration {
         return new FileExistenceOutputDirValidator();
     }
 
-
     @Bean
     public StatusFactory jiraStateFactory() {
         return new StatusFactory(generateFilesState(), regenerateFilesState(), filesGeneratedState(),
@@ -339,7 +338,7 @@ public class AppConfiguration {
 
     @Bean
     public GenerateFilesStatus generateFilesState() {
-        return new GenerateFilesStatus(fastqsAvailableStatus, generatedTransition, filesGeneratedState());
+        return new GenerateFilesStatus(fastqsAvailableStatus, generatedTransition, filesGeneratedState(), errorRepository);
     }
 
     @Bean

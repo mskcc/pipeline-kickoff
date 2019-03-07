@@ -2,7 +2,6 @@ package org.mskcc.kickoff.upload.jira.state;
 
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.upload.FileUploader;
-import org.mskcc.kickoff.upload.JiraFileUploader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +16,12 @@ public class HoldIssueStatus implements IssueStatus {
     }
 
     @Override
-    public void validateInputs(String key, String summary, JiraFileUploader jiraFileUploader) {
+    public boolean validateBefore(KickoffRequest kickoffRequest, FileUploader fileUploader, String key) {
+        return true;
+    }
+
+    @Override
+    public void validateAfter(String key, String summary, FileUploader fileUploader) {
 
     }
 

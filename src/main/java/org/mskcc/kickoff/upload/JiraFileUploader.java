@@ -20,6 +20,7 @@ import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
 import org.mskcc.kickoff.upload.jira.domain.JiraUser;
 import org.mskcc.kickoff.upload.jira.state.GenerateFilesStatus;
 import org.mskcc.kickoff.upload.jira.state.IssueStatus;
+import org.mskcc.kickoff.upload.jira.state.RegenerateFilesStatus;
 import org.mskcc.kickoff.upload.jira.state.StatusFactory;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.util.Constants;
@@ -37,10 +38,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.List;
-<<<<<<< HEAD:src/main/java/org/mskcc/kickoff/upload/JiraFileUploader.java
 import java.util.Optional;
-=======
->>>>>>> d2e7caf9aff3f85c8943e22b9ce06aead761a018:src/main/java/org/mskcc/kickoff/upload/jira/JiraFileUploader.java
 import java.util.StringJoiner;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -98,27 +96,9 @@ public class JiraFileUploader implements FileUploader {
             }
 
             String key = optionalKey.get();
-            if (kickoffRequest == null) {
-                addInfoComment(key);
-                transitToBadInputsStatus(key);
-                return;
-            }
-
             issueStatus = retrieveJiraIssueState(key);
-            if (issueStatus instanceof GenerateFilesStatus) {
-                if (getExistingManifestAttachments(kickoffRequest, key).size() != 0) {
-                    String msg = "This is initial manifest files generation. No files should be " +
-                            "uploaded for " + summary;
-                    errorRepository.add(new GenerationError(msg, ErrorCode.JIRA_UPLOAD_ERROR));
-                    LOGGER.error(msg);
-                    addInfoComment(key);
-                    transitToBadInputsStatus(key);
-                    return;
-                }
-            }
-
             issueStatus.uploadFiles(kickoffRequest, this, key, summary);
-            issueStatus.validateInputs(key, summary, this);
+            issueStatus.validateAfter(key, summary, this);
             addInfoComment(key);
         } catch (Exception e) {
             LOGGER.error(String.format("Error while trying to attach files: to jira instance: %s for issue: %s",
@@ -269,11 +249,10 @@ public class JiraFileUploader implements FileUploader {
                 break;
             }
         }
-    }
 
-    private void transitToBadInputsStatus(String key) {
-        changeStatus(generatedTransition, key);
-        changeStatus(badInputsTransition, key);
+        throw new NoTransitionFoundException(String.format("No transition found with name %s for issue %s for current" +
+                        " status: %s",
+                transitionName, issue.getSummary(), issue.getStatus().getName()));
     }
 
     private String getFormattedComment(String comment) {
@@ -428,12 +407,10 @@ public class JiraFileUploader implements FileUploader {
     private Optional<String> getIssueKeyFromSummary(String summary) {
         Iterable<Issue> issues = getIssues(summary, restClient);
         int size = Iterables.size(issues);
-        String msg = String.format("Found %d issues with summary: %s in project: %s",
-                size, summary, projectName);
-        LOGGER.info(msg);
+        String msg = "";
         if (size == 0) {
-            LOGGER.error(msg);
             msg = String.format("No jira issues found for project: %s and summary: %s. No files will be uploaded.", projectName, summary);
+            LOGGER.error(msg);
             errorRepository.add(new GenerationError(msg, ErrorCode.JIRA_UPLOAD_ERROR));
             return Optional.empty();
         } else if (size > 1) {
@@ -443,6 +420,9 @@ public class JiraFileUploader implements FileUploader {
             return Optional.empty();
         }
 
+        msg = String.format("Found %d issues with summary: %s in project: %s",
+                size, summary, projectName);
+        LOGGER.info(msg);
         return Optional.of(Iterables.getFirst(issues, null).getKey());
     }
 
@@ -470,13 +450,6 @@ public class JiraFileUploader implements FileUploader {
                 LOGGER.warn(String.format("Unable to close connection to jira instance: %s", jiraUrl));
             }
         }
-    }
-
-    private String formatJqlQuery(String project, String summary) {
-        StringJoiner sj = new StringJoiner(" ", "", "");
-        sj.add("project").add("=").add("\"" + project + "\"").add("AND");
-        sj.add("summary").add("~").add("\\\"" + summary + "\\\"");
-        return sj.toString();
     }
 
     public IssueStatus getIssueStatus() {

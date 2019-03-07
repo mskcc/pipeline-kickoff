@@ -3,7 +3,6 @@ package org.mskcc.kickoff.upload.jira.state;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.upload.FilesValidator;
-import org.mskcc.kickoff.upload.JiraFileUploader;
 import org.mskcc.kickoff.upload.jira.transitioner.ToBadInputsTransitioner;
 import org.mskcc.kickoff.upload.jira.transitioner.ToHoldTransitioner;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,12 +29,16 @@ public class FilesGeneratedStatus implements IssueStatus {
     }
 
     @Override
-    public void validateInputs(String key, String summary, JiraFileUploader jiraFileUploader) {
-        if (!filesValidator.isValid(summary))
-            toBadInputsJiraTransitioner.transition(jiraFileUploader, key);
-        else
-            toHoldJiraTransitioner.transition(jiraFileUploader, key);
+    public boolean validateBefore(KickoffRequest kickoffRequest, FileUploader fileUploader, String key) {
+        return true;
+    }
 
+    @Override
+    public void validateAfter(String key, String summary, FileUploader fileUploader) {
+        if (!filesValidator.isValid(summary))
+            toBadInputsJiraTransitioner.transition(fileUploader, key);
+        else
+            toHoldJiraTransitioner.transition(fileUploader, key);
     }
 
     @Override
