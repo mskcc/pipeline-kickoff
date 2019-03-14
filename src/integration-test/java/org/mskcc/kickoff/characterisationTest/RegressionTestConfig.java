@@ -9,7 +9,7 @@ import org.mskcc.kickoff.generator.FileManifestGenerator;
 import org.mskcc.kickoff.generator.OutputDirRetriever;
 import org.mskcc.kickoff.printer.OutputFilesPrinter;
 import org.mskcc.kickoff.upload.FileUploader;
-import org.mskcc.kickoff.upload.jira.JiraFileUploader;
+import org.mskcc.kickoff.upload.JiraFileUploader;
 import org.mskcc.kickoff.validator.RequestValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

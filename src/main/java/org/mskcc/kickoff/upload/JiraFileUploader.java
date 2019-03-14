@@ -246,7 +246,7 @@ public class JiraFileUploader implements FileUploader {
                 Promise<Void> setGeneratedStatus = restClient.getIssueClient().transition(issue, new TransitionInput(transition.getId()));
                 setGeneratedStatus.claim();
                 LOGGER.info(String.format("Status for issue: %s changed to: %s", issue.getSummary(), name));
-                break;
+                return;
             }
         }
 
