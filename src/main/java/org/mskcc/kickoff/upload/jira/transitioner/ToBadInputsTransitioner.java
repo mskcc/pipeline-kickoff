@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.upload.jira;
+package org.mskcc.kickoff.upload.jira.transitioner;
 
 import org.apache.log4j.Logger;
 import org.mskcc.kickoff.upload.FileUploader;
@@ -18,8 +18,8 @@ public class ToBadInputsTransitioner implements Transitioner {
     private BadInputsIssueStatus badInputsIssueStatus;
 
     @Override
-    public void transition(FileUploader fileUploader, String issueId) {
-        fileUploader.changeStatus(badInputsTransition, issueId);
+    public void transition(FileUploader fileUploader, String key) {
+        fileUploader.changeStatus(badInputsTransition, key);
         fileUploader.setIssueStatus(badInputsIssueStatus);
     }
 }

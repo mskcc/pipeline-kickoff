@@ -1,4 +1,4 @@
-package org.mskcc.kickoff.upload.jira;
+package org.mskcc.kickoff.upload.jira.transitioner;
 
 import org.mskcc.kickoff.upload.FileUploader;
 import org.mskcc.kickoff.upload.jira.state.HoldIssueStatus;
@@ -17,8 +17,8 @@ public class ToHoldTransitioner implements Transitioner {
     private HoldIssueStatus holdIssueStatus;
 
     @Override
-    public void transition(FileUploader fileUploader, String issueId) {
-        fileUploader.changeStatus(holdTransition, issueId);
+    public void transition(FileUploader fileUploader, String key) {
+        fileUploader.changeStatus(holdTransition, key);
         fileUploader.setIssueStatus(holdIssueStatus);
     }
 }

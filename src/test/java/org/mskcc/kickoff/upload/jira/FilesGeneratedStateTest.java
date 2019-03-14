@@ -3,6 +3,7 @@ package org.mskcc.kickoff.upload.jira;
 import org.hamcrest.object.IsCompatibleType;
 import org.junit.Test;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.upload.JiraFileUploader;
 import org.mskcc.kickoff.upload.jira.state.FilesGeneratedStatus;
 import org.mskcc.util.TestUtils;
 
@@ -18,7 +19,7 @@ public class FilesGeneratedStateTest {
         FilesGeneratedStatus filesGeneratedState = new FilesGeneratedStatus("something");
 
         Optional<Exception> exception = TestUtils.assertThrown(() -> filesGeneratedState.uploadFiles(mock
-                (KickoffRequest.class), mock(JiraFileUploader.class), "12345_P"));
+                (KickoffRequest.class), mock(JiraFileUploader.class), "KEY", "12345_P"));
 
         assertThat(exception.isPresent(), is(true));
         assertThat(exception.get().getClass(), IsCompatibleType.typeCompatibleWith(IllegalStateException.class));

@@ -3,6 +3,7 @@ package org.mskcc.kickoff.upload.jira;
 import org.hamcrest.object.IsCompatibleType;
 import org.junit.Test;
 import org.mskcc.kickoff.upload.jira.state.*;
+import org.mskcc.kickoff.validator.InMemoryErrorRepository;
 import org.mskcc.util.TestUtils;
 
 import java.util.Optional;
@@ -19,7 +20,7 @@ public class StatusFactoryTest {
     private final RegenerateFilesStatus regenerateFilesState = new RegenerateFilesStatus(regenerateState,
             "regeneratedTransition", filesGeneratedState);
     private final GenerateFilesStatus generateFilesState = new GenerateFilesStatus(generateState,
-            "generatedTransition", filesGeneratedState);
+            "generatedTransition", filesGeneratedState, new InMemoryErrorRepository());
     private final StatusFactory statusFactory = new StatusFactory(regenerateFilesState, generateFilesState,
             filesGeneratedState);
 

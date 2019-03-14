@@ -17,7 +17,7 @@ public class SpyFileUploader implements FileUploader {
     private List<KickoffRequest> requestsWithDeletedFiles = new ArrayList<>();
 
     @Override
-    public void deleteExistingFiles(KickoffRequest request) {
+    public void deleteExistingFiles(KickoffRequest request, String key) {
         requestsWithDeletedFiles.add(request);
     }
 
@@ -27,7 +27,7 @@ public class SpyFileUploader implements FileUploader {
     }
 
     @Override
-    public void upload(KickoffRequest kickoffRequest) {
+    public void upload(String summary, KickoffRequest kickoffRequest) {
         for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
             uploadSingleFile(kickoffRequest, manifestFile, kickoffRequest.getId());
         }
