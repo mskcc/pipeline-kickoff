@@ -1,22 +1,26 @@
 package org.mskcc.kickoff.config;
 
-import org.mskcc.kickoff.util.Constants;
-import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.bic.config.AppConfiguration;
+import org.mskcc.kickoff.config.SpringProfile;
+import org.mskcc.kickoff.roslin.util.Constants;
+import org.mskcc.kickoff.roslin.util.Utils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.io.AbstractResource;
 
-@Profile(Constants.PROD_PROFILE)
+@Profile(SpringProfile.PROD)
 @Configuration
 public class ProdConfiguration {
     @Bean
     public static PropertySourcesPlaceholderConfigurer propertyConfigurer() {
-        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
+        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new
+                PropertySourcesPlaceholderConfigurer();
 
         propertySourcesPlaceholderConfigurer.setLocation(Utils.getPropertiesLocation("application.properties"));
 
+        // AppConfiguration.configureLogger("/log4j.properties");
         propertySourcesPlaceholderConfigurer.setOrder(0);
         propertySourcesPlaceholderConfigurer.setIgnoreUnresolvablePlaceholders(true);
 
@@ -24,9 +28,10 @@ public class ProdConfiguration {
     }
 
     @Bean
-    @Profile(Constants.IGO_PROFILE)
+    @Profile(SpringProfile.IGO)
     public static PropertySourcesPlaceholderConfigurer igoPropertyConfigurer() {
-        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
+        PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new
+                PropertySourcesPlaceholderConfigurer();
         AbstractResource propertiesLocation = Utils.getPropertiesLocation("lims-igo-prod.properties");
         propertySourcesPlaceholderConfigurer.setLocation(propertiesLocation);
 
@@ -36,7 +41,7 @@ public class ProdConfiguration {
     }
 
     @Bean
-    @Profile(Constants.TANGO_PROFILE)
+    @Profile(SpringProfile.TANGO)
     public static PropertySourcesPlaceholderConfigurer tangoPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new
                 PropertySourcesPlaceholderConfigurer();

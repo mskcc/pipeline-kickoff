@@ -1,0 +1,25 @@
+package org.mskcc.kickoff.roslin.upload.jira.transitioner;
+
+import org.apache.log4j.Logger;
+import org.mskcc.kickoff.roslin.upload.FileUploader;
+import org.mskcc.kickoff.roslin.upload.jira.state.BadInputsIssueStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+@Component
+public class ToBadInputsTransitioner implements Transitioner {
+    private static final Logger LOGGER = Logger.getLogger(ToBadInputsTransitioner.class);
+
+    @Value("${jira.roslin.files.insufficient.transition}")
+    private String badInputsTransition;
+
+    @Autowired
+    private BadInputsIssueStatus badInputsIssueStatus;
+
+    @Override
+    public void transition(FileUploader fileUploader, String key) {
+        fileUploader.changeStatus(badInputsTransition, key);
+        fileUploader.setIssueStatus(badInputsIssueStatus);
+    }
+}

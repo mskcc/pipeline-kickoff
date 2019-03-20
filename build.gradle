@@ -4,14 +4,14 @@ import org.mskcc.util.email.EmailToMimeMessageConverter
 import org.mskcc.util.email.JavaxEmailSender
 
 group 'org.mskcc.kickoff.lims'
-version '1.24.30-SNAPSHOT'
+version '2.0.0-SNAPSHOT'
 
 apply plugin: 'application'
 apply plugin: 'maven'
 apply plugin: 'idea'
 apply plugin: "jacoco"
 
-mainClassName = "org.mskcc.kickoff.lims.CreateManifestSheet"
+mainClassName = "org.mskcc.kickoff.factory.ManifestSheetFactory"
 
 sourceCompatibility = 1.8
 
@@ -66,7 +66,7 @@ dependencies {
     compile 'com.velox.internalproducts:veloxapi:10.6.1-b777'
     compile 'com.velox.internalproducts:sapioutils:15.0.0-LIMS10.6.1'
     compile 'com.velox.internalproducts:sapio-commons:15.0.0-LIMS10.6.1'
-    compile 'org.mskcc.common:common-domain:2.12.0-SNAPSHOT'
+    compile 'org.mskcc.common:common-domain:2.12.0'
 
     compile group: 'log4j', name: 'apache-log4j-extras', version: '1.1'
 
@@ -172,7 +172,7 @@ configurations {
 
 task integrationTest(type: Test) {
     filter {
-        includeTestsMatching "org.mskcc.kickoff.fast.*"
+        includeTestsMatching "org.mskcc.kickoff.roslin.fast.*"
     }
 
     if (System.getProperty('DEBUG', 'false') == 'true')
@@ -188,7 +188,8 @@ task integrationTest(type: Test) {
 
 task regressionTest(type: Test) {
     filter {
-        includeTestsMatching "org.mskcc.kickoff.characterisationTest.RegressionTest"
+        includeTestsMatching "org.mskcc.kickoff.roslin.characterisationTest.FileGenerationRegressionTest"
+        includeTestsMatching "org.mskcc.kickoff.bic.characterisationTest.FileGenerationRegressionTest"
     }
 
     if (System.getProperty('DEBUG', 'false') == 'true')
@@ -199,13 +200,14 @@ task regressionTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
     description = "Regression Tests"
     outputs.upToDateWhen { false }
+    environment SPRING_PROFILES_ACTIVE: environment.SPRING_PROFILES_ACTIVE ?: "test,tango"
 }
 
 task fatJar(type: Jar) {
     manifest {
         attributes 'Implementation-Title': 'Create Manifest Sheet',
                 'Implementation-Version': version,
-                'Main-Class': 'org.mskcc.kickoff.lims.CreateManifestSheet'
+                'Main-Class': 'org.mskcc.kickoff.factory.ManifestSheetFactory'
     }
     baseName = project.name
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }

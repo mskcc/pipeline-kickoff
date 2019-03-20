@@ -1,13 +1,13 @@
 package org.mskcc.kickoff.config;
 
-import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.roslin.config.AppConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.io.ClassPathResource;
 
-@Profile(Constants.TEST_PROFILE)
+@Profile(SpringProfile.TEST)
 @Configuration
 public class TestConfiguration {
     @Bean
@@ -25,7 +25,7 @@ public class TestConfiguration {
     }
 
     @Bean
-    @Profile(Constants.IGO_PROFILE)
+    @Profile(SpringProfile.IGO)
     public static PropertySourcesPlaceholderConfigurer igoPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("lims-igo-test.properties"));
@@ -35,7 +35,7 @@ public class TestConfiguration {
     }
 
     @Bean
-    @Profile(Constants.TANGO_PROFILE)
+    @Profile(SpringProfile.TANGO)
     public static PropertySourcesPlaceholderConfigurer tangoPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new PropertySourcesPlaceholderConfigurer();
         propertySourcesPlaceholderConfigurer.setLocation(new ClassPathResource("lims-tango-test.properties"));

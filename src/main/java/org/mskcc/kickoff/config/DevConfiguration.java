@@ -1,14 +1,13 @@
 package org.mskcc.kickoff.config;
 
-import org.mskcc.kickoff.util.Constants;
-import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.roslin.util.Utils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.io.AbstractResource;
 
-@Profile(Constants.DEV_PROFILE)
+@Profile(SpringProfile.DEV)
 @Configuration
 public class DevConfiguration {
     @Bean
@@ -17,7 +16,7 @@ public class DevConfiguration {
                 PropertySourcesPlaceholderConfigurer();
 
         propertySourcesPlaceholderConfigurer.setLocation(Utils.getPropertiesLocation("application-dev.properties"));
-
+        // AppConfiguration.configureLogger("/log4j-dev.properties");
         propertySourcesPlaceholderConfigurer.setOrder(0);
         propertySourcesPlaceholderConfigurer.setIgnoreUnresolvablePlaceholders(true);
 
@@ -25,7 +24,7 @@ public class DevConfiguration {
     }
 
     @Bean
-    @Profile(Constants.IGO_PROFILE)
+    @Profile(SpringProfile.IGO)
     public static PropertySourcesPlaceholderConfigurer igoPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new
                 PropertySourcesPlaceholderConfigurer();
@@ -37,7 +36,7 @@ public class DevConfiguration {
     }
 
     @Bean
-    @Profile(Constants.TANGO_PROFILE)
+    @Profile(SpringProfile.TANGO)
     public static PropertySourcesPlaceholderConfigurer tangoPropertyConfigurer() {
         PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer = new
                 PropertySourcesPlaceholderConfigurer();

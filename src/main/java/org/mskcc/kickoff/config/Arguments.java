@@ -2,7 +2,7 @@ package org.mskcc.kickoff.config;
 
 import com.sampullara.cli.Args;
 import com.sampullara.cli.Argument;
-import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.roslin.util.Constants;
 
 public class Arguments {
     private static final org.apache.log4j.Logger LOGGER = org.apache.log4j.Logger.getLogger(Constants.DEV_LOGGER);
@@ -15,6 +15,8 @@ public class Arguments {
     public static Boolean runAsExome = false;
     @Argument(alias = "s", description = "Shiny user is running this script (rnaseq projects will die).")
     public static Boolean shiny = false;
+    @Argument(alias = "pipeline", description = "Pipeline name: [bic|roslin]", required = true)
+    public static String pipeline;
     @Argument(alias = "p", description = "Project to get samples for", required = true)
     public static String project;
     @Argument(alias = "o", description = "Pipeline files output dir")
@@ -24,7 +26,8 @@ public class Arguments {
 
     public static String toPrintable() {
         return "Arguments {" +
-                "\nproject=" + project +
+                "\npipeline=" + pipeline +
+                ",\nproject=" + project +
                 ",\nnoPortal=" + noPortal +
                 ",\nforced=" + forced +
                 ",\nrunAsExome=" + runAsExome +

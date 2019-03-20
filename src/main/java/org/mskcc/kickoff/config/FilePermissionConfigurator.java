@@ -1,7 +1,7 @@
 package org.mskcc.kickoff.config;
 
 import org.apache.log4j.Logger;
-import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.roslin.util.Constants;
 
 import java.io.File;
 import java.nio.file.AccessDeniedException;
