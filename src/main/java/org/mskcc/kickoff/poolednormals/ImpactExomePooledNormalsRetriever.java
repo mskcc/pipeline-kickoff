@@ -85,7 +85,8 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
     }
 
     private boolean isPooledNormal(User apiUser, DataRecord parentSample) throws NotFound, RemoteException {
-        return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL");
+        return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL")
+                || parentSample.getStringVal(org.mskcc.util.VeloxConstants.OTHER_SAMPLE_ID, apiUser).contains("POOLEDNORMAL");
     }
   
     private boolean isSampleRun(DataRecord potentialPooledNormalQc, User apiUser, KickoffRequest kickoffRequest)
@@ -180,7 +181,8 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
 
     private List<DataRecord> getPotentialPooledNormalQCs(User apiUser, DataRecordManager dataRecordManager)
             throws Exception {
-        String query = String.format("%s LIKE '%s'", VeloxConstants.OTHER_SAMPLE_ID, "%POOLEDNORMAL%");
+        String query = String.format("%s LIKE '%s' OR %s LIKE '%s'", VeloxConstants.OTHER_SAMPLE_ID, "%POOLEDNORMAL%",
+                VeloxConstants.SAMPLE_ID, "CTRL%");
 
         DEV_LOGGER.info(String.format("Query used to look for pooled normals: %s", query));
         return dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC,
