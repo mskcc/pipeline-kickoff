@@ -20,6 +20,7 @@ import java.util.*;
 
 public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+    private final PooledNormalPredicate pooledNormalPredicate = new PooledNormalPredicate();
     private NimblegenResolver nimblegenResolver;
 
     private List<DataRecord> potentialPooledNormalsQcs;
@@ -85,10 +86,11 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
     }
 
     private boolean isPooledNormal(User apiUser, DataRecord parentSample) throws NotFound, RemoteException {
-        return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL")
-                || parentSample.getStringVal(org.mskcc.util.VeloxConstants.OTHER_SAMPLE_ID, apiUser).contains("POOLEDNORMAL");
+        String sampleId = parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
+
+        return pooledNormalPredicate.test(sampleId);
     }
-  
+
     private boolean isSampleRun(DataRecord potentialPooledNormalQc, User apiUser, KickoffRequest kickoffRequest)
             throws NotFound, RemoteException {
         String sampleId = potentialPooledNormalQc.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
@@ -181,11 +183,16 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
 
     private List<DataRecord> getPotentialPooledNormalQCs(User apiUser, DataRecordManager dataRecordManager)
             throws Exception {
-        String query = String.format("%s LIKE '%s' OR %s LIKE '%s'", VeloxConstants.OTHER_SAMPLE_ID, "%POOLEDNORMAL%",
-                VeloxConstants.SAMPLE_ID, "CTRL%");
+        String query = String.format("%s LIKE '%s-%' OR %s LIKE '%s-%' OR %s LIKE '%s-%' OR %s LIKE '%s-%'",
+                VeloxConstants.OTHER_SAMPLE_ID, Constants.FFPEPOOLEDNORMAL,
+                VeloxConstants.SAMPLE_ID, Constants.FROZENPOOLEDNORMAL,
+                VeloxConstants.SAMPLE_ID, Constants.MOUSEPOOLEDNORMAL,
+                VeloxConstants.SAMPLE_ID, "CTRL"
+        );
 
         DEV_LOGGER.info(String.format("Query used to look for pooled normals: %s", query));
         return dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC,
                 query, apiUser);
     }
+
 }
