@@ -70,9 +70,11 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
                     for (DataRecord parentSample : parentSamples) {
                         if (isPooledNormal(user, parentSample)) {
                             String pooledNormalId = nimbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
+                            String otherPooledId = nimbSiblingSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
 
                             if (!pooledNormals.containsKey(parentSample))
-                                DEV_LOGGER.info(String.format("Adding pooled normal: %s", pooledNormalId));
+                                DEV_LOGGER.info(String.format("Adding pooled normal: %s (%s)", pooledNormalId,
+                                        otherPooledId));
                             pooledNormals.put(parentSample, pooledNormalId);
                         }
                     }
@@ -81,6 +83,9 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
         } catch (Exception e) {
             DEV_LOGGER.error("Exception thrown while retrieving information about pooled normals", e);
         }
+
+        DEV_LOGGER.info(String.format("Retrieved %d pooled normal samples from nimblegen protocol: %s", pooledNormals
+                .size(), pooledNormals.values()));
 
         return pooledNormals.asMap();
     }
@@ -169,6 +174,9 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
             DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
         }
 
+        DEV_LOGGER.info(String.format("Retreived %s pooled normal samples from qc: %s", pooledNormals.size(),
+                pooledNormals.values()));
+
         return pooledNormals;
     }
 
@@ -183,14 +191,13 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
 
     private List<DataRecord> getPotentialPooledNormalQCs(User apiUser, DataRecordManager dataRecordManager)
             throws Exception {
-        String query = String.format("%s LIKE '%s-%' OR %s LIKE '%s-%' OR %s LIKE '%s-%' OR %s LIKE '%s-%'",
-                VeloxConstants.OTHER_SAMPLE_ID, Constants.FFPEPOOLEDNORMAL,
-                VeloxConstants.SAMPLE_ID, Constants.FROZENPOOLEDNORMAL,
-                VeloxConstants.SAMPLE_ID, Constants.MOUSEPOOLEDNORMAL,
-                VeloxConstants.SAMPLE_ID, "CTRL"
-        );
+        String query = String.format("%s LIKE '%s-%%' OR %s LIKE '%s-%%' OR %s LIKE '%s-%%' OR %s LIKE 'CTRL-%%'",
+                VeloxConstants.OTHER_SAMPLE_ID, Constants.FFPEPOOLEDNORMAL, VeloxConstants.OTHER_SAMPLE_ID, Constants
+                        .FROZENPOOLEDNORMAL, VeloxConstants.OTHER_SAMPLE_ID, Constants.MOUSEPOOLEDNORMAL,
+                VeloxConstants.OTHER_SAMPLE_ID);
 
         DEV_LOGGER.info(String.format("Query used to look for pooled normals: %s", query));
+
         return dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC,
                 query, apiUser);
     }
