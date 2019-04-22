@@ -38,7 +38,7 @@ public class PairingInfoRetriever {
 
         Map<String, String> pairings = new LinkedHashMap<>();
         for (Sample tumor : tumors) {
-            if (tumor.getCmoSampleId().startsWith("CTRL-")) {
+            if (tumor.isPooledNormal()) {
                 String message = String.format("A sample with id: %s cannot be tumor sample", tumor.getCmoSampleId());
                 Utils.setExitLater(true);
                 PM_LOGGER.error(message);
