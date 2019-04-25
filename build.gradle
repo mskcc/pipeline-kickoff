@@ -66,7 +66,7 @@ dependencies {
     compile 'com.velox.internalproducts:veloxapi:10.6.1-b777'
     compile 'com.velox.internalproducts:sapioutils:15.0.0-LIMS10.6.1'
     compile 'com.velox.internalproducts:sapio-commons:15.0.0-LIMS10.6.1'
-    compile 'org.mskcc.common:common-domain:2.12.0-SNAPSHOT'
+    compile 'org.mskcc.common:common-domain:2.13.0-SNAPSHOT'
 
     compile group: 'log4j', name: 'apache-log4j-extras', version: '1.1'
 

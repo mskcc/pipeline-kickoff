@@ -20,9 +20,7 @@ import java.io.File;
 import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
-import static org.mskcc.kickoff.config.Arguments.forced;
 import static org.mskcc.kickoff.config.Arguments.runAsExome;
 
 public class RequestDataPropagator implements DataPropagator {
@@ -180,7 +178,7 @@ public class RequestDataPropagator implements DataPropagator {
                 patientId = (String) sampleProperties.getOrDefault(patientFieldKey, "");
             }
             Patient patient = kickoffRequest.putPatientIfAbsent(patientId);
-            if (!isValidPatientId(patientId)) {
+            if (!sample.isPooledNormal() && !isValidPatientId(patientId)) {
                 String message = String.format("Patient ID for sample %s is empty or has an issue: %s",
                         sample.getIgoId(), patientId);
                 PM_LOGGER.log(PmLogPriority.WARNING, message);
