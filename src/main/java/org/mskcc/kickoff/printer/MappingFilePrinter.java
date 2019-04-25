@@ -12,6 +12,7 @@ import org.mskcc.kickoff.lims.SampleInfo;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.notify.GenerationError;
+import org.mskcc.kickoff.poolednormals.PooledNormalPredicate;
 import org.mskcc.kickoff.printer.observer.ManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
@@ -44,15 +45,20 @@ public class MappingFilePrinter extends FilePrinter {
     private final Predicate<Set<Pairedness>> pairednessValidPredicate;
     private final PairednessResolver pairednessResolver;
     private final FastqPathsRetriever fastqPathsRetriever;
+    private final PooledNormalPredicate pooledNormalPredicate;
 
     @Autowired
-    public MappingFilePrinter(Predicate<Set<Pairedness>> pairednessValidPredicate, PairednessResolver
-            pairednessResolver, ObserverManager observerManager,
-                              FastqPathsRetriever fastqPathsRetriever) {
+    public MappingFilePrinter(
+            Predicate<Set<Pairedness>> pairednessValidPredicate,
+            PairednessResolver pairednessResolver,
+            ObserverManager observerManager,
+            FastqPathsRetriever fastqPathsRetriever,
+            PooledNormalPredicate pooledNormalPredicate) {
         super(observerManager);
         this.pairednessValidPredicate = pairednessValidPredicate;
         this.pairednessResolver = pairednessResolver;
         this.fastqPathsRetriever = fastqPathsRetriever;
+        this.pooledNormalPredicate = pooledNormalPredicate;
     }
 
     @Override
@@ -105,7 +111,8 @@ public class MappingFilePrinter extends FilePrinter {
             for (KickoffRequest singleRequest : request.getRequests()) {
                 for (SampleRun sampleRun : getSampleRuns(singleRequest)) {
                     Sample sample = sampleRun.getSample();
-                    String sampleId = sample.getCmoSampleId();
+                    String cmoSampleId = sample.getCmoSampleId();
+                    String sampleId = sample.getIgoId();
                     final String runId = sampleRun.getRunId();
 
                     Optional<String> optionalRunIDFull = fastqPathsRetriever.getRunId(request, runsWithMultipleFolders,
@@ -114,10 +121,10 @@ public class MappingFilePrinter extends FilePrinter {
 
                     String runIdFull = optionalRunIDFull.get();
 
-                    String sampleIDrunIdFull = sampleId + runIdFull;
+                    String sampleIDrunIdFull = cmoSampleId + runIdFull;
                     if (processedSamplesRuns.contains(sampleIDrunIdFull)) {
                         String message = String.format("Skipping Sequencing run [%s] for igo sample [%s]: already " +
-                                "included.", runIdFull, sampleId);
+                                "included.", runIdFull, cmoSampleId);
                         logWarning(message);
                         continue;
                     }
@@ -125,18 +132,18 @@ public class MappingFilePrinter extends FilePrinter {
                     processedSamplesRuns.add(sampleIDrunIdFull);
                     request.addRunID(runIdFull);
 
-                    for (String samplePattern : getSamplePatterns(sample, sampleId)) {
+                    for (String samplePattern : getSamplePatterns(sample, cmoSampleId)) {
                         for (String path : getPaths(request, sample, runIdFull, samplePattern)) {
                             if (isPooledNormal(sampleId) && !fastqExist(path, request.getBaitVersion()))
                                 continue;
 
                             Pairedness pairedness = getPairedness(path);
-                            DEV_LOGGER.trace(String.format("Pairedness for sample: %s - %s", sampleId, pairedness));
+                            DEV_LOGGER.trace(String.format("Pairedness for sample: %s - %s", cmoSampleId, pairedness));
                             pairednesses.add(pairedness);
 
                             validateSampleSheetExists(request, sample, runIdFull, path);
-                            String sampleName = sampleNormalization(sampleRenamesAndSwaps.getOrDefault(sampleId,
-                                    sampleId));
+                            String sampleName = sampleNormalization(sampleRenamesAndSwaps.getOrDefault(cmoSampleId,
+                                    cmoSampleId));
                             mappingFileContents.append(String.format("_1\t%s\t%s\t%s\t%s\n", sampleName, runIdFull,
                                     path, pairedness));
                         }
@@ -266,7 +273,7 @@ public class MappingFilePrinter extends FilePrinter {
     }
 
     private boolean isPooledNormal(String sampleId) {
-        return sampleId.contains("POOLEDNORMAL") && (sampleId.contains("FFPE") || sampleId.contains("FROZEN"));
+        return pooledNormalPredicate.test(sampleId);
     }
 
     private boolean fastqExist(String path, String baitVersion) {

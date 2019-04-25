@@ -13,6 +13,7 @@ import org.mskcc.kickoff.pairing.PairingInfoRetriever;
 import org.mskcc.kickoff.pairing.PairingInfoValidPredicate;
 import org.mskcc.kickoff.pairing.PairingsResolver;
 import org.mskcc.kickoff.pairing.SmartPairingRetriever;
+import org.mskcc.kickoff.poolednormals.PooledNormalPredicate;
 import org.mskcc.kickoff.printer.*;
 import org.mskcc.kickoff.printer.observer.FileGenerationStatusManifestFileObserver;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
@@ -21,11 +22,16 @@ import org.mskcc.kickoff.retriever.FastqPathsRetriever;
 import org.mskcc.kickoff.retriever.FileSystemFastqPathsRetriever;
 import org.mskcc.kickoff.upload.FileDeletionException;
 import org.mskcc.kickoff.upload.JiraFileUploader;
-import org.mskcc.kickoff.upload.jira.*;
+import org.mskcc.kickoff.upload.jira.DummyPmJiraUserRetriever;
+import org.mskcc.kickoff.upload.jira.LoggingClientHttpRequestInterceptor;
+import org.mskcc.kickoff.upload.jira.PmJiraUserRetriever;
 import org.mskcc.kickoff.upload.jira.state.BadInputsIssueStatus;
 import org.mskcc.kickoff.upload.jira.state.StatusFactory;
 import org.mskcc.kickoff.upload.jira.transitioner.ToBadInputsTransitioner;
-import org.mskcc.kickoff.validator.*;
+import org.mskcc.kickoff.validator.ErrorRepository;
+import org.mskcc.kickoff.validator.InMemoryErrorRepository;
+import org.mskcc.kickoff.validator.RequestValidator;
+import org.mskcc.kickoff.validator.StrandValidator;
 import org.mskcc.util.email.EmailNotificator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -137,7 +143,7 @@ public class ManifestFilesGeneratorTestConfiguration extends AppConfiguration {
     @Bean
     public MappingFilePrinter mappingFilePrinter() {
         return new MappingFilePrinter(pairednessValidPredicate, pairednessResolver, observerManager(),
-                fastqPathsRetriever());
+                fastqPathsRetriever(), new PooledNormalPredicate());
     }
 
     @Override

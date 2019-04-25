@@ -425,6 +425,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private void processSample(KickoffRequest kickoffRequest, DataRecord dataRecordSample) throws Exception {
         String cmoSampleId = dataRecordSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
         String igoSampleId = dataRecordSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
+        Map<String, Object> sampleFields = dataRecordSample.getFields(user);
 
         // Added because we were getting samples that had the same name as a sequenced sample, but then it was failed
         // so it shouldn't be used (as per Aaron).
@@ -443,6 +444,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                 addSampleQcInformation(kickoffRequest, sample);
                 addPostAnalysisQc(dataRecordSample, sample);
             }
+
+            sample.setFields(sampleFields);
 
             setIsTransfer(dataRecordSample, sample);
 

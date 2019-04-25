@@ -16,6 +16,7 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.fast.sampleset.SampleSetIntegrationTest;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.lims.SampleInfo;
+import org.mskcc.kickoff.poolednormals.PooledNormalPredicate;
 import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.resolver.PairednessResolver;
@@ -105,7 +106,8 @@ public class MappingFilePrinterTest {
         openConnection();
 
         fastqPathsRetriever = new FileSystemFastqPathsRetriever(String.format("%s/hiseq/FASTQ/", fastq_path));
-        mappingFilePrinter = new MappingFilePrinter(new PairednessValidPredicate(), new PairednessResolver(), mock(ObserverManager.class), fastqPathsRetriever);
+        mappingFilePrinter = new MappingFilePrinter(new PairednessValidPredicate(), new PairednessResolver(), mock
+                (ObserverManager.class), fastqPathsRetriever, new PooledNormalPredicate());
     }
 
     @After public void tearDown() throws Exception {
