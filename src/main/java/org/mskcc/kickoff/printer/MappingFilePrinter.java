@@ -134,7 +134,7 @@ public class MappingFilePrinter extends FilePrinter {
 
                     for (String samplePattern : getSamplePatterns(sample, cmoSampleId)) {
                         for (String path : getPaths(request, sample, runIdFull, samplePattern)) {
-                            if (isPooledNormal(sampleId) && !fastqExist(path, request.getBaitVersion()))
+                            if (isPooledNormal(sampleId, cmoSampleId) && !fastqExist(path, request.getBaitVersion()))
                                 continue;
 
                             Pairedness pairedness = getPairedness(path);
@@ -272,8 +272,8 @@ public class MappingFilePrinter extends FilePrinter {
                 , mappingFileName);
     }
 
-    private boolean isPooledNormal(String sampleId) {
-        return pooledNormalPredicate.test(sampleId);
+    private boolean isPooledNormal(String sampleId, String cmoSampleId) {
+        return pooledNormalPredicate.test(sampleId, cmoSampleId);
     }
 
     private boolean fastqExist(String path, String baitVersion) {

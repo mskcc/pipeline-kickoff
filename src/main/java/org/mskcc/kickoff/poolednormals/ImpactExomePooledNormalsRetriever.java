@@ -92,8 +92,9 @@ public class ImpactExomePooledNormalsRetriever implements PooledNormalsRetriever
 
     private boolean isPooledNormal(User apiUser, DataRecord parentSample) throws NotFound, RemoteException {
         String sampleId = parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
+        String otherSampleId = parentSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
 
-        return pooledNormalPredicate.test(sampleId);
+        return pooledNormalPredicate.test(sampleId, otherSampleId);
     }
 
     private boolean isSampleRun(DataRecord potentialPooledNormalQc, User apiUser, KickoffRequest kickoffRequest)
