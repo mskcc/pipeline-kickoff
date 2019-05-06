@@ -135,6 +135,8 @@ public class JiraResource extends ExternalResource {
         SearchRestClient searchClient = restClient.getSearchClient();
         String jql = String.format("project" +
                 " = \"%s\" AND summary ~ \"%s\"", jiraRoslinProjectName, summary);
+
+        LOGGER.info(String.format("Getting jira issues using url %s", jql));
         Promise<SearchResult> searchResultPromise = searchClient.searchJql(jql);
 
         SearchResult searchResult = searchResultPromise.claim();

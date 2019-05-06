@@ -122,10 +122,10 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
     }
 
     private List<JiraUser> getPmJiraUsers() {
-        LOGGER.info(String.format("Getting all users for jira group %s", pmGroupName));
-
         String getAllPmUsersUrl = String.format("%s/%s/group/member?groupname=%s", jiraUrl, jiraRestPath,
                 pmGroupName);
+
+        LOGGER.info(String.format("Getting all users for jira group %s using url: %s", pmGroupName, getAllPmUsersUrl));
 
         JiraGroup jiraGroup = restTemplate.getForObject(getAllPmUsersUrl, JiraGroup.class);
 

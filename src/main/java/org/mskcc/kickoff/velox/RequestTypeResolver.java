@@ -30,6 +30,9 @@ public class RequestTypeResolver {
                 kickoffRequest.getStrands().add(Strand.NONE);
                 requestType = RequestType.RNASEQ;
             }
+
+            kickoffRequest.setRequestType(requestType);	    
+     
             if (kickoffRequest.getRequestType() == null) {
                 if (kickoffRequest.isInnovation()) {
                     logWarning("05500 project. This should be pulled as an impact.");
