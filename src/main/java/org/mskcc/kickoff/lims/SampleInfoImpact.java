@@ -135,6 +135,8 @@ public class SampleInfoImpact extends SampleInfo {
         
         DEV_LOGGER.info(String.format("All valid runs: %s", allRunIds));
 
+	DEV_LOGGER.info(String.format("All valid runs: %s", allRunIds));
+
         DEV_LOGGER.info(String.format("Looking at sample: %s", this.IGO_ID));
 
         List<String> goodRunIds = new ArrayList<>();
@@ -174,9 +176,8 @@ public class SampleInfoImpact extends SampleInfo {
                 String runPath = (String) qcRunID.get(i);
                 String[] pathList = runPath.split("/");
                 String runName = pathList[(pathList.length - 1)];
-                String pattern = "^([a-zA-Z]+_[\\d]{4})([a-zA-Z\\d\\-_]+)";
+                String pattern = "^([a-zA-Z0-9]+_[\\d]{4})([a-zA-Z\\d\\-_]+)";
                 String shortRunID = runName.replaceAll(pattern, "$1");
-                
                 DEV_LOGGER.info(String.format("Short run id: %s", shortRunID));
 
                 if (allRunIds.contains(shortRunID)) {
