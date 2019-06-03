@@ -166,10 +166,11 @@ public class SampleInfo {
         }
 
         // Include RUN ID includes all runs that passed. Exclude RUN ID is just a place holder as of now.
-        Set<Run> runs = sample.getRuns(s -> s.getSampleLevelQcStatus() == QcStatus.PASSED).values().stream().collect(Collectors.toSet());
+        Set<Run> runs = sample.getRuns(r -> r.getSampleLevelQcStatus() == QcStatus.PASSED).values().stream().collect(Collectors.toSet());
         TreeSet<Run> sortedRuns = new TreeSet<>(Comparator.comparing(r -> r.getId()));
         sortedRuns.addAll(runs);
 
+		DEV_LOGGER.info(String.format("Sample %s all runs %s, passed qc runs: %s", sample.getIgoId(), sample.getRuns(), sortedRuns));
         this.INCLUDE_RUN_ID = kickoffRequest.getIncludeRunId(sortedRuns);
     }
 

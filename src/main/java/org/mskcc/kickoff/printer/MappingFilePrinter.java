@@ -75,12 +75,11 @@ public class MappingFilePrinter extends FilePrinter {
     private String getMappings(KickoffRequest request) {
         try {
             Map<String, String> sampleRenamesAndSwaps = SampleInfo.getSampleRenames();
-            HashSet<String> runsWithMultipleFolders = new HashSet<>();
 
             Set<Pairedness> pairednesses = new HashSet<>();
             StringBuilder mappingFileContents = new StringBuilder();
 
-            printIgoSamples(request, sampleRenamesAndSwaps, runsWithMultipleFolders, pairednesses, mappingFileContents);
+            printIgoSamples(request, sampleRenamesAndSwaps, pairednesses, mappingFileContents);
             printExternalSamples(request, mappingFileContents);
 
             validatePairedness(pairednesses, request.getId());
@@ -101,9 +100,9 @@ public class MappingFilePrinter extends FilePrinter {
         }
     }
 
-    private void printIgoSamples(KickoffRequest request, Map<String, String> sampleRenamesAndSwaps, HashSet<String>
-            runsWithMultipleFolders, Set<Pairedness> pairednesses, StringBuilder mappingFileContents) throws
-            IOException, InterruptedException {
+    private void printIgoSamples(KickoffRequest request, Map<String, String> sampleRenamesAndSwaps,
+                                 Set<Pairedness> pairednesses, StringBuilder mappingFileContents) throws
+            IOException {
 
         Set<String> processedSamplesRuns = new HashSet<>();
 
@@ -115,25 +114,23 @@ public class MappingFilePrinter extends FilePrinter {
                     String sampleId = sample.getIgoId();
                     final String runId = sampleRun.getRunId();
 
-                    Optional<String> optionalRunIDFull = fastqPathsRetriever.getRunId(request, runsWithMultipleFolders,
-                            singleRequest, runId);
-                    if (!optionalRunIDFull.isPresent()) continue;
-
-                    String runIdFull = optionalRunIDFull.get();
-
-                    String sampleIDrunIdFull = cmoSampleId + runIdFull;
-                    if (processedSamplesRuns.contains(sampleIDrunIdFull)) {
-                        String message = String.format("Skipping Sequencing run [%s] for igo sample [%s]: already " +
-                                "included.", runIdFull, cmoSampleId);
-                        logWarning(message);
-                        continue;
-                    }
-
-                    processedSamplesRuns.add(sampleIDrunIdFull);
-                    request.addRunID(runIdFull);
-
                     for (String samplePattern : getSamplePatterns(sample, cmoSampleId)) {
-                        for (String path : getPaths(request, sample, runIdFull, samplePattern)) {
+                        try {
+                            String path = getLatestFastqPath(request, sample, runId, samplePattern);
+                            String runIdFull = getRunIdFull(path);
+                            String sampleIDrunIdFull = cmoSampleId + runIdFull;
+
+                            if (processedSamplesRuns.contains(sampleIDrunIdFull)) {
+                                String message = String.format("Skipping Sequencing run [%s] for igo sample [%s]: " +
+                                        "already " +
+                                        "included.", runIdFull, cmoSampleId);
+                                logWarning(message);
+                                continue;
+                            }
+
+                            processedSamplesRuns.add(sampleIDrunIdFull);
+                            request.addRunID(runIdFull);
+
                             if (isPooledNormal(sampleId, cmoSampleId) && !fastqExist(path, request.getBaitVersion()))
                                 continue;
 
@@ -146,6 +143,8 @@ public class MappingFilePrinter extends FilePrinter {
                                     cmoSampleId));
                             mappingFileContents.append(String.format("_1\t%s\t%s\t%s\t%s\n", sampleName, runIdFull,
                                     path, pairedness));
+                        } catch (Exception e) {
+                            DEV_LOGGER.warn(e.getMessage(), e);
                         }
                     }
                 }
@@ -160,6 +159,23 @@ public class MappingFilePrinter extends FilePrinter {
                     .SEQUENCING_FOLDER_NOT_FOUND));
             throw e;
         }
+    }
+
+    /**
+     * @param fullFastqPath - in format <PATH>/<RUN_ID>/<REQUEST_ID>/<SAMPLE_ID>
+     * @return
+     */
+    private String getRunIdFull(String fullFastqPath) {
+        String[] pathParts = fullFastqPath.split("/");
+
+        if (pathParts.length >= 3) {
+            String fullRunId = pathParts[pathParts.length - 3];
+            DEV_LOGGER.info(String.format("Full path: %s, run id: %s", fullFastqPath, fullRunId));
+
+            return fullRunId;
+        } else
+            throw new IllegalArgumentException(String.format("Wrong format of FASTQ path: %s. Expected format " +
+                    "**/<RUN_ID>/<REQUEST_ID>/<SAMPLE_ID>", fullFastqPath));
     }
 
     private void validatePairedness(Set<Pairedness> pairednesses, String reqId) {
@@ -187,17 +203,17 @@ public class MappingFilePrinter extends FilePrinter {
         }
     }
 
-    private List<String> getPaths(KickoffRequest request, Sample sample, String runIDFull, String
+    private String getLatestFastqPath(KickoffRequest request, Sample sample, String runId, String
             samplePattern) throws IOException, InterruptedException {
-        List<String> fastqPaths = Collections.emptyList();
+        String fastqPath = "";
 
         //@TODO move to another place, manifest file depends on new mapping so it has to be done before printing any
         try {
-            fastqPaths = fastqPathsRetriever.retrieve(request, sample, runIDFull, samplePattern);
+            fastqPath = fastqPathsRetriever.retrieve(request, sample, runId, samplePattern);
             request.setNewMappingScheme(1);
         } catch (FileSystemFastqPathsRetriever.FastqDirNotFound e) {
             String message = String.format("Error while trying to find fastq for %s it is probably " +
-                    "mispelled, or has an alias.", sample);
+                    "misspelled, or has an alias.", sample);
             Utils.setExitLater(true);
             PM_LOGGER.log(Level.ERROR, message);
             DEV_LOGGER.log(Level.ERROR, e.getMessage());
@@ -208,7 +224,7 @@ public class MappingFilePrinter extends FilePrinter {
             request.setMappingIssue(true);
         }
 
-        return fastqPaths;
+        return fastqPath;
     }
 
     private void validateSampleSheetExists(KickoffRequest request, Sample sample, String runIDFull, String path) {
@@ -236,6 +252,8 @@ public class MappingFilePrinter extends FilePrinter {
             for (String runId : sample.getValidRunIds()) {
                 sampleRuns.add(new SampleRun(sample, runId));
             }
+            
+            DEV_LOGGER.info(String.format("Sample %s valid runs: %s", sample.getIgoId(), sample.getValidRunIds()));
         }
         return sampleRuns;
     }
@@ -314,45 +332,9 @@ public class MappingFilePrinter extends FilePrinter {
         }
     }
 
-    class SampleRun {
-        private final Sample sample;
-        private final String runId;
-
-        SampleRun(Sample sample, String runId) {
-            this.sample = sample;
-            this.runId = runId;
-        }
-
-        public Sample getSample() {
-            return sample;
-        }
-
-        public String getRunId() {
-            return runId;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            SampleRun sampleRun = (SampleRun) o;
-
-            return sample.getCmoSampleId().equals(sampleRun.sample.getCmoSampleId()) && runId.equals(sampleRun.runId);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = sample.getCmoSampleId().hashCode();
-            result = 31 * result + runId.hashCode();
-            return result;
-        }
-    }
-
     private class NoSampleMappingExistException extends RuntimeException {
         public NoSampleMappingExistException(String message) {
             super(message);
         }
     }
-
 }
