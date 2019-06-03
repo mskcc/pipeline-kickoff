@@ -81,7 +81,7 @@ public class MappingFilePrinterTest {
     @Parameterized.Parameters(name = "Testing mapping file content for projectId: {0}")
     public static Iterable<String> params() throws IOException {
         loadProperty();
-        return Lists.newArrayList("06302_D", "04430_AI", "set_07737_C", "set_09049_D_1");
+        return Lists.newArrayList("06302_D", "04430_AI", "set_93017_Z", "set_06208_BM");
     }
 
     private static void loadProperty() throws IOException {
