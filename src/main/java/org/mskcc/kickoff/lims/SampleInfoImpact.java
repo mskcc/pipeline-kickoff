@@ -132,6 +132,8 @@ public class SampleInfoImpact extends SampleInfo {
         for (Run run : runs) {
             allRunIds.add(run.getId());
         }
+        
+        DEV_LOGGER.info(String.format("All valid runs: %s", allRunIds));
 
         DEV_LOGGER.info(String.format("Looking at sample: %s", this.IGO_ID));
 
@@ -160,9 +162,13 @@ public class SampleInfoImpact extends SampleInfo {
             logWarning(String.format("No sample specific qc for ctrl %s AKA %s.", this.CMO_SAMPLE_ID, this.IGO_ID));
             return null;
         }
+        
+        DEV_LOGGER.info(String.format("%d Qc records found", qcRecs.size()));
 
         // Go through each one, if it is 1) not "Failed" and 2) in current list of allRunIds
         for (int i = 0; i < qcRecs.size(); i++) {
+            DEV_LOGGER.info(String.format("Qc record: %s", qcRecs.get(i)));
+
             String qcVal = (String) qcValue.get(i);
             if (!qcVal.startsWith("Failed")) {
                 String runPath = (String) qcRunID.get(i);
@@ -170,6 +176,9 @@ public class SampleInfoImpact extends SampleInfo {
                 String runName = pathList[(pathList.length - 1)];
                 String pattern = "^([a-zA-Z]+_[\\d]{4})([a-zA-Z\\d\\-_]+)";
                 String shortRunID = runName.replaceAll(pattern, "$1");
+                
+                DEV_LOGGER.info(String.format("Short run id: %s", shortRunID));
+
                 if (allRunIds.contains(shortRunID)) {
                     goodRunIds.add(shortRunID);
                 }

@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class NimblegenResolver {
@@ -72,13 +73,15 @@ public class NimblegenResolver {
         }
 
         if (chosenRec == null)
-            chosenRec = getLastValidRecord(nimbProtocols, validities);
+            chosenRec = getLastValidRecord(nimbProtocols, validities, igoId);
 
         return chosenRec;
     }
 
-    private DataRecord getLastValidRecord(List<DataRecord> nimbProtocols, List<Object> validities) {
-        for (int i = 0; i < nimbProtocols.size(); i++) {
+    private DataRecord getLastValidRecord(List<DataRecord> nimbProtocols, List<Object> validities, String sampleId) {
+        DEV_LOGGER.info(String.format("Nimblegen protocol records found for sample %s: %s", sampleId, nimbProtocols.stream().map(n -> n.getRecordId()).collect(Collectors.toList())));
+	
+	for (int i = 0; i < nimbProtocols.size(); i++) {
             if (getIsValid(validities, i))
                 return nimbProtocols.get(i);
         }
