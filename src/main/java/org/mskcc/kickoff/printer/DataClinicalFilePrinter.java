@@ -23,10 +23,14 @@ public class DataClinicalFilePrinter extends ClinicalPatientFilePrinter {
         headerToFieldName.put("SAMPLE_ID", "CORRECTED_CMO_ID");
         headerToFieldName.put("PATIENT_ID", "CMO_PATIENT_ID");
         headerToFieldName.put("COLLAB_ID", "INVESTIGATOR_SAMPLE_ID");
-        headerToFieldName.put("SAMPLE_TYPE", "SAMPLE_TYPE");
+
+        // Fixed swap of Sample class and Sample Type according to https://github
+        // .com/mskcc/pipeline-kickoff/issues/101 only for data clinical file
+        headerToFieldName.put("SAMPLE_TYPE", "SAMPLE_CLASS");
+        headerToFieldName.put("SAMPLE_CLASS", "SAMPLE_TYPE");
+
         headerToFieldName.put("GENE_PANEL", "BAIT_VERSION");
         headerToFieldName.put("ONCOTREE_CODE", "ONCOTREE_CODE");
-        headerToFieldName.put("SAMPLE_CLASS", "SAMPLE_CLASS");
         headerToFieldName.put("SPECIMEN_PRESERVATION_TYPE", "SPECIMEN_PRESERVATION_TYPE");
         headerToFieldName.put("SEX", "SEX");
         headerToFieldName.put("TISSUE_SITE", "TISSUE_SITE");
