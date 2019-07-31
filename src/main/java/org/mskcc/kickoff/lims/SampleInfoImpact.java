@@ -12,6 +12,7 @@ import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.retriever.NimblegenResolver;
+import org.mskcc.kickoff.retriever.RecordNimblegenResolver;
 import org.mskcc.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
@@ -37,6 +38,7 @@ public class SampleInfoImpact extends SampleInfo {
     // Consensus BaitSet
     private static String ConsensusBaitSet;
     private static String ConsensusSpikeIn;
+    private final NimblegenResolver nimblegenResolver;
     protected LocalDateTime kapaProtocolStartDate;
     String LIBRARY_INPUT;// = "#EMPTY";
     String LIBRARY_YIELD; // = "#EMPTY";
@@ -51,7 +53,6 @@ public class SampleInfoImpact extends SampleInfo {
     private String CAPTURE_CONCENTRATION; // = "#EMPTY";
     private String CAPTURE_NAME; // = "#EMPTY";
     private String SPIKE_IN_GENES; // = "na";
-    private final NimblegenResolver nimblegenResolver;
 
     /**
      * This is the method that CreateManifestSheet calls.<br>First it looks at parent class's method, then uses new
@@ -72,7 +73,9 @@ public class SampleInfoImpact extends SampleInfo {
         this.kapaProtocolStartDate = kapaProtocolStartDate;
         this.nimblegenResolver = nimblegenResolver;
 
-        getSpreadOutInfo(apiUser, drm, sampleRecord, kickoffRequest, sample);
+        if (nimblegenResolver.shouldRetrieve())
+            getSpreadOutInfo(apiUser, drm, sampleRecord, kickoffRequest, sample);
+
         if (sample.isPooledNormal()) {
             addPooledNormalDefaults(sampleRecord, apiUser, drm, kickoffRequest);
         }
@@ -132,10 +135,10 @@ public class SampleInfoImpact extends SampleInfo {
         for (Run run : runs) {
             allRunIds.add(run.getId());
         }
-        
+
         DEV_LOGGER.info(String.format("All valid runs: %s", allRunIds));
 
-	DEV_LOGGER.info(String.format("All valid runs: %s", allRunIds));
+        DEV_LOGGER.info(String.format("All valid runs: %s", allRunIds));
 
         DEV_LOGGER.info(String.format("Looking at sample: %s", this.IGO_ID));
 
@@ -164,7 +167,7 @@ public class SampleInfoImpact extends SampleInfo {
             logWarning(String.format("No sample specific qc for ctrl %s AKA %s.", this.CMO_SAMPLE_ID, this.IGO_ID));
             return null;
         }
-        
+
         DEV_LOGGER.info(String.format("%d Qc records found", qcRecs.size()));
 
         // Go through each one, if it is 1) not "Failed" and 2) in current list of allRunIds
@@ -433,12 +436,14 @@ public class SampleInfoImpact extends SampleInfo {
                 }
 
                 String RunID = runParts[0] + "_" + runParts[1];
-                if (!kickoffRequest.getSamples().containsKey(this.IGO_ID)) {
+                if (!kickoffRequest.getSamples().containsKey(this.IGO_ID) && !kickoffRequest.getSamplesForProjects()
+                        .containsKey(IGO_ID)) {
                     logError("The sample ID I am using to search for runs is not the correct sample ID.");
                     return;
                 }
                 //@TODO keep sample as class's field to use throughout this class
-                if (kickoffRequest.getSample(this.IGO_ID).containsRun(RunID)) {
+                if ((kickoffRequest.getSamples().containsKey(this.IGO_ID) && kickoffRequest.getSample(this.IGO_ID)
+                        .containsRun(RunID)) || kickoffRequest.getSamplesForProjects().get(IGO_ID).containsRun(RunID)) {
                     // When I find a qc that matches the run ID, I can exit this for loop. I only need one because
                     // they should all have (the same) barcode upstream
                     qcToUse = qcRecord;
@@ -890,11 +895,11 @@ public class SampleInfoImpact extends SampleInfo {
                 ConsensusBaitSet = this.CAPTURE_BAIT_SET;
                 ConsensusSpikeIn = this.SPIKE_IN_GENES;
             }
-        } catch (NimblegenResolver.NoNimblegenHybProtocolFound e) {
+        } catch (RecordNimblegenResolver.NoNimblegenHybProtocolFound e) {
             logError("No NoNymbHybProtocol DataRecord found for " + SampleInfoImpact.this.CMO_SAMPLE_ID + "(" +
                     SampleInfoImpact.this.IGO_ID + "). The " +
                     "baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ");
-        } catch (NimblegenResolver.NoValidNimblegenHybrFound e) {
+        } catch (RecordNimblegenResolver.NoValidNimblegenHybrFound e) {
             logError(String.format("No VALID NimblgenHybridizationProtocol DataRecord found for %s(%s). %s The " +
                             "baitset/spikin, Capture Name, Capture Input, Library Yield will be unavailable. ",
                     SampleInfoImpact.this

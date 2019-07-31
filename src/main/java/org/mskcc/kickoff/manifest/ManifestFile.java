@@ -12,8 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public enum ManifestFile {
-    MAPPING("Mapping file"),
+    // Pairing file needs to be generated before mapping and grouping because normals from sibling requests smart
+    // paired with tumors need to be added to request object in order to show up in those files
     PAIRING("Pairing file"),
+    MAPPING("Mapping file"),
     SAMPLE_KEY("Sample Key file"),
     PATIENT("Patient file"),
     CLINICAL("Clinical file"),
