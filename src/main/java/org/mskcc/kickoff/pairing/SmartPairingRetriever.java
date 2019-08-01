@@ -6,6 +6,7 @@ import org.mskcc.domain.Patient;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
+import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -84,9 +85,11 @@ public class SmartPairingRetriever {
     }
 
     private List<Sample> getNormalSamplesForProjectForPatient(KickoffRequest request, Patient patient) {
+        String patientFieldKey = RequestDataPropagator.getPatientFieldKey(request);
         return request.getValidNormalsForProject().values()
                 .stream()
-                .filter(s -> Objects.equals(s.getCmoPatientId(), patient.getPatientId()))
+                .filter(s -> Objects.equals(s.getCmoSampleInfo().getFields().getOrDefault(patientFieldKey, ""),
+                        patient.getPatientId()))
                 .collect(Collectors.toList());
     }
 
@@ -137,12 +140,20 @@ public class SmartPairingRetriever {
                     .findFirst().get();
             Patient patient = request.getPatients().get(normal.getPatientId());
             if (patient == null)
+                patient = request.getPatients().get(normal.getCmoSampleInfo().getCmoPatientId());
+            if (patient == null)
                 patient = request.getPatients().get(normal.getCmoPatientId());
 
             request.addUsedNormalFromProject(normal);
 
-            patient.addSample(normal);
-            DEV_LOGGER.debug(String.format("Normal %s added to patient: %s", normal, patient.getPatientId()));
+            if (patient == null)
+                DEV_LOGGER.warn(String.format("Could not find patient with id %s (%s, %s) to add sample %s to it",
+                        normal.getPatientId(), normal.getCmoPatientId(), normal.getCmoSampleInfo().getCmoPatientId(),
+                        normal));
+            else {
+                patient.addSample(normal);
+                DEV_LOGGER.debug(String.format("Normal %s added to patient: %s", normal, patient.getPatientId()));
+            }
         }
     }
 

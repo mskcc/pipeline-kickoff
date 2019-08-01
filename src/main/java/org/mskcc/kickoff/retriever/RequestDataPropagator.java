@@ -42,6 +42,34 @@ public class RequestDataPropagator implements DataPropagator {
         this.baitSetCompatibilityPredicate = baitSetCompatibilityPredicate;
     }
 
+    public static String getPatientFieldKey(KickoffRequest request) {
+
+        String pm = request.getProjectInfo().get(Constants.ProjectInfo.PROJECT_MANAGER);
+        if (!Utils.isCmoSideProject(pm)) {
+            return CmoSampleInfo.CMO_PATIENT_ID;
+        }
+
+        Map<String, Sample> sampleMap = request.getValidNonPooledNormalSamples();
+
+        boolean cmoPatientIdBlank = sampleMap.values().stream()
+                .map(s -> s.getCmoSampleInfo().getCmoPatientId())
+                .anyMatch(s -> StringUtils.isBlank(s) || Constants.EMPTY.equals(s));
+
+        boolean investPatientIdBlank = sampleMap.values().stream()
+                .map(s -> s.getCmoSampleInfo().getPatientId())
+                .anyMatch(s -> StringUtils.isBlank(s)
+                        || Constants.EMPTY.equals(s)
+                        || s.equals(Constants.MRN_REDACTED));
+
+        if (!cmoPatientIdBlank) {
+            return CmoSampleInfo.CMO_PATIENT_ID;
+        } else if (!investPatientIdBlank) {
+            return CmoSampleInfo.PATIENT_ID;
+        } else {
+            return Constants.NA;
+        }
+    }
+
     @Override
     public void propagateRequestData(List<KickoffRequest> kickoffRequests) {
         for (KickoffRequest request : kickoffRequests) {
@@ -188,34 +216,6 @@ public class RequestDataPropagator implements DataPropagator {
                 return;
             }
             patient.addSample(sample);
-        }
-    }
-
-    private String getPatientFieldKey(KickoffRequest request) {
-
-        String pm = request.getProjectInfo().get(Constants.ProjectInfo.PROJECT_MANAGER);
-        if (!Utils.isCmoSideProject(pm)) {
-            return CmoSampleInfo.CMO_PATIENT_ID;
-        }
-
-        Map<String, Sample> sampleMap = request.getValidNonPooledNormalSamples();
-
-        boolean cmoPatientIdBlank = sampleMap.values().stream()
-                .map(s -> s.getCmoSampleInfo().getCmoPatientId())
-                .anyMatch(s -> StringUtils.isBlank(s) || Constants.EMPTY.equals(s));
-
-        boolean investPatientIdBlank = sampleMap.values().stream()
-                .map(s -> s.getCmoSampleInfo().getPatientId())
-                .anyMatch(s -> StringUtils.isBlank(s)
-                        || Constants.EMPTY.equals(s)
-                        || s.equals(Constants.MRN_REDACTED));
-
-        if (!cmoPatientIdBlank) {
-            return CmoSampleInfo.CMO_PATIENT_ID;
-        } else if (!investPatientIdBlank) {
-            return CmoSampleInfo.PATIENT_ID;
-        } else {
-            return Constants.NA;
         }
     }
 
