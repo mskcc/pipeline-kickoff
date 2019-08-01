@@ -37,7 +37,6 @@ public class FromJiraPmJiraUserRetrieverTest {
     private String jiraRestPath;
 
     // will need change later if PM left or removed from PM group at jira
-    private String defaultCmoPmKey = "bourquec";
     private String defaultIgoPmKey = "cobbsc";
     private String currentValidIgoName = "Selcuklu, S. Duygu";
 
@@ -58,20 +57,26 @@ public class FromJiraPmJiraUserRetrieverTest {
     }
 
     @Test
-    public void whenPMangerNameIsValidAndIsInNotIgoPmGroup_shouldReturnDefaultCmoPM() {
+    public void whenPMangerNameIsValidAndIsNotInIgoPmGroup_shouldReturnDefaultPM() {
         JiraUser assignee = pmJiraUserRetriever.retrieve("Liu, Feng");
-        assertThat(assignee.getKey(), is(defaultCmoPmKey));
+        assertThat(assignee.getKey(), is(defaultIgoPmKey));
     }
 
     @Test
-    public void whenPMangerNameIsInValid_shouldReturnDefaultCmoPM() {
+    public void whenPMangerNameIsInValid_shouldReturnDefaultPM() {
         JiraUser assignee = pmJiraUserRetriever.retrieve("");
-        assertThat(assignee.getKey(), is(defaultCmoPmKey));
+        assertThat(assignee.getKey(), is(defaultIgoPmKey));
     }
 
     @Test
-    public void whenCmoSideProject_shouldReturnDefaultIgoPm() {
+    public void whenNoPM_shouldReturnDefaultIgoPm() {
         JiraUser assignee = pmJiraUserRetriever.retrieve(Constants.NO_PM);
+        assertThat(assignee.getKey(), is(defaultIgoPmKey));
+    }
+
+    @Test
+    public void whenPMisNA_shouldReturnDefaultIgoPm() {
+        JiraUser assignee = pmJiraUserRetriever.retrieve(Constants.NA);
         assertThat(assignee.getKey(), is(defaultIgoPmKey));
     }
 
