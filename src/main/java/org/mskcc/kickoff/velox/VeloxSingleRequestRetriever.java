@@ -97,7 +97,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             processPlates(kickoffRequest, dataRecordRequest);
             processSamples(kickoffRequest, dataRecordRequest, sampleIds);
             addPoolRunsToSamples(kickoffRequest);
- 	    addSeqNames(kickoffRequest);
+            addSeqNames(kickoffRequest);
             addSampleInfo(kickoffRequest);
             processPooledNormals(kickoffRequest, dataRecordRequest);
             kickoffRequest.setProjectInfo(getProjectInfo(kickoffRequest));
@@ -107,10 +107,10 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         throw new RuntimeException(String.format("Request: %s doesn't exist", requestId));
     }
 
-    private void addSeqNames(KickoffRequest kickoffRequest) throws Exception{
-	for(Sample sample : kickoffRequest.getSamples().values()) {
-		setSeqName(sample);
-	}
+    private void addSeqNames(KickoffRequest kickoffRequest) throws Exception {
+        for (Sample sample : kickoffRequest.getSamples().values()) {
+            setSeqName(sample);
+        }
     }
 
     private void setRequestType(KickoffRequest kickoffRequest) {
@@ -296,7 +296,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     sample.setIsTumor(false);
                     Set<Run> pooledNormalRuns = getPooledNormalRuns(pooledNormalToRuns.getValue(), kickoffRequest);
                     DEV_LOGGER.info(String.format("Pooled normal runs: %s", pooledNormalRuns));
-                    
+
                     sample.addRuns(pooledNormalRuns);
 
                     Map<String, String> sampleInfo = getSampleInfoMap(pooledNormalRecord, sample, kickoffRequest);
@@ -339,7 +339,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     List<String> runs = Arrays.asList(sampleInfo.get(Constants.INCLUDE_RUN_ID).split(";"));
                     Set<Run> runSet = runs.stream().map((Run::new)).filter(r -> !StringUtils.isEmpty(r.getId()))
                             .collect(Collectors.toSet());
-                    
+
                     DEV_LOGGER.info(String.format("Runs to be added to sample %s: %s", sample.getIgoId(), runSet));
                     sample.addRuns(runSet);
 
@@ -461,15 +461,16 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             setIsTransfer(dataRecordSample, sample);
 
             sample2DataRecordMap.put(sample.getIgoId(), dataRecordSample);
-            DEV_LOGGER.info(String.format("Sample %s saved to cache with record %s", sample.getIgoId(), dataRecordSample.getRecordId()));
+            DEV_LOGGER.info(String.format("Sample %s saved to cache with record %s", sample.getIgoId(),
+                    dataRecordSample.getRecordId()));
             //setSeqName(sample);
         } else {
             DEV_LOGGER.warn(String.format("Skipping %s because the sample is failed: %s", cmoSampleId, status));
         }
     }
 
-    private void setSeqName(Sample sample) throws Exception {	
-		sample.getValidRuns().stream()
+    private void setSeqName(Sample sample) throws Exception {
+        sample.getValidRuns().stream()
                 .findFirst()
                 .ifPresent(r -> {
                     String seqName = getSeqName(r.getId());
@@ -568,9 +569,9 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         Set<Pool> poolsWithCurrentSample = kickoffRequest.getPools().values().stream().filter(p -> p.getSamples()
                 .contains(sample)).collect(Collectors.toSet());
         DEV_LOGGER.info(String.format("Pools with sample %s: %s", sample.getIgoId(), poolsWithCurrentSample));
-        
+
         for (Pool pool : poolsWithCurrentSample) {
-        	DEV_LOGGER.info(String.format("Pool %s runs: %s", pool.getIgoId(), pool.getRuns().values()));
+            DEV_LOGGER.info(String.format("Pool %s runs: %s", pool.getIgoId(), pool.getRuns().values()));
             for (Run run : pool.getRuns().values()) {
                 if (!sample.getRuns().values().contains(run))
                     sample.addRun(run);

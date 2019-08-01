@@ -121,6 +121,7 @@ public class Constants {
         public static final String DESIGN_FILE = "DesignFile";
         public static final String FINAL_PROJECT_TITLE = "Final_Project_Title";
         public static final String IGO_PROJECT_ID = "IGO_Project_ID";
+        public static final String INVESTIGATOR_EMAIL = "Investigator_email";
         public static final String LAB_HEAD = "Lab_Head";
         public static final String LAB_HEAD_E_MAIL = "Lab_Head_E-mail";
         public static final String NUMBER_OF_SAMPLES = "NumberOfSamples";

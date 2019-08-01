@@ -1,7 +1,6 @@
 package org.mskcc.kickoff.printer;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Sets;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,9 +12,7 @@ import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 public class RequestFilePrinterTest {
 
@@ -32,15 +29,16 @@ public class RequestFilePrinterTest {
     }
 
     @Test
-    public void whenNOPM_shouldRetrievePIFromLabHead() {
+    public void whenPiEmailIsEmpty_shouldRetrievePIFromLabHead() {
         Map<String, String> projectInfo = ImmutableMap.<String, String>builder()
-                .put(Constants.ProjectInfo.PROJECT_MANAGER, Constants.NO_PM)
-                .put(Constants.ProjectInfo.LAB_HEAD, "head")
+//                .put(Constants.ProjectInfo.PROJECT_MANAGER, Constants.NO_PM)
+                .put(Constants.ProjectInfo.INVESTIGATOR_EMAIL, "inv@mail.com")
+                .put(Constants.ProjectInfo.LAB_HEAD, "labhead")
                 .put(Constants.ProjectInfo.LAB_HEAD_E_MAIL, "head@mail.com")
                 .put(Constants.ProjectInfo.REQUESTOR_E_MAIL, "req@mail.com")
                 .put(Constants.ProjectInfo.PI_FIRSTNAME, "PIF")
                 .put(Constants.ProjectInfo.PI_LASTNAME, "PIL")
-                .put(Constants.ProjectInfo.PI_EMAIL, "pi@mail.com")
+                .put(Constants.ProjectInfo.PI_EMAIL, "")
                 .put(Constants.ProjectInfo.CONTACT_NAME, "con@mail.com")
                 .build();
 
@@ -49,13 +47,16 @@ public class RequestFilePrinterTest {
         Map<String, String> act = ReflectionTestUtils.invokeMethod(requestFilePrinter,
                 "constructFieldValues", request);
         Assertions.assertThat(act).containsEntry("PI_E-mail", "head@mail.com");
-        Assertions.assertThat(act).containsEntry("Investigator_E-mail", "req@mail.com");
+        Assertions.assertThat(act).containsEntry("PI_Name", "labhead");
+        Assertions.assertThat(act).containsEntry("PI", "head");
+        Assertions.assertThat(act).containsEntry("Investigator_E-mail", "inv@mail.com");
     }
 
     @Test
-    public void whenPM_shouldRetrievePIFromPIemail() {
+    public void whenPiEmailIsNotEmpty_shouldRetrievePIFromPIemail() {
         Map<String, String> projectInfo = ImmutableMap.<String, String>builder()
                 .put(Constants.ProjectInfo.PROJECT_MANAGER, "f l")
+                .put(Constants.ProjectInfo.INVESTIGATOR_EMAIL, "inv@mail.com")
                 .put(Constants.ProjectInfo.LAB_HEAD, "head")
                 .put(Constants.ProjectInfo.LAB_HEAD_E_MAIL, "head@mail.com")
                 .put(Constants.ProjectInfo.REQUESTOR_E_MAIL, "req@mail.com")
@@ -70,7 +71,9 @@ public class RequestFilePrinterTest {
         Map<String, String> act = ReflectionTestUtils.invokeMethod(requestFilePrinter,
                 "constructFieldValues", request);
         Assertions.assertThat(act).containsEntry("PI_E-mail", "pi@mail.com");
-        Assertions.assertThat(act).containsEntry("Investigator_E-mail", "con@mail.com");
+        Assertions.assertThat(act).containsEntry("PI_Name", "PIL, PIF");
+        Assertions.assertThat(act).containsEntry("PI", "head");
+        Assertions.assertThat(act).containsEntry("Investigator_E-mail", "inv@mail.com");
     }
 
 }
