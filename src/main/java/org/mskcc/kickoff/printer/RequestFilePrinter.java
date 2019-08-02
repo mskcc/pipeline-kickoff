@@ -8,7 +8,6 @@ import org.mskcc.domain.RequestType;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.manifest.ManifestFile;
-import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
@@ -35,7 +34,7 @@ public class RequestFilePrinter extends FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private final String manualMappingPinfoToRequestFile = "PI_Name:PI_Name," +
             "PI_E-mail:PI_E-mail,Investigator_E-mail:Investigator_E-mail,CMO_Project_ID:ProjectName," +
-            "Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
+            "Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc,Mail_To:MailTo";
     private ErrorRepository errorRepository;
     private RequestFileValidator requestFileValidator;
     @Value("${pipeline.name}")
@@ -194,6 +193,8 @@ public class RequestFilePrinter extends FilePrinter {
         }
         fieldValues.put("PI", pi);
         fieldValues.put("Investigator", investigator);
+        fieldValues.put("MailTo", projectInfo.get(Constants.ProjectInfo.MAIL_TO));
+
         request.setPi(pi);
         request.setInvest(investigator);
         fieldValues.remove(Constants.ProjectInfo.LAB_HEAD);

@@ -40,6 +40,7 @@ public class SampleSetProjectInfoConverter {
         projectInfo.put(ProjectInfo.SPECIES, getSpecies(sampleSet));
         projectInfo.put(ProjectInfo.BIOINFORMATIC_REQUEST, getBioinformaticRequest(sampleSet));
         projectInfo.put(ProjectInfo.PROJECT_APPLICATIONS, getProjectApplications(sampleSet));
+        projectInfo.put(ProjectInfo.MAIL_TO, getMailTo(sampleSet));
 
         projectInfo.put(ProjectInfo.ASSAY, sampleSet.getBaitSet());
 
@@ -58,6 +59,10 @@ public class SampleSetProjectInfoConverter {
 
     private String getLabHead(KickoffSampleSet sampleSet) {
         return getPropertyFromPrimaryRequest(sampleSet, ProjectInfo.LAB_HEAD);
+    }
+
+    private String getMailTo(KickoffSampleSet sampleSet) {
+        return getPropertyFromPrimaryRequest(sampleSet, ProjectInfo.MAIL_TO);
     }
 
     private String getLabHeadEmail(KickoffSampleSet sampleSet) {
