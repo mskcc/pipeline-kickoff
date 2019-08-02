@@ -170,33 +170,33 @@ public class RequestFilePrinter extends FilePrinter {
         Map<String, String> projectInfo = request.getProjectInfo();
         Map<String, String> fieldValues = new HashMap<>(projectInfo);
 
-        String pi, investigator;
-        if (Utils.isCmoSideProject(fieldValues.get(Constants.ProjectInfo.PROJECT_MANAGER))) {
+        String piFirstName = projectInfo.get(Constants.ProjectInfo.PI_FIRSTNAME);
+        String piLastName = projectInfo.get(Constants.ProjectInfo.PI_LASTNAME);
+
+        String piEmail = projectInfo.get(Constants.ProjectInfo.PI_EMAIL);
+        if (StringUtils.isEmpty(piEmail) || Constants.NA.equals(piEmail)) {
             fieldValues.put("PI_Name", projectInfo.get(Constants.ProjectInfo.LAB_HEAD));
-            fieldValues.put("PI_E-mail", projectInfo.get(Constants.ProjectInfo.LAB_HEAD_E_MAIL));
-            pi = projectInfo.get(Constants.ProjectInfo.LAB_HEAD_E_MAIL).split("@")[0];
-            fieldValues.put("Investigator_E-mail", projectInfo.get(Constants.ProjectInfo.REQUESTOR_E_MAIL));
-            investigator = projectInfo.get(Constants.ProjectInfo.REQUESTOR_E_MAIL).split("@")[0];
+            String labHeadEmail = projectInfo.get(Constants.ProjectInfo.LAB_HEAD_E_MAIL);
+            fieldValues.put("PI_E-mail", labHeadEmail);
+            fieldValues.put("PI", labHeadEmail.substring(0, labHeadEmail.indexOf("@")));
         } else {
-            String piFirstName = projectInfo.get(Constants.ProjectInfo.PI_FIRSTNAME);
-            String piLastName = projectInfo.get(Constants.ProjectInfo.PI_LASTNAME);
-            if (!Constants.NA.equalsIgnoreCase(piFirstName) && !Constants.NA.equalsIgnoreCase(piLastName)) {
-                fieldValues.put("PI_Name", String.join(", ", piLastName, piFirstName));
-            } else {
-                fieldValues.put("PI_Name", Constants.NA);
-            }
-
+            fieldValues.put("PI_Name", piLastName + ", " + piFirstName);
+            String labHeadEmail = projectInfo.get(Constants.ProjectInfo.LAB_HEAD_E_MAIL);
             fieldValues.put("PI_E-mail", projectInfo.get(Constants.ProjectInfo.PI_EMAIL));
-            pi = projectInfo.get(Constants.ProjectInfo.PI_EMAIL).split("@")[0];
-            fieldValues.put("Investigator_E-mail", projectInfo.get(Constants.ProjectInfo.CONTACT_NAME));
-            investigator = projectInfo.get(Constants.ProjectInfo.CONTACT_NAME).split("@")[0];
+            fieldValues.put("PI", labHeadEmail.substring(0, labHeadEmail.indexOf("@")));
         }
-        fieldValues.put("PI", pi);
-        fieldValues.put("Investigator", investigator);
-        fieldValues.put("MailTo", projectInfo.get(Constants.ProjectInfo.MAIL_TO));
+        String investigatorEmail = projectInfo.get(Constants.ProjectInfo.INVESTIGATOR_EMAIL);
+        fieldValues.put("Investigator_E-mail", investigatorEmail);
 
-        request.setPi(pi);
-        request.setInvest(investigator);
+        if (investigatorEmail != null && investigatorEmail.contains("@")) {
+            fieldValues.put("Investigator", investigatorEmail.substring(0, investigatorEmail.indexOf("@")));
+        } else {
+            fieldValues.put("Investigator", "");
+        }
+
+        request.setPi(fieldValues.get("PI"));
+        request.setInvest(fieldValues.get("Investigator"));
+        fieldValues.put("MailTo", projectInfo.get(Constants.ProjectInfo.MAIL_TO));
         fieldValues.remove(Constants.ProjectInfo.LAB_HEAD);
         fieldValues.remove(Constants.ProjectInfo.LAB_HEAD_E_MAIL);
         fieldValues.remove(Constants.ProjectInfo.REQUESTOR);

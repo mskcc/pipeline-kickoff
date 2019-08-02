@@ -100,7 +100,8 @@ public class ProjectInfoRetriever {
 
                 // Sample Preservation Types
                 // Get samples - get their sample preservation
-                List<DataRecord> Samps = Arrays.asList(requestDataRecord.getChildrenOfType(VeloxConstants.SAMPLE, apiUser));
+                List<DataRecord> Samps = Arrays.asList(requestDataRecord.getChildrenOfType(VeloxConstants.SAMPLE,
+                        apiUser));
                 HashSet<String> preservations = new HashSet<>();
                 if (Samps.size() > 0) {
                     List<Object> pres = drm.getValueList(Samps, VeloxConstants.PRESERVATION, apiUser);
@@ -155,10 +156,13 @@ public class ProjectInfoRetriever {
                         ("DataDeliveryType", apiUser));
 
                 // Data Analyst, Data Analyst E-mail
-                projectInfo.put(Constants.ProjectInfo.DATA_ANALYST, requestDataRecord.getStringVal("DataAnalyst", apiUser));
-                projectInfo.put(Constants.ProjectInfo.DATA_ANALYST_EMAIL, requestDataRecord.getStringVal("DataAnalystEmail", apiUser));
+                projectInfo.put(Constants.ProjectInfo.DATA_ANALYST, requestDataRecord.getStringVal("DataAnalyst",
+                        apiUser));
+                projectInfo.put(Constants.ProjectInfo.DATA_ANALYST_EMAIL, requestDataRecord.getStringVal
+                        ("DataAnalystEmail", apiUser));
 
-                projectInfo.put(Constants.ProjectInfo.PROJECT_APPLICATIONS, requestDataRecord.getStringVal("PlatformApplication", apiUser));
+                projectInfo.put(Constants.ProjectInfo.PROJECT_APPLICATIONS, requestDataRecord.getStringVal
+                        ("PlatformApplication", apiUser));
 
                 setUpPIandInvest(requestDataRecord, apiUser, projectInfo);
 
@@ -178,18 +182,15 @@ public class ProjectInfoRetriever {
         // Values saved because they will be used to remove duplicated emails in email child
         String labHeadEmail = request.getStringVal("LabHeadEmail", apiUser).toLowerCase();
         String investigatorEmail = request.getStringVal("Investigatoremail", apiUser).toLowerCase();
-        String[] labHeadName = WordUtils.capitalizeFully(request.getStringVal("LaboratoryHead",
-                apiUser)).split(" ", 2);
+        String labHead = request.getStringVal("LaboratoryHead", apiUser);
         String[] requesterName = WordUtils.capitalizeFully(request.getStringVal("Investigator", apiUser)).split(" ", 2);
 
-        if (labHeadName.length > 1) {
-            projectInfo.put(Constants.ProjectInfo.LAB_HEAD, labHeadName[1] + ", " + labHeadName[0]);
-        }
+        projectInfo.put(Constants.ProjectInfo.LAB_HEAD, labHead);
         projectInfo.put(Constants.ProjectInfo.LAB_HEAD_E_MAIL, labHeadEmail);
         if (requesterName.length > 1) {
             projectInfo.put(Constants.ProjectInfo.REQUESTOR, requesterName[1] + ", " + requesterName[0]);
         }
-        projectInfo.put(Constants.ProjectInfo.REQUESTOR_E_MAIL, investigatorEmail);
+        projectInfo.put(Constants.ProjectInfo.INVESTIGATOR_EMAIL, investigatorEmail);
 
         String piemail = request.getStringVal("PIemail", apiUser);
         String piFirstName = request.getStringVal("PIFirstName", apiUser);
@@ -294,7 +295,8 @@ public class ProjectInfoRetriever {
         return optionalPmEmail.orElse(Constants.NA);
     }
 
-    Optional<String> queryDatabaseForProjectManagerEmail(DataRecordManager dataRecordManager, User apiUser, String firstName, String lastName) throws ServerException, RemoteException {
+    Optional<String> queryDatabaseForProjectManagerEmail(DataRecordManager dataRecordManager, User apiUser, String
+            firstName, String lastName) throws ServerException, RemoteException {
         SqlBuilder sqlBuilder = new SqlBuilder();
         Table limsuserTable = new Table("limsuser");
         Column emailaddressColumn = new Column(limsuserTable, "EMAILADDRESS");
