@@ -42,9 +42,6 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
     @Value("${jira.rest.path}")
     private String jiraRestPath;
 
-    @Value("${default.cmo.pm}")
-    private String defaultCmoPm;
-
     @Value("${default.igo.pm}")
     private String defaultIgoPm;
 
@@ -58,28 +55,24 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
     public JiraUser retrieve(String projectManagerIgoName) {
         LOGGER.info(String.format("Looking for jira user with IGO name [%s]", projectManagerIgoName));
 
-        if(!isProjectManagerIgoNameValid(projectManagerIgoName)) {
-            LOGGER.warn(String.format("Invalid project manager igo name: [%s], default CMO PM will be used: [%s].", projectManagerIgoName, defaultCmoPm));
-            projectManagerIgoName = defaultCmoPm;
-        } else if (isCmoSideProject(projectManagerIgoName)) {
-            LOGGER.warn(String.format("CMO side project project manager in LIMS is [%s], default IGO PM will be used: [%s].", Constants.NO_PM, defaultIgoPm));
+        if (!isProjectManagerIgoNameValid(projectManagerIgoName)) {
+            LOGGER.warn(String.format("Project manager in LIMS is not valid [%s], default IGO PM will be used: [%s]" +
+                    ".", projectManagerIgoName, defaultIgoPm));
             projectManagerIgoName = defaultIgoPm;
         }
 
         List<JiraUser> pmJiraUsers = getPmJiraUsers();
-        Optional<JiraUser> matchedPmJiraUser = tryMatchPmJiraUsers(projectManagerIgoName, pmJiraUsers, defaultCmoPm);
+        Optional<JiraUser> matchedPmJiraUser = tryMatchPmJiraUsers(projectManagerIgoName, pmJiraUsers);
         if (matchedPmJiraUser.isPresent()) return matchedPmJiraUser.get();
 
         throw new NoPmFoundException(String.format("There is no Project Manager in jira group %s " +
-                        "with IGO name %s", pmGroupName, projectManagerIgoName));
+                "with IGO name %s", pmGroupName, projectManagerIgoName));
     }
 
     private boolean isProjectManagerIgoNameValid(String projectManagerIgoName) {
-        if (StringUtils.isNotBlank(projectManagerIgoName)
-                && !Constants.NA.equals(projectManagerIgoName)){
-            return true;
-        }
-        return false;
+        return StringUtils.isNotBlank(projectManagerIgoName)
+                && !Constants.NA.equals(projectManagerIgoName)
+                && !Constants.NO_PM.equals(projectManagerIgoName);
     }
 
     private boolean isCmoSideProject(String projectManagerIgoName) {
@@ -89,7 +82,7 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
         return false;
     }
 
-    private Optional<JiraUser> tryMatchPmJiraUsers(String projectManagerIgoName, List<JiraUser> pmJiraUsers, String defaultCmoPm) {
+    private Optional<JiraUser> tryMatchPmJiraUsers(String projectManagerIgoName, List<JiraUser> pmJiraUsers) {
         Optional<JiraUser> defaultCmoPmJiraUser = Optional.empty();
         for (JiraUser pmJiraUser : pmJiraUsers) {
             if (userHasProperty(pmJiraUser, igoFormattedNameProperty)) {
@@ -100,9 +93,9 @@ public class FromJiraPmJiraUserRetriever implements PmJiraUserRetriever {
                     return Optional.of(pmJiraUser);
                 }
 
-                if (Objects.equals(igoFormattedName, defaultCmoPm)) {
+                if (Objects.equals(igoFormattedName, defaultIgoPm)) {
                     LOGGER.warn(String.format("No project manager in jira group [%s] matches " +
-                            "IGO name [%s], use default one: [%s].", pmGroupName, projectManagerIgoName, defaultCmoPm));
+                            "IGO name [%s], use default one: [%s].", pmGroupName, projectManagerIgoName, defaultIgoPm));
                     defaultCmoPmJiraUser = Optional.of(pmJiraUser);
                 }
             }
