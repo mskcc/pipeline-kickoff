@@ -32,6 +32,7 @@ public class SampleInfoImpact extends SampleInfo {
     // Consensus BaitSet
     private static String ConsensusBaitSet;
     private static String ConsensusSpikeIn;
+    private final PooledNormalPredicate pooledNormalPredicate = new PooledNormalPredicate();
     String LIBRARY_INPUT;// = "#EMPTY";
     String LIBRARY_YIELD; // = "#EMPTY";
     String CAPTURE_BAIT_SET; // = "#EMPTY";
@@ -45,6 +46,7 @@ public class SampleInfoImpact extends SampleInfo {
     private String CAPTURE_CONCENTRATION; // = "#EMPTY";
     private String CAPTURE_NAME; // = "#EMPTY";
     private String SPIKE_IN_GENES; // = "na";
+
 
     /**
      * This is the method that CreateManifestSheet calls.<br>First it looks at parent class's method, then uses new method "getSpreadOutInfo" and "addPoolNormalDefaults"
@@ -916,6 +918,7 @@ public class SampleInfoImpact extends SampleInfo {
 
     private void populatePoolNormals(DataRecord Nymb1, User apiUser) {
         // add pooled normal to hashmap
+        Map<DataRecord, Set<String>> nimbPooledNormals = new HashMap<>();
         try {
             DataRecord nymbParentSamples = Nymb1.getParentsOfType(VeloxConstants.SAMPLE, apiUser).get(0);
             List<DataRecord> nymbSiblingSamples = Arrays.asList(nymbParentSamples.getChildrenOfType(VeloxConstants.SAMPLE, apiUser));
@@ -928,28 +931,32 @@ public class SampleInfoImpact extends SampleInfo {
                 List<DataRecord> parentSamples = nymbSiblingSample.getParentsOfType(VeloxConstants.SAMPLE, apiUser);
 
                 for (DataRecord parentSample : parentSamples) {
-                    if (parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL")) {
+                    if (isPooledNormal(apiUser, parentSample)) {
                         HashSet<String> tempSet = new HashSet<>();
 
                         if (pooledNormals.containsKey(parentSample)) {
                             tempSet.addAll(pooledNormals.get(parentSample));
                         }
                         tempSet.add(nymbSiblingSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser));
+                        nimbPooledNormals.put(parentSample, tempSet);
                         pooledNormals.put(parentSample, tempSet);
-
                     }
                 }
             }
         } catch (Exception e) {
             DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
         }
+
+        DEV_LOGGER.info(String.format("Retrieved %d pooled normal samples from nimblegen protocol: %s",
+                nimbPooledNormals
+                .size(), nimbPooledNormals.values()));
     }
 
     private void populatePoolNormals(User apiUser, DataRecordManager dataRecordManager, Request request) {
-        try {
-            String query = String.format("%s LIKE '%s'", VeloxConstants.OTHER_SAMPLE_ID,
-                    "%POOLEDNORMAL%", VeloxConstants.SEQUENCER_RUN_FOLDER);
+        Map<DataRecord, Set<String>> qcPooledNormals = new HashMap<>();
 
+        try {
+            String query = String.format("%s LIKE '%s'", VeloxConstants.OTHER_SAMPLE_ID, "%POOLEDNORMAL%");
             DEV_LOGGER.info(String.format("Query used to look for pooled normals: %s", query));
 
             List<DataRecord> potentialPooledNormalsQcs = dataRecordManager.queryDataRecords(VeloxConstants
@@ -980,13 +987,18 @@ public class SampleInfoImpact extends SampleInfo {
                 DataRecord parentSample = parentSamples.get(0);
 
                 String pooledNormalRecipe = parentSample.getStringVal(VeloxConstants.RECIPE, apiUser);
+                String otherSampleId = parentSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
+
+                if (StringUtils.isEmpty(pooledNormalRecipe)) {
+                    DEV_LOGGER.warn(String.format("Empty recipe for sample: %s", otherSampleId));
+                }
 
                 boolean isSameRecipe = Objects.equals(pooledNormalRecipe, request.getRecipe().get(0).getValue());
 
-                if (!isSameRecipe)
+                if (!isSameRecipe) {
                     continue;
+                }
 
-                String otherSampleId = parentSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
 
                 Set<String> samplesPreservations = request.getSamples().values().stream()
                         .map(s -> s.get("Preservation"))
@@ -1000,12 +1012,14 @@ public class SampleInfoImpact extends SampleInfo {
                     continue;
 
                 if (isPooledNormal(apiUser, parentSample)) {
-                    String pooledNormalId = parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
+                    String pooledNormalId = parentSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
                     if (!pooledNormals.containsKey(parentSample))
                         DEV_LOGGER.info(String.format("Adding pooled normal: %s", pooledNormalId));
 
-                    if (!pooledNormals.containsKey(parentSample))
+                    if (!pooledNormals.containsKey(parentSample)) {
                         pooledNormals.put(parentSample, new HashSet<>());
+                        qcPooledNormals.put(parentSample, new HashSet<>());
+                    }
 
                     Set<String> samplePooledNormals = pooledNormals.get(parentSample);
                     samplePooledNormals.add(pooledNormalId);
@@ -1014,10 +1028,16 @@ public class SampleInfoImpact extends SampleInfo {
         } catch (Exception e) {
             DEV_LOGGER.error("Exception thrown wile retrieving information about pooled normals", e);
         }
+
+        DEV_LOGGER.info(String.format("Retrieved %d pooled normal samples from nimblegen protocol: %s", qcPooledNormals
+                .size(), qcPooledNormals.values()));
     }
 
     private boolean isPooledNormal(User apiUser, DataRecord parentSample) throws Exception {
-        return parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser).startsWith("CTRL");
+        String sampleId = parentSample.getStringVal(VeloxConstants.SAMPLE_ID, apiUser);
+        String otherSampleId = parentSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, apiUser);
+
+        return pooledNormalPredicate.test(sampleId, otherSampleId);
     }
 
     private boolean isSampleRun(DataRecord potentialPooledNormalQc, User apiUser, Request request)
