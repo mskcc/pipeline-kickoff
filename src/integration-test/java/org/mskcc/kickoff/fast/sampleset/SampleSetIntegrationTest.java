@@ -23,8 +23,8 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.archive.ProjectFilesArchiver;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.lims.ProjectInfoRetriever;
-import org.mskcc.kickoff.retriever.NimblegenResolver;
 import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
+import org.mskcc.kickoff.retriever.RecordNimblegenResolver;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.sampleset.SampleSetProjectInfoConverter;
 import org.mskcc.kickoff.sampleset.SampleSetToRequestConverter;
@@ -51,13 +51,13 @@ import static org.mockito.Mockito.mock;
 
 public class SampleSetIntegrationTest {
     private static final Log LOG = LogFactory.getLog(SampleSetIntegrationTest.class);
+    private static final String resultsPathPrefix = "/ifs/solres/seq";
     private static String connectionFile = "/lims-tango-dev.properties";
     private static String connectionFileTest = "/lims-tango-test.properties";
     private static int counter = 0;
     private final String reqId1 = "12345_S";
     private final String reqId2 = "23456_S";
     private String validSampleSetId = "set_SampleSetTest";
-    private static final String resultsPathPrefix = "/ifs/solres/seq";
     private VeloxProjectProxy veloxProjectProxy;
     private DataRecord sampleSetRecord;
     private VeloxConnection connection;
@@ -100,7 +100,8 @@ public class SampleSetIntegrationTest {
                 mock(ErrorRepository.class));
         RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever,
                 reqDataPropagator, reqDataPropagator, sampleSetToReqConv, mock(ReadOnlyExternalSamplesRepository.class),
-                mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class), new NimblegenResolver(),
+                mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class), new
+                RecordNimblegenResolver(),
                 new Sample2DataRecordMap());
         return new VeloxProjectProxy(getVeloxConnectionData(connectionFile), archiverMock,
                 requestsRetrieverFactory);

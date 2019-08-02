@@ -67,7 +67,8 @@ public class MappingFilePrinterTest {
             mock(ErrorRepository.class));
     private RequestsRetrieverFactory requestsRetrieverFactory = new RequestsRetrieverFactory(projInfoRetriever,
             reqDataPropagator, reqDataPropagator, sampleSetToReqConv, mock(ReadOnlyExternalSamplesRepository.class),
-            mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class), new NimblegenResolver(),
+            mock(BiPredicate.class), mock(BiPredicate.class), mock(ErrorRepository.class), new
+            RecordNimblegenResolver(),
             new Sample2DataRecordMap());
     private VeloxProjectProxy veloxProjectProxy;
     private MappingFilePrinter mappingFilePrinter;

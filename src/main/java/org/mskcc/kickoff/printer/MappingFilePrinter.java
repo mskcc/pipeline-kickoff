@@ -248,14 +248,23 @@ public class MappingFilePrinter extends FilePrinter {
 
     private Set<SampleRun> getSampleRuns(KickoffRequest singleRequest) {
         Set<SampleRun> sampleRuns = new LinkedHashSet<>();
-        for (Sample sample : singleRequest.getAllValidSamples().values()) {
+        List<Sample> allSamples = getAllSamples(singleRequest);
+
+        for (Sample sample : allSamples) {
             for (String runId : sample.getValidRunIds()) {
                 sampleRuns.add(new SampleRun(sample, runId));
             }
-            
             DEV_LOGGER.info(String.format("Sample %s valid runs: %s", sample.getIgoId(), sample.getValidRunIds()));
         }
+
         return sampleRuns;
+    }
+
+    private List<Sample> getAllSamples(KickoffRequest singleRequest) {
+        List<Sample> allSamples = new ArrayList<>();
+        allSamples.addAll(singleRequest.getAllValidSamples().values());
+        allSamples.addAll(singleRequest.getUsedNormalsFromProject());
+        return allSamples;
     }
 
     private void writeMappingFile(KickoffRequest request, String mappingFileContents) {
