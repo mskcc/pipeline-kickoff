@@ -88,6 +88,11 @@ public class SampleSetProjectInfoConverterTest {
     }
 
     @Test
+    public void whenConvertingProjectInfo_shouldAssignContactEmailsFromPrimeRequest() {
+        assertPropertyIsResolvedFromPrimeRequest(Constants.ProjectInfo.MAIL_TO);
+    }
+
+    @Test
     public void whenRequestsHaveNoSamples_shouldSampleSetHasEmptyNumberOfSamples() {
         KickoffRequest kickoffRequest = getRequestWithRequiredProperties(primaryReqId);
         KickoffRequest kickoffRequest2 = getRequestWithRequiredProperties("33234");
@@ -315,6 +320,7 @@ public class SampleSetProjectInfoConverterTest {
         KickoffRequest kickoffRequest = new KickoffRequest(requestId, processingType);
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.LAB_HEAD, "labHead");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.LAB_HEAD_E_MAIL, "email");
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.MAIL_TO, "e1@mskcc.org,e2@mskcc.org");
 
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.PI_FIRSTNAME, "PIfirst");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.PI_LASTNAME, "PIlast");

@@ -165,6 +165,8 @@ public class ProjectInfoRetriever {
                         ("PlatformApplication", apiUser));
 
                 setUpPIandInvest(requestDataRecord, apiUser, projectInfo);
+
+                projectInfo.put(Constants.ProjectInfo.MAIL_TO, requestDataRecord.getStringVal("MailTo", apiUser));
             }
 
             return getTransformedProjectInfo(projectInfo);

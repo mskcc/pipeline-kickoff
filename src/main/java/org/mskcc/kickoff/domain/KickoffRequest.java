@@ -37,6 +37,17 @@ public class KickoffRequest extends org.mskcc.domain.Request {
     private LocalDateTime creationDate;
     private Set<Set<RequestSpecies>> speciesSet = new HashSet<>();
 
+    // normal samples from sibling requests of a given request (children of a given project). Only valid samples with
+    // passed QC are kept
+    private Map<String, Sample> validNormalsForProject = new HashMap<>();
+
+    // Field added only to enable getting normals from sibling requests and not throw errors in SampleImpactInfo when
+    // validating if same for which SampleInfo is retrieved is part of the request in
+    // org/mskcc/kickoff/lims/SampleInfoImpact.java:436 & org/mskcc/kickoff/lims/SampleInfoImpact.java:441
+    private Map<String, Sample> samplesForProjects = new HashMap<>();
+    private String projectId;
+    private Set<Sample> usedNormalsFromProject = new HashSet<>();
+
     public KickoffRequest(String id, ProcessingType processingType) {
         super(id);
         this.processingType = processingType;
@@ -76,6 +87,10 @@ public class KickoffRequest extends org.mskcc.domain.Request {
 
     public Map<String, Sample> getAllValidSamples(Predicate<Sample> samplePredicate) {
         return processingType.getAllValidSamples(getAllSamples(), samplePredicate);
+    }
+
+    public Map<String, Sample> getValidSamples(Map<String, Sample> samples, Predicate<Sample> samplePredicate) {
+        return processingType.getAllValidSamples(samples, samplePredicate);
     }
 
     private Map<String, Sample> getAllSamples() {
@@ -284,6 +299,42 @@ public class KickoffRequest extends org.mskcc.domain.Request {
                     sampleId));
 
         return externalSamples.get(sampleId);
+    }
+
+    public Map<String, Sample> getValidNormalsForProject() {
+        return validNormalsForProject;
+    }
+
+    public void setValidNormalsForProject(Map<String, Sample> normalSamplesForProject) {
+        this.validNormalsForProject = normalSamplesForProject;
+    }
+
+    public void addSamplesForProject(Sample sampleForProject) {
+        samplesForProjects.put(sampleForProject.getIgoId(), sampleForProject);
+    }
+
+    public Map<String, Sample> getSamplesForProjects() {
+        return samplesForProjects;
+    }
+
+    public String getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(String projectId) {
+        this.projectId = projectId;
+    }
+
+    public void addUsedNormalFromProject(Sample normal) {
+        usedNormalsFromProject.add(normal);
+    }
+
+    public Set<Sample> getUsedNormalsFromProject() {
+        return usedNormalsFromProject;
+    }
+
+    public void setUsedNormalsFromProject(Set<Sample> usedNormalsFromProject) {
+        this.usedNormalsFromProject = usedNormalsFromProject;
     }
 
     public static class NoValidSamplesException extends RuntimeException {

@@ -6,6 +6,7 @@ import org.mskcc.domain.Patient;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
+import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -50,16 +51,24 @@ public class SmartPairingRetriever {
 
         Map<String, String> smartPairings = new LinkedHashMap<>();
         for (Patient patient : request.getPatients().values()) {
-            Set<Sample> normalSamples = getNormalSamples(patient.getSamples());
+            Set<Sample> normalSamplesFromCurrentRequest = getNormalSamples(patient.getSamples());
+            Collection<Sample> normalSamplesFromCurrentProject = getNormalSamplesForProjectForPatient(request, patient);
+
             DEV_LOGGER.info(String.format("Normal samples found for request %s: for patient: %s %s", request.getId(),
-                    patient.getPatientId(), normalSamples));
+                    patient.getPatientId(), normalSamplesFromCurrentRequest));
+
+            DEV_LOGGER.info(String.format("Normal samples found for project %s: for patient: %s %s", request
+                            .getProjectId(),
+                    patient.getPatientId(), normalSamplesFromCurrentProject));
 
             for (Sample tumor : getTumorSamples(patient.getSamples())) {
                 try {
                     String tumorCorrectedCmoId = tumor.getCorrectedCmoSampleId();
                     validateSampleId(tumor, tumorCorrectedCmoId);
 
-                    String normalCorrectedCmoId = tryToPairNormal(pooledNormals, normalSamples, tumor);
+                    String normalCorrectedCmoId = tryToPairNormal(request, pooledNormals,
+                            normalSamplesFromCurrentRequest,
+                            normalSamplesFromCurrentProject, tumor);
 
                     DEV_LOGGER.info(String.format("Smart pairing found: tumor: %s - normal: %s", tumorCorrectedCmoId,
                             normalCorrectedCmoId));
@@ -75,6 +84,15 @@ public class SmartPairingRetriever {
         return smartPairings;
     }
 
+    private List<Sample> getNormalSamplesForProjectForPatient(KickoffRequest request, Patient patient) {
+        String patientFieldKey = RequestDataPropagator.getPatientFieldKey(request);
+        return request.getValidNormalsForProject().values()
+                .stream()
+                .filter(s -> Objects.equals(s.getCmoSampleInfo().getFields().getOrDefault(patientFieldKey, ""),
+                        patient.getPatientId()))
+                .collect(Collectors.toList());
+    }
+
     private void validateSampleId(Sample sample, String sampleId) {
         if (StringUtils.isEmpty(sampleId))
             throw new RuntimeException(String.format("Cmo sample id is empty for sample: %s", sample.getIgoId()));
@@ -84,11 +102,59 @@ public class SmartPairingRetriever {
         return request.getAllValidSamples(Sample::isPooledNormal).values();
     }
 
-    private String tryToPairNormal(Collection<Sample> pooledNormals, Collection<Sample> normalSamples, Sample tumor) {
-        String normalCorrectedCmoId = getNormal(normalSamples, tumor);
-        if (Objects.equals(normalCorrectedCmoId, Constants.NA_LOWER_CASE))
+    private String tryToPairNormal(KickoffRequest request, Collection<Sample> pooledNormals, Collection<Sample>
+            normalSamplesFromCurrentRequest, Collection<Sample> normalSamplesFromCurrentProject, Sample tumor) {
+        String normalCorrectedCmoId = tryToPairNormalWithReqestNormals(normalSamplesFromCurrentRequest, tumor);
+
+        if (!normalFound(normalCorrectedCmoId)) {
+            DEV_LOGGER.info("Normal sample not found in request samples. Will look for in project samples");
+            normalCorrectedCmoId = tryToPairNormalWithProjectNormals(normalSamplesFromCurrentProject, tumor);
+            addNormalToPatientIfNeeded(request, normalCorrectedCmoId);
+        }
+
+        if (!normalFound(normalCorrectedCmoId)) {
+            DEV_LOGGER.info("Normal sample not found in project samples. Will look for in pooled normals");
             normalCorrectedCmoId = tryToPairPooledNormal(tumor, pooledNormals);
+        }
+
         return normalCorrectedCmoId;
+    }
+
+    private String tryToPairNormalWithProjectNormals(Collection<Sample> normalSamplesFromCurrentProject, Sample tumor) {
+        return getNormal(normalSamplesFromCurrentProject, tumor);
+    }
+
+    private String tryToPairNormalWithReqestNormals(Collection<Sample> normalSamplesFromCurrentRequest, Sample tumor) {
+        return getNormal(normalSamplesFromCurrentRequest, tumor);
+    }
+
+    private boolean normalFound(String normalCorrectedCmoId) {
+        return !Objects.equals(normalCorrectedCmoId, Constants.NA_LOWER_CASE);
+    }
+
+    private void addNormalToPatientIfNeeded(KickoffRequest request, String normalCorrectedCmoId) {
+        if (normalFound(normalCorrectedCmoId)) {
+            String normCorrCmoId = normalCorrectedCmoId;
+            Sample normal = request.getValidNormalsForProject().values().stream()
+                    .filter(s -> Objects.equals(s.getCorrectedCmoSampleId(), normCorrCmoId))
+                    .findFirst().get();
+            Patient patient = request.getPatients().get(normal.getPatientId());
+            if (patient == null)
+                patient = request.getPatients().get(normal.getCmoSampleInfo().getCmoPatientId());
+            if (patient == null)
+                patient = request.getPatients().get(normal.getCmoPatientId());
+
+            request.addUsedNormalFromProject(normal);
+
+            if (patient == null)
+                DEV_LOGGER.warn(String.format("Could not find patient with id %s (%s, %s) to add sample %s to it",
+                        normal.getPatientId(), normal.getCmoPatientId(), normal.getCmoSampleInfo().getCmoPatientId(),
+                        normal));
+            else {
+                patient.addSample(normal);
+                DEV_LOGGER.debug(String.format("Normal %s added to patient: %s", normal, patient.getPatientId()));
+            }
+        }
     }
 
     private String tryToPairPooledNormal(Sample tumor, Collection<Sample> pooledNormals) {

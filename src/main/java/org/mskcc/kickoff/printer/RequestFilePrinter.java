@@ -34,7 +34,7 @@ public class RequestFilePrinter extends FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
     private final String manualMappingPinfoToRequestFile = "PI_Name:PI_Name," +
             "PI_E-mail:PI_E-mail,Investigator_E-mail:Investigator_E-mail,CMO_Project_ID:ProjectName," +
-            "Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc";
+            "Final_Project_Title:ProjectTitle,CMO_Project_Brief:ProjectDesc,Mail_To:MailTo";
     private ErrorRepository errorRepository;
     private RequestFileValidator requestFileValidator;
     @Value("${pipeline.name}")
@@ -185,7 +185,6 @@ public class RequestFilePrinter extends FilePrinter {
             fieldValues.put("PI_E-mail", projectInfo.get(Constants.ProjectInfo.PI_EMAIL));
             fieldValues.put("PI", labHeadEmail.substring(0, labHeadEmail.indexOf("@")));
         }
-
         String investigatorEmail = projectInfo.get(Constants.ProjectInfo.INVESTIGATOR_EMAIL);
         fieldValues.put("Investigator_E-mail", investigatorEmail);
 
@@ -197,6 +196,7 @@ public class RequestFilePrinter extends FilePrinter {
 
         request.setPi(fieldValues.get("PI"));
         request.setInvest(fieldValues.get("Investigator"));
+        fieldValues.put("MailTo", projectInfo.get(Constants.ProjectInfo.MAIL_TO));
         fieldValues.remove(Constants.ProjectInfo.LAB_HEAD);
         fieldValues.remove(Constants.ProjectInfo.LAB_HEAD_E_MAIL);
         fieldValues.remove(Constants.ProjectInfo.REQUESTOR);

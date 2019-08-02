@@ -124,6 +124,7 @@ public class Constants {
         public static final String INVESTIGATOR_EMAIL = "Investigator_email";
         public static final String LAB_HEAD = "Lab_Head";
         public static final String LAB_HEAD_E_MAIL = "Lab_Head_E-mail";
+        public static final String MAIL_TO = "Mail_To";
         public static final String NUMBER_OF_SAMPLES = "NumberOfSamples";
         public static final String PLATFORM = "Platform";
         public static final String PROJECT_MANAGER = "Project_Manager";

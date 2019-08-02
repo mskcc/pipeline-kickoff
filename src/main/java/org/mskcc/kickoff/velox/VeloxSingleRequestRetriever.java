@@ -21,6 +21,7 @@ import org.mskcc.kickoff.poolednormals.PooledNormalsRetriever;
 import org.mskcc.kickoff.poolednormals.PooledNormalsRetrieverFactory;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
+import org.mskcc.kickoff.retriever.DummyNimblegenResolver;
 import org.mskcc.kickoff.retriever.NimblegenResolver;
 import org.mskcc.kickoff.retriever.SequencerIdentifierRetriever;
 import org.mskcc.kickoff.retriever.SingleRequestRetriever;
@@ -96,9 +97,10 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             addPoolSeqQc(kickoffRequest, dataRecordRequest, originalSampRec);
             processPlates(kickoffRequest, dataRecordRequest);
             processSamples(kickoffRequest, dataRecordRequest, sampleIds);
+            processSamplesForProject(kickoffRequest, dataRecordRequest);
             addPoolRunsToSamples(kickoffRequest);
             addSeqNames(kickoffRequest);
-            addSampleInfo(kickoffRequest);
+            addSampleInfo(kickoffRequest, kickoffRequest.getValidNonPooledNormalSamples().values(), nimblegenResolver);
             processPooledNormals(kickoffRequest, dataRecordRequest);
             kickoffRequest.setProjectInfo(getProjectInfo(kickoffRequest));
 
@@ -107,8 +109,69 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         throw new RuntimeException(String.format("Request: %s doesn't exist", requestId));
     }
 
+    private void processSamplesForProject(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
+        try {
+            Map<String, Sample> normalsForProject = new HashMap<>();
+            List<DataRecord> projectParents = dataRecordRequest.getParentsOfType(VeloxConstants.PROJECT, user);
+
+            if (projectParents == null || projectParents.size() == 0)
+                DEV_LOGGER.warn(String.format("Request %s has no parent project. There will be no normal samples to " +
+                        "smart pair from other requests. Only samples from request %s will be paired", kickoffRequest
+                        .getId(), kickoffRequest.getId()));
+            else if (projectParents.size() > 1) {
+                DEV_LOGGER.warn(String.format("Request %s has multiple parent projects. There will be no normal " +
+                        "samples to " +
+                        "smart pair from other requests. Only samples from request %s will be paired", kickoffRequest
+                        .getId(), kickoffRequest.getId()));
+            } else {
+                retrieveNormalsFromProject(kickoffRequest, normalsForProject, projectParents);
+            }
+        } catch (Exception e) {
+            DEV_LOGGER.warn(String.format("Error while retrieving normal samples for other requests."), e);
+        }
+    }
+
+    private void retrieveNormalsFromProject(KickoffRequest kickoffRequest, Map<String, Sample> normalsForProject,
+                                            List<DataRecord> projectParents) throws NotFound, RemoteException, IoError {
+        DataRecord projectParent = projectParents.get(0);
+        String projectId = projectParent.getStringVal("ProjectId", user);
+        kickoffRequest.setProjectId(projectId);
+        DEV_LOGGER.info(String.format("Retrieving normal samples for project: %s", projectId));
+
+        DataRecord[] childrenRequests = projectParent.getChildrenOfType(VeloxConstants.REQUEST, user);
+
+        for (DataRecord childrenRequest : childrenRequests) {
+            retrieveNormalsFromRequest(kickoffRequest, normalsForProject, childrenRequest);
+        }
+
+        kickoffRequest.setValidNormalsForProject(kickoffRequest.getValidSamples(normalsForProject, s -> true));
+        DEV_LOGGER.debug(String.format("Normal samples found for project %s: %s", projectId, normalsForProject));
+    }
+
+    private void retrieveNormalsFromRequest(KickoffRequest kickoffRequest, Map<String, Sample> normalsForProject,
+                                            DataRecord childrenRequest) throws NotFound, RemoteException, IoError {
+        String requestId = childrenRequest.getStringVal(VeloxConstants.REQUEST_ID, user);
+        DEV_LOGGER.info(String.format("Retrieving normal samples for request: %s", requestId));
+
+        DataRecord[] samples = childrenRequest.getChildrenOfType(VeloxConstants.SAMPLE, user);
+        for (DataRecord sampleRec : samples) {
+            Sample sample = getSampleFromRecord(kickoffRequest, sampleRec);
+            if (sample != null) {
+                kickoffRequest.addSamplesForProject(sample);
+                addSampleInfo(kickoffRequest, sample, new DummyNimblegenResolver());
+
+                if (!sample.isTumor())
+                    normalsForProject.put(sample.getIgoId(), sample);
+            }
+        }
+    }
+
     private void addSeqNames(KickoffRequest kickoffRequest) throws Exception {
         for (Sample sample : kickoffRequest.getSamples().values()) {
+            setSeqName(sample);
+        }
+
+        for (Sample sample : kickoffRequest.getValidNormalsForProject().values()) {
             setSeqName(sample);
         }
     }
@@ -239,21 +302,30 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         }
     }
 
-    private void addSampleInfo(KickoffRequest kickoffRequest) {
-        for (Sample sample : kickoffRequest.getValidNonPooledNormalSamples().values()) {
-            DataRecord dataRecord = sample2DataRecordMap.get(sample.getIgoId());
-
-            DEV_LOGGER.info(String.format("Sample record %s retrieved for sample %s", dataRecord.getRecordId(),
-                    sample.getIgoId()));
-
-            LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(dataRecord,
-                    sample, kickoffRequest);
-            sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
-            sample.setProperties(sampleInfo);
-
-            sample.setIsTumor(sample.get(Constants.SAMPLE_CLASS) != null && !sample.get(Constants.SAMPLE_CLASS)
-                    .contains(Constants.NORMAL));
+    private void addSampleInfo(KickoffRequest kickoffRequest, Collection<Sample> samples, NimblegenResolver
+            nimblegenResolver) {
+        for (Sample sample : samples) {
+            addSampleInfo(kickoffRequest, sample, nimblegenResolver);
         }
+    }
+
+    private void addSampleInfo(KickoffRequest kickoffRequest, Sample sample, NimblegenResolver nimblegenResolver) {
+        DataRecord dataRecord = sample2DataRecordMap.get(sample.getIgoId());
+
+        DEV_LOGGER.debug(String.format("Sample record %s retrieved for sample %s", dataRecord.getRecordId(),
+                sample.getIgoId()));
+
+        LinkedHashMap<String, String> sampleInfo = getSampleInfoMap(dataRecord, sample, kickoffRequest,
+                nimblegenResolver);
+        sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
+        sample.setProperties(sampleInfo);
+
+        sample.setIsTumor(isTumor(sample));
+    }
+
+    private boolean isTumor(Sample sample) {
+        return sample.get(Constants.SAMPLE_CLASS) != null && !sample.get(Constants.SAMPLE_CLASS)
+                .contains(Constants.NORMAL);
     }
 
     private void setProperties(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
@@ -299,7 +371,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
                     sample.addRuns(pooledNormalRuns);
 
-                    Map<String, String> sampleInfo = getSampleInfoMap(pooledNormalRecord, sample, kickoffRequest);
+                    Map<String, String> sampleInfo = getSampleInfoMap(pooledNormalRecord, sample, kickoffRequest,
+                            nimblegenResolver);
                     sampleInfo.put(Constants.REQ_ID, Utils.getFullProjectNameWithPrefix(kickoffRequest.getId()));
 
                     // If include run ID is 'null' skip.
@@ -434,39 +507,57 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     }
 
     private void processSample(KickoffRequest kickoffRequest, DataRecord dataRecordSample) throws Exception {
-        String cmoSampleId = dataRecordSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
-        String igoSampleId = dataRecordSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
-        Map<String, Object> sampleFields = dataRecordSample.getFields(user);
+        Sample sample = getSampleFromRecord(kickoffRequest, dataRecordSample);
 
-        // Added because we were getting samples that had the same name as a sequenced sample, but then it was failed
-        // so it shouldn't be used (as per Aaron).
-        String status = dataRecordSample.getSelectionVal(VeloxConstants.EXEMPLAR_SAMPLE_STATUS, user);
-        if (!Objects.equals(status, Constants.FAILED_COMPLETED)) {
-            Sample sample;
+        if (sample != null) {
+            String igoSampleId = dataRecordSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
+            String cmoSampleId = dataRecordSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
+
             if (isPool(cmoSampleId)) {
                 Pool pool = kickoffRequest.putPoolIfAbsent(igoSampleId);
-                sample = kickoffRequest.putSampleIfAbsent(igoSampleId);
+                kickoffRequest.putSampleIfAbsent(sample);
                 pool.setCmoSampleId(cmoSampleId);
+            } else {
+                kickoffRequest.putSampleIfAbsent(sample);
+            }
+        }
+    }
+
+    private Sample getSampleFromRecord(KickoffRequest kickoffRequest, DataRecord dataRecordSample) throws NotFound,
+            RemoteException, IoError {
+        // Added because we were getting samples that had the same name as a sequenced sample, but then it was failed
+        // so it shouldn't be used (as per Aaron).
+        Sample sample = null;
+        String status = dataRecordSample.getSelectionVal(VeloxConstants.EXEMPLAR_SAMPLE_STATUS, user);
+        String cmoSampleId = dataRecordSample.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
+
+        if (!Objects.equals(status, Constants.FAILED_COMPLETED)) {
+            String igoSampleId = dataRecordSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
+            Map<String, Object> sampleFields = dataRecordSample.getFields(user);
+
+            if (isPool(cmoSampleId)) {
+                sample = new Sample(igoSampleId);
+                sample.setFields(sampleFields);
                 sample.setCmoSampleId(cmoSampleId);
             } else {
-                sample = kickoffRequest.putSampleIfAbsent(igoSampleId);
+                sample = new Sample(igoSampleId);
+                sample.setFields(sampleFields);
                 sample.setCmoSampleId(cmoSampleId);
-                sample.setRequestId(kickoffRequest.getId());
+                sample.setRequestId(String.valueOf(sample.getField("RequestId")));
                 addSampleQcInformation(kickoffRequest, sample);
                 addPostAnalysisQc(dataRecordSample, sample);
             }
 
-            sample.setFields(sampleFields);
-
             setIsTransfer(dataRecordSample, sample);
 
             sample2DataRecordMap.put(sample.getIgoId(), dataRecordSample);
-            DEV_LOGGER.info(String.format("Sample %s saved to cache with record %s", sample.getIgoId(),
+            DEV_LOGGER.debug(String.format("Sample %s saved to cache with record %s", sample.getIgoId(),
                     dataRecordSample.getRecordId()));
-            //setSeqName(sample);
         } else {
             DEV_LOGGER.warn(String.format("Skipping %s because the sample is failed: %s", cmoSampleId, status));
         }
+
+        return sample;
     }
 
     private void setSeqName(Sample sample) throws Exception {
@@ -532,7 +623,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private void addSampleQcInformation(KickoffRequest kickoffRequest, Sample sample) {
         try {
             List<DataRecord> sampleQCList = dataRecordManager.queryDataRecords(VeloxConstants.SEQ_ANALYSIS_SAMPLE_QC,
-                    "Request = '" + kickoffRequest.getId() + "' AND OtherSampleId = '" + sample.getCmoSampleId() +
+                    "Request = '" + sample.getRequestId() + "' AND OtherSampleId = '" + sample.getCmoSampleId() +
                             "'", user);
 
             if (sampleQCList.size() > 0) {
@@ -873,7 +964,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     }
 
     private LinkedHashMap<String, String> getSampleInfoMap(DataRecord dataRecord, Sample sample, KickoffRequest
-            kickoffRequest) {
+            kickoffRequest, NimblegenResolver nimblegenResolver) {
         LinkedHashMap<String, String> sampleInfoMap;
         // Latest attempt at refactoring the code. Why does species come up so much?
         SampleInfo sampleInfo;
