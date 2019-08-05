@@ -6,6 +6,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.Request;
+import org.mskcc.kickoff.lims.PooledNormalPredicate;
 import org.mskcc.kickoff.lims.SampleInfo;
 import org.mskcc.kickoff.logger.PmLogPriority;
 import org.mskcc.kickoff.util.Constants;
@@ -37,16 +38,13 @@ public class MappingFilePrinter implements FilePrinter {
     private final Set<SampleRun> sampleRuns = new LinkedHashSet<>();
 
     private final BasicMail basicMail;
-
+    private final PooledNormalPredicate pooledNormalPredicate = new PooledNormalPredicate();
     @Value("${fastq_path}")
     private String fastq_path;
-
     @Value("${mapping.file.notification.recipients}")
     private String recipients;
-
     @Value("${mapping.file.notification.from}")
     private String from;
-
     @Value("${mapping.file.notification.host}")
     private String host;
 
@@ -390,17 +388,13 @@ public class MappingFilePrinter implements FilePrinter {
     }
 
     private boolean isPooledNormalSample(Sample sample) {
-        //@TODO check if can use sample.isPooledNormal() instead
-        return Objects.equals(sample.getCmoSampleId(), Constants.FFPEPOOLEDNORMAL)
-                || Objects.equals(sample.getCmoSampleId(), Constants.FROZENPOOLEDNORMAL)
-                || Objects.equals(sample.getCmoSampleId(), Constants.MOUSEPOOLEDNORMAL);
+        return pooledNormalPredicate.test(sample.getIgoId(), sample.getCmoSampleId());
     }
 
     public void logWarning(String message) {
         PM_LOGGER.log(PmLogPriority.WARNING, message);
         DEV_LOGGER.warn(message);
     }
-
 
     @Override
     public boolean shouldPrint(Request request) {
