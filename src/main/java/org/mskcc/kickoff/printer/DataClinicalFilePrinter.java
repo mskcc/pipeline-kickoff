@@ -21,6 +21,7 @@ public class DataClinicalFilePrinter extends ClinicalPatientFilePrinter {
 
     {
         headerToFieldName.put("SAMPLE_ID", "CORRECTED_CMO_ID");
+        headerToFieldName.put("IGO_ID", "IGO_ID");
         headerToFieldName.put("PATIENT_ID", "CMO_PATIENT_ID");
         headerToFieldName.put("COLLAB_ID", "INVESTIGATOR_SAMPLE_ID");
 
