@@ -130,8 +130,7 @@ public class ProjectInfoRetriever {
                             .REQUEST_NAME, apiUser));
                 }
 
-                projectInfo.put(Constants.ProjectInfo.CMO_PROJECT_ID, requestDataRecord.getStringVal("CMOProjectID",
-                        apiUser));
+                String cmoProjectID = requestDataRecord.getStringVal("CMOProjectID", apiUser);
 
                 // ## Get Project Associated with it, print out necessary details
                 List<DataRecord> parents = requestDataRecord.getParentsOfType(VeloxConstants.PROJECT, apiUser);
@@ -144,7 +143,12 @@ public class ProjectInfoRetriever {
                     // From projct brief you have to take out the \n.
                     projectInfo.put(Constants.ProjectInfo.CMO_PROJECT_BRIEF, parentRecord.getStringVal
                             ("CMOProjectBrief", apiUser).replace("\n", "").replace("\r", ""));
+
+                    if (StringUtils.isEmpty(cmoProjectID))
+                        cmoProjectID = parentRecord.getStringVal("CMOProjectID", apiUser);
                 }
+
+                projectInfo.put(Constants.ProjectInfo.CMO_PROJECT_ID, cmoProjectID);
 
                 String projectManager = requestDataRecord.getPickListVal("ProjectManager", apiUser);
                 String projectManagerEmail = getProjectManagerEmail(drm, apiUser, projectManager);
