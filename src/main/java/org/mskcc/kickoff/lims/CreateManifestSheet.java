@@ -7,6 +7,7 @@ import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.kickoff.generator.ManifestGenerator;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.velox.util.VeloxUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -87,6 +88,7 @@ class CreateManifestSheet {
     public static class MySafeShutdown extends Thread {
         @Override
         public void run() {
+            VeloxUtils.closeConnection();
         }
     }
 }
