@@ -196,7 +196,6 @@ public class RequestFilePrinter extends FilePrinter {
 
         request.setPi(fieldValues.get("PI"));
         request.setInvest(fieldValues.get("Investigator"));
-        fieldValues.put("MailTo", projectInfo.get(Constants.ProjectInfo.MAIL_TO));
         fieldValues.remove(Constants.ProjectInfo.LAB_HEAD);
         fieldValues.remove(Constants.ProjectInfo.LAB_HEAD_E_MAIL);
         fieldValues.remove(Constants.ProjectInfo.REQUESTOR);
