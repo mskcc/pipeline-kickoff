@@ -86,7 +86,7 @@ public class QueryImpactProjectInfo {
         } catch (Exception e) {
             DEV_LOGGER.warn(e.getMessage(), e);
         } finally {
-            VeloxUtils.closeConnection(connection);
+            VeloxUtils.closeConnection();
         }
 
         return projectInfo;

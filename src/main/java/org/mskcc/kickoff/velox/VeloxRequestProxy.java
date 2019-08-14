@@ -126,7 +126,7 @@ public class VeloxRequestProxy implements RequestProxy {
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
         } finally {
-            VeloxUtils.closeConnection(connection);
+            VeloxUtils.closeConnection();
         }
     }
 
