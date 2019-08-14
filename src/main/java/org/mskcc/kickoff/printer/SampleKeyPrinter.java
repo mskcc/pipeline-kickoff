@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 import static org.mskcc.kickoff.config.Arguments.krista;
 import static org.mskcc.kickoff.printer.OutputFilesPrinter.filesCreated;
 
-public class SampleKeyPrinter implements FilePrinter  {
+public class SampleKeyPrinter implements FilePrinter {
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
 
     @Value("${sampleKeyExamplesPath}")
@@ -29,7 +29,8 @@ public class SampleKeyPrinter implements FilePrinter  {
     public void print(Request request) {
         // sample info
         String requestID = request.getId();
-        File sampleKeyExcel = new File(request.getOutputPath() + "/" + Utils.getFullProjectNameWithPrefix(requestID) + "_sample_key.xlsx");
+        File sampleKeyExcel = new File(request.getOutputPath() + "/" + Utils.getFullProjectNameWithPrefix(requestID)
+                + "_sample_key.xlsx");
 
         //create the workbook
         XSSFWorkbook wb = new XSSFWorkbook();
@@ -47,17 +48,33 @@ public class SampleKeyPrinter implements FilePrinter  {
         unlockedCellStyle.setLocked(false);
 
         // First put the directions.
-        String instructs = "Instructions:\n    - Fill in the GroupName column for each sample.\n        - Please do not leave any blank fields in this column.\n        - Please be consistent when assigning group names." +
-                "\n        - GroupNames are case sensitive. For example, “Normal” and “normal” will be identified as two different group names.\n        - GroupNames should start with a letter  and only use characters, A-Z and 0-9. " +
-                "Please do not use any special characters (i.e. '&', '#', '$' etc) or spaces when assigning a GroupName.\n    - Please only edit column C. Do not make any other changes to this file.\n        " +
-                "- Do not change any of the information in columns A or B.\n        - Do not rename the samples IDs (InvestigatorSampleID or FASTQFileID). If you have a question about the sample names, please email " +
-                "bic-request@cbio.mskcc.org.\n        - Do not reorder or rename the columns.\n        - Do not use the GroupName column to communicate any other information (such as instructions, comments, etc)";
+        String instructs = "Instructions:\n" +
+                "   -Fill in the GroupName column (column C) for each sample. Columns D-F can be used if your " +
+                "experiment" +
+                " has multiple pairings, see below.\n" +
+                "                -Please do not leave any blank fields in this column. If there are samples that " +
+                "should not be included, identify these with the GroupName “excluded”.\n" +
+                "                -Please be consistent when assigning group names.\n" +
+                "                -GroupNames are case sensitive. For example, “Normal” and “normal” will be " +
+                "identified as two different group names.\n" +
+                "                -GroupNames should start with a letter and only use characters, A-Z and 0-9. Please " +
+                "do not use any special characters (i.e. ‘&’, ‘#’, ‘$’ etc) or spaces when assigning a GroupName.\n" +
+                "   -If your experiment does not have multiple pairings, please only edit column C.\n" +
+                "   -If your experiment has multiple pairings, please indicate additional GroupNames in columns D, E," +
+                " " +
+                "and F.\n" +
+                "                -Do not change any of the information in columns A or B.\n" +
+                "                -Do not rename the sample IDs (InvestigatorSampleID or FASTQFileID). If you have a " +
+                "question about the sample names, please email bic-request@cbio.mskcc.org.\n" +
+                "                -Do not make any other changes to this file.\n";
 
-        sampleKey = addRowToSheet(wb, sampleKey, new ArrayList<>(Collections.singletonList(instructs)), rowNum, Constants.Excel.INSTRUCTIONS);
+        sampleKey = addRowToSheet(wb, sampleKey, new ArrayList<>(Collections.singletonList(instructs)), rowNum,
+                Constants.Excel.INSTRUCTIONS);
         rowNum++;
 
         //header
-        sampleKey = addRowToSheet(wb, sampleKey, new ArrayList<>(Arrays.asList("FASTQFileID", "InvestigatorSampleID", "GroupName")), rowNum, "header");
+        sampleKey = addRowToSheet(wb, sampleKey, Arrays.asList("FASTQFileID", "InvestigatorSampleID",
+                "GroupName1", "GroupName2", "GroupName3", "GroupName4"), rowNum, Constants.EXCEL_ROW_TYPE_HEADER);
         rowNum++;
 
         List<Sample> samples = new ArrayList<>(request.getUniqueSamplesByCmoIdLastWin(s -> s.isValid()).stream()
@@ -77,13 +94,9 @@ public class SampleKeyPrinter implements FilePrinter  {
             if (cmoSamp.startsWith("#")) {
                 cmoSamp = sampName1 + "_IGO_" + seqIGOid;
             }
-            sampleKey = addRowToSheet(wb, sampleKey, new ArrayList<>(Arrays.asList(cmoSamp, investSamp)), rowNum, null);
+            sampleKey = addRowToSheet(wb, sampleKey, Arrays.asList(cmoSamp, investSamp), rowNum, null);
 
-            // Unlock this rows third cell
-            Row thisRow = sampleKey.getRow(rowNum);
-            Cell cell3 = thisRow.createCell(2);  // zero based
-            cell3.setCellStyle(unlockedCellStyle);
-
+            unlockGroupNameCells(sampleKey, rowNum, unlockedCellStyle);
             rowNum++;
         }
 
@@ -96,20 +109,12 @@ public class SampleKeyPrinter implements FilePrinter  {
         CellRangeAddress[] regions = {CellRangeAddress.valueOf("A1:C" + rowNum)};
         sheetCF.addConditionalFormatting(regions, emptyRule);
 
-        // DATA VALIDATION
-        XSSFDataValidationHelper dvHelper = new XSSFDataValidationHelper(sampleKey);
-        XSSFDataValidationConstraint dvConstraint = (XSSFDataValidationConstraint) dvHelper.createTextLengthConstraint(ComparisonOperator.GE, "15", null);
-        CellRangeAddressList rangeList = new CellRangeAddressList();
-        rangeList.addCellRangeAddress(CellRangeAddress.valueOf("A1:C" + rowNum));
-        XSSFDataValidation dv1 = (XSSFDataValidation) dvHelper.createValidation(dvConstraint, rangeList);
-        dv1.setShowErrorBox(true);
-        sampleKey.addValidationData(dv1);
+        addDataValidation(sampleKey, rowNum);
 
         // Lastly auto size the three columns I am using:
-        sampleKey.autoSizeColumn(0);
-        sampleKey.autoSizeColumn(1);
-        sampleKey.autoSizeColumn(2);
-
+        for (int i = 0; i < 6; i++) {
+            sampleKey.autoSizeColumn(0);
+        }
 
         // Add extra sheet called Example that will have the example
         XSSFSheet exampleSheet = wb.createSheet(Constants.EXAMPLE);
@@ -140,7 +145,8 @@ public class SampleKeyPrinter implements FilePrinter  {
             }
 
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("An Exception was thrown while creating sample key excel file: %s", sampleKeyExcel), e);
+            DEV_LOGGER.warn(String.format("An Exception was thrown while creating sample key excel file: %s",
+                    sampleKeyExcel), e);
         }
         // the example sheet has a header for each example, so I can't auto size that column.
         exampleSheet.setColumnWidth(0, (int) (exampleSheet.getColumnWidth(0) * 2.2));
@@ -157,18 +163,42 @@ public class SampleKeyPrinter implements FilePrinter  {
         }
     }
 
+    private void addDataValidation(XSSFSheet sampleKey, int rowNum) {
+        XSSFDataValidationHelper dvHelper = new XSSFDataValidationHelper(sampleKey);
+
+        CellRangeAddressList rangeList = new CellRangeAddressList();
+        rangeList.addCellRangeAddress(CellRangeAddress.valueOf("A1:C" + rowNum));
+
+        XSSFDataValidationConstraint dvConstraint = (XSSFDataValidationConstraint) dvHelper
+                .createTextLengthConstraint(ComparisonOperator.GE, "15", null);
+        XSSFDataValidation dv1 = (XSSFDataValidation) dvHelper.createValidation(dvConstraint, rangeList);
+
+        dv1.setShowErrorBox(true);
+        sampleKey.addValidationData(dv1);
+    }
+
+    private void unlockGroupNameCells(XSSFSheet sampleKey, int rowNum, CellStyle unlockedCellStyle) {
+        Row thisRow = sampleKey.getRow(rowNum);
+
+        for (int i = 2; i < 6; i++) {
+            thisRow.createCell(i).setCellStyle(unlockedCellStyle);
+        }
+    }
+
     @Override
     public boolean shouldPrint(Request request) {
-        return !(Utils.isExitLater() && !krista && !request.isInnovationProject() && !request.getRequestType().equals(Constants.OTHER) && !request.getRequestType().equals(Constants.RNASEQ))
+        return !(Utils.isExitLater() && !krista && !request.isInnovationProject() && !request.getRequestType().equals
+                (Constants.OTHER) && !request.getRequestType().equals(Constants.RNASEQ))
                 && (request.getRequestType().equals(Constants.RNASEQ) && !request.getLibTypes().contains(LibType
                 .TRU_SEQ_FUSION_DISCOVERY) && request.getAllValidSamples().size() > 0);
     }
 
-    private XSSFSheet addRowToSheet(XSSFWorkbook wb, XSSFSheet sheet, ArrayList<String> list, int rowNum, String type) {
+    private XSSFSheet addRowToSheet(XSSFWorkbook wb, XSSFSheet sheet, List<String> columnNames, int rowNum, String
+            type) {
         try {
             XSSFRow row = sheet.createRow(rowNum);
             int cellNum = 0;
-            for (String val : list) {
+            for (String val : columnNames) {
                 if (val == null || val.isEmpty()) {
                     val = Constants.Excel.EMPTY;
                 }
@@ -182,15 +212,12 @@ public class SampleKeyPrinter implements FilePrinter  {
                         style.setFont(headerFont);
                     }
                     if (type.equals(Constants.Excel.INSTRUCTIONS)) {
-                        sheet.addMergedRegion(new CellRangeAddress(rowNum, rowNum, 0, 6));
+                        sheet.addMergedRegion(new CellRangeAddress(rowNum, rowNum, 0, 20));
                         style.setWrapText(true);
                         row.setRowStyle(style);
-                        int lines = 2;
-                        int pos = 0;
-                        while ((pos = val.indexOf("\n", pos) + 1) != 0) {
-                            lines++;
-                        }
-                        row.setHeight((short) (row.getHeight() * lines));
+
+                        int numberOfLines = val.split("\n").length + 2;
+                        row.setHeight((short) (row.getHeight() * numberOfLines));
                     }
                     if (type.equals(Constants.CORRECT)) {
                         headerFont.setBold(true);
