@@ -13,6 +13,8 @@ import org.mskcc.kickoff.util.Utils;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,6 +26,9 @@ public class SampleKeyPrinter implements FilePrinter {
 
     @Value("${sampleKeyExamplesPath}")
     private String sampleKeyExamplesPath;
+
+    @Value("${sampleKeyInstructionsPath}")
+    private String sampleKeyInstructionsPath;
 
     @Override
     public void print(Request request) {
@@ -47,26 +52,7 @@ public class SampleKeyPrinter implements FilePrinter {
         CellStyle unlockedCellStyle = wb.createCellStyle();
         unlockedCellStyle.setLocked(false);
 
-        // First put the directions.
-        String instructs = "Instructions:\n" +
-                "   -Fill in the GroupName column (column C) for each sample. Columns D-F can be used if your " +
-                "experiment" +
-                " has multiple pairings, see below.\n" +
-                "                -Please do not leave any blank fields in this column. If there are samples that " +
-                "should not be included, identify these with the GroupName “excluded”.\n" +
-                "                -Please be consistent when assigning group names.\n" +
-                "                -GroupNames are case sensitive. For example, “Normal” and “normal” will be " +
-                "identified as two different group names.\n" +
-                "                -GroupNames should start with a letter and only use characters, A-Z and 0-9. Please " +
-                "do not use any special characters (i.e. ‘&’, ‘#’, ‘$’ etc) or spaces when assigning a GroupName.\n" +
-                "   -If your experiment does not have multiple pairings, please only edit column C.\n" +
-                "   -If your experiment has multiple pairings, please indicate additional GroupNames in columns D, E," +
-                " " +
-                "and F.\n" +
-                "                -Do not change any of the information in columns A or B.\n" +
-                "                -Do not rename the sample IDs (InvestigatorSampleID or FASTQFileID). If you have a " +
-                "question about the sample names, please email bic-request@cbio.mskcc.org.\n" +
-                "                -Do not make any other changes to this file.\n";
+        String instructs = getInstructions();
 
         sampleKey = addRowToSheet(wb, sampleKey, new ArrayList<>(Collections.singletonList(instructs)), rowNum,
                 Constants.Excel.INSTRUCTIONS);
@@ -161,6 +147,38 @@ public class SampleKeyPrinter implements FilePrinter {
         } catch (Exception e) {
             DEV_LOGGER.warn(String.format("Exception thrown while writing to file: %s", sampleKeyExcel), e);
         }
+    }
+
+    private String getInstructions() {
+        try {
+            return new String(Files.readAllBytes(Paths.get(sampleKeyInstructionsPath)));
+        } catch (Exception e) {
+            DEV_LOGGER.warn(String.format("Unable to read Sample Key instructions from %s. Using default one.",
+                    sampleKeyInstructionsPath));
+            return getDafaultInstructions();
+        }
+    }
+
+    private String getDafaultInstructions() {
+        return "Instructions:\n" +
+                "   -Fill in the GroupName column (column C) for each sample. Columns D-F can be used if your " +
+                "experiment" +
+                " has multiple pairings, see below.\n" +
+                "                -Please do not leave any blank fields in this column. If there are samples that " +
+                "should not be included, identify these with the GroupName “excluded”.\n" +
+                "                -Please be consistent when assigning group names.\n" +
+                "                -GroupNames are case sensitive. For example, “Normal” and “normal” will be " +
+                "identified as two different group names.\n" +
+                "                -GroupNames should start with a letter and only use characters, A-Z and 0-9. Please " +
+                "do not use any special characters (i.e. ‘&’, ‘#’, ‘$’ etc) or spaces when assigning a GroupName.\n" +
+                "   -If your experiment does not have multiple pairings, please only edit column C.\n" +
+                "   -If your experiment has multiple pairings, please indicate additional GroupNames in columns D, E," +
+                " " +
+                "and F.\n" +
+                "                -Do not change any of the information in columns A or B.\n" +
+                "                -Do not rename the sample IDs (InvestigatorSampleID or FASTQFileID). If you have a " +
+                "question about the sample names, please email bic-request@cbio.mskcc.org.\n" +
+                "                -Do not make any other changes to this file.\n";
     }
 
     private void addDataValidation(XSSFSheet sampleKey, int rowNum) {
