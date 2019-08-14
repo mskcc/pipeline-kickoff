@@ -39,6 +39,10 @@ public class QueryImpactProjectInfo {
     @Value("${limsConnectionFilePath}")
     private String limsConnectionFilePath;
 
+    @Value("${lims.connection.attempts}")
+    private int limsConnectionAttempts;
+    private VeloxConnection connection;
+
     public static void main(String[] args) throws ServerException {
         QueryImpactProjectInfo qe = new QueryImpactProjectInfo();
 
@@ -65,25 +69,24 @@ public class QueryImpactProjectInfo {
 
     public Map<String, String> queryProjectInfo(Request request) {
         try {
-            VeloxConnection connection = VeloxUtils.getVeloxConnection(limsConnectionFilePath);
-            try {
-                connection.open();
-                VeloxStandalone.run(connection, new VeloxTask<Object>() {
-                    @Override
-                    public Object performTask() throws VeloxStandaloneException {
-                        projectInfo = queryProjectInfo(user, dataRecordManager, request);
-                        return new Object();
-                    }
-                });
-            } finally {
-                connection.close();
-            }
+            connection = VeloxUtils.tryToConnect(limsConnectionFilePath, limsConnectionAttempts);
+            VeloxStandalone.run(connection, new VeloxTask<Object>() {
+                @Override
+                public Object performTask() throws VeloxStandaloneException {
+                    projectInfo = queryProjectInfo(user, dataRecordManager, request);
+                    return new Object();
+                }
+            });
         } catch (com.velox.sapioutils.client.standalone.VeloxConnectionException e) {
-            System.err.println("com.velox.sapioutils.client.standalone.VeloxConnectionException: Connection refused for all users.1 ");
-            System.out.println("[ERROR] There was an issue connecting with LIMs. Someone or something else may be using this connection. Please try again in a minute or two.");
+            System.err.println("com.velox.sapioutils.client.standalone.VeloxConnectionException: Connection refused " +
+                    "for all users.1 ");
+            System.out.println("[ERROR] There was an issue connecting with LIMs. Someone or something else may be " +
+                    "using this connection. Please try again in a minute or two.");
             System.exit(0);
         } catch (Exception e) {
             DEV_LOGGER.warn(e.getMessage(), e);
+        } finally {
+            VeloxUtils.closeConnection();
         }
 
         return projectInfo;
@@ -105,7 +108,10 @@ public class QueryImpactProjectInfo {
 
         try {
             List<DataRecord> requests = drm.queryDataRecords("Request", "RequestId = '" + requestID + "'", apiUser);
-            List<String> ProjectFields = Arrays.asList("Lab_Head", "Lab_Head_E-mail", "Requestor", "Requestor_E-mail", "Platform", "Alternate_E-mails", "IGO_Project_ID", "Final_Project_Title", "CMO_Project_ID", "CMO_Project_Brief", "Project_Manager", "Readme_Info", "Data_Analyst", "Data_Analyst_E-mail");
+            List<String> ProjectFields = Arrays.asList("Lab_Head", "Lab_Head_E-mail", "Requestor",
+                    "Requestor_E-mail", "Platform", "Alternate_E-mails", "IGO_Project_ID", "Final_Project_Title",
+                    "CMO_Project_ID", "CMO_Project_Brief", "Project_Manager", "Readme_Info", "Data_Analyst",
+                    "Data_Analyst_E-mail");
 
             //initalizing empty map
             for (String field : ProjectFields) {
@@ -120,7 +126,8 @@ public class QueryImpactProjectInfo {
 
                 // Sample Preservation Types
                 // Get samples - get their sample preservation
-                List<DataRecord> Samps = Arrays.asList(requestDataRecord.getChildrenOfType(VeloxConstants.SAMPLE, apiUser));
+                List<DataRecord> Samps = Arrays.asList(requestDataRecord.getChildrenOfType(VeloxConstants.SAMPLE,
+                        apiUser));
                 HashSet<String> preservations = new HashSet<>();
                 if (Samps.size() > 0) {
                     List<Object> pres = drm.getValueList(Samps, VeloxConstants.PRESERVATION, apiUser);
@@ -156,11 +163,13 @@ public class QueryImpactProjectInfo {
                     projectInfo.put("Final_Project_Title", p.getStringVal("CMOFinalProjectTitle", apiUser));
                     projectInfo.put("CMO_Project_ID", p.getStringVal("CMOProjectID", apiUser));
                     // From projct brief you have to take out the \n.
-                    projectInfo.put("CMO_Project_Brief", p.getStringVal("CMOProjectBrief", apiUser).replace("\n", "").replace("\r", ""));
+                    projectInfo.put("CMO_Project_Brief", p.getStringVal("CMOProjectBrief", apiUser).replace("\n", "")
+                            .replace("\r", ""));
                 }
 
                 projectInfo.put("Project_Manager", requestDataRecord.getPickListVal("ProjectManager", apiUser));
-                projectInfo.put("Project_Manager_Email", String.valueOf(pmEmail.get(requestDataRecord.getPickListVal("ProjectManager", apiUser))));
+                projectInfo.put("Project_Manager_Email", String.valueOf(pmEmail.get(requestDataRecord.getPickListVal
+                        ("ProjectManager", apiUser))));
                 projectInfo.put("Readme_Info", requestDataRecord.getStringVal("ReadMe", apiUser));
 
 
@@ -177,8 +186,10 @@ public class QueryImpactProjectInfo {
                 // Values saved because they will be used to remove duplicated emails in email child
                 String LabHeadEmail = requestDataRecord.getStringVal("LabHeadEmail", apiUser).toLowerCase();
                 String InvestigatorEmail = requestDataRecord.getStringVal("Investigatoremail", apiUser).toLowerCase();
-                String[] LabHeadName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("LaboratoryHead", apiUser)).split(" ", 2);
-                String[] RequesterName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("Investigator", apiUser)).split(" ", 2);
+                String[] LabHeadName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("LaboratoryHead",
+                        apiUser)).split(" ", 2);
+                String[] RequesterName = WordUtils.capitalizeFully(requestDataRecord.getStringVal("Investigator",
+                        apiUser)).split(" ", 2);
 
                 if (LabHeadName.length > 1) {
                     projectInfo.put("Lab_Head", LabHeadName[1] + ", " + LabHeadName[0]);
@@ -220,7 +231,8 @@ public class QueryImpactProjectInfo {
 
             return getTransformedProjectInfo(projectInfo);
         } catch (Exception e) {
-            DEV_LOGGER.warn(String.format("Exception thrown while retrieving project info for request: %s", requestID), e);
+            DEV_LOGGER.warn(String.format("Exception thrown while retrieving project info for request: %s",
+                    requestID), e);
         }
 
         return Collections.emptyMap();
@@ -252,7 +264,8 @@ public class QueryImpactProjectInfo {
                     }
                 }
             } else {
-                List<DataRecord> kapaList = request.getDescendantsOfType(VeloxConstants.KAPA_AGILENT_CAPTURE_PROTOCOL_1, apiUser);
+                List<DataRecord> kapaList = request.getDescendantsOfType(VeloxConstants
+                        .KAPA_AGILENT_CAPTURE_PROTOCOL_1, apiUser);
                 String requestName = request.getPickListVal(VeloxConstants.REQUEST_NAME, apiUser);
                 if (requestName.contains("Exome") || requestName.equals("WES") || kapaList.size() != 0) {
                     reqType = Constants.EXOME;
