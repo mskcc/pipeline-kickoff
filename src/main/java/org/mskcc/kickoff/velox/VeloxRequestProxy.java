@@ -52,6 +52,10 @@ public class VeloxRequestProxy implements RequestProxy {
 
     @Value("${limsConnectionFilePath}")
     private String limsConnectionFilePath;
+
+    @Value("${lims.connection.attempts}")
+    private int limsConnectionAttempts;
+
     private List<DataRecord> originalSampRec;
     private ProjectFilesArchiver projectFilesArchiver;
 
@@ -79,8 +83,7 @@ public class VeloxRequestProxy implements RequestProxy {
 
     private void initVeloxConnection() {
         try {
-            connection = VeloxUtils.getVeloxConnection(limsConnectionFilePath);
-            connection.open();
+            connection = VeloxUtils.tryToConnect(limsConnectionFilePath, limsConnectionAttempts);
 
             if (connection.isConnected()) {
                 user = connection.getUser();
@@ -88,16 +91,6 @@ public class VeloxRequestProxy implements RequestProxy {
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    private void closeConnection() {
-        if (connection.isConnected()) {
-            try {
-                connection.close();
-            } catch (Throwable e) {
-                DEV_LOGGER.error(e.getMessage(), e);
-            }
         }
     }
 
@@ -133,7 +126,7 @@ public class VeloxRequestProxy implements RequestProxy {
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
         } finally {
-            closeConnection();
+            VeloxUtils.closeConnection(connection);
         }
     }
 
