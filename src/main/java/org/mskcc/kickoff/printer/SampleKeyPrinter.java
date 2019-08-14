@@ -56,7 +56,6 @@ public class SampleKeyPrinter implements FilePrinter {
 
         sampleKey = addRowToSheet(wb, sampleKey, new ArrayList<>(Collections.singletonList(instructs)), rowNum,
                 Constants.Excel.INSTRUCTIONS);
-        git c
         rowNum++;
 
         //header
