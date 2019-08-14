@@ -1,0 +1,11 @@
+Instructions:
+-Fill in the GroupName column (column C) for each sample. Columns D-F can be used if your experiment has multiple pairings, see below.
+                -Please do not leave any blank fields in this column. If there are samples that should not be included, identify these with the GroupName “excluded”.
+                -Please be consistent when assigning group names.
+                -GroupNames are case sensitive. For example, “Normal” and “normal” will be identified as two different group names.
+                -GroupNames should start with a letter and only use characters, A-Z and 0-9. Please do not use any special characters (i.e. ‘&’, ‘#’, ‘$’ etc) or spaces when assigning a GroupName.
+-If your experiment does not have multiple pairings, please only edit column C.
+-If your experiment has multiple pairings, please indicate additional GroupNames in columns D, E, and F.
+                -Do not change any of the information in columns A or B.
+                -Do not rename the sample IDs (InvestigatorSampleID or FASTQFileID). If you have a question about the sample names, please email bic-request@cbio.mskcc.org.
+                -Do not make any other changes to this file.
