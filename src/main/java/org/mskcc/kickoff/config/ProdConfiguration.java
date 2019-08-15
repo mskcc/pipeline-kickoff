@@ -17,8 +17,6 @@ public class ProdConfiguration {
 
         propertySourcesPlaceholderConfigurer.setLocation(Utils.getPropertiesLocation("application.properties"));
 
-        AppConfiguration.configureLogger("/log4j.properties");
-
         propertySourcesPlaceholderConfigurer.setOrder(0);
         propertySourcesPlaceholderConfigurer.setIgnoreUnresolvablePlaceholders(true);
 
