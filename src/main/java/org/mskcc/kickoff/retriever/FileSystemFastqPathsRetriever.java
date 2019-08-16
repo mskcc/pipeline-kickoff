@@ -8,21 +8,16 @@ import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
-import org.mskcc.kickoff.printer.MappingFilePrinter;
 import org.mskcc.kickoff.util.Constants;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.nio.file.attribute.FileTime;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.mskcc.kickoff.util.Constants.*;
 
@@ -67,17 +62,28 @@ public class FileSystemFastqPathsRetriever implements FastqPathsRetriever {
         List<String> fastqPaths = Arrays.asList(sampleFqPath.split("\n"));
         DEV_LOGGER.info(String.format("Fastq paths: " + fastqPaths));
 
-        if (fastqPaths.size() == 0) {
+        List<String> matchingFastqPaths = fastqPaths.stream()
+                .filter(s -> !sample.isPooledNormal() || recipeMatches(request, s))
+                .collect(Collectors.toList());
+
+        DEV_LOGGER.info(String.format("Matching Fastq paths: " + matchingFastqPaths));
+
+        if (matchingFastqPaths.size() == 0) {
             throw new RuntimeException(String.format("No FASTQ paths found for sample: %s and run: %s", sample, runId));
         }
 
-        String latestFastqPath = fastqPaths.get(0);
+        String latestFastqPath = matchingFastqPaths.get(0);
 
-        if (fastqPaths.size() > 1) {
-            latestFastqPath = getLatestFastqPath(sample, runId, fastqPaths, latestFastqPath);
+        if (matchingFastqPaths.size() > 1) {
+            latestFastqPath = getLatestFastqPath(sample, runId, matchingFastqPaths, latestFastqPath);
         }
 
         return latestFastqPath;
+    }
+
+    private boolean recipeMatches(KickoffRequest request, String s) {
+        return s.matches("(.*)IGO_" + request.getBaitVersion()
+                .toUpperCase() + "_[ATCG](.*)");
     }
 
     private String getLatestFastqPath(Sample sample, String runId, List<String> fastqPaths, String latestFastqPath) throws IOException {
