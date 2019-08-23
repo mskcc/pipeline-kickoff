@@ -318,6 +318,7 @@ public class SampleSetProjectInfoConverterTest {
 
     private KickoffRequest getRequestWithRequiredProperties(String requestId) {
         KickoffRequest kickoffRequest = new KickoffRequest(requestId, processingType);
+        kickoffRequest.addProjectProperty(Constants.ProjectInfo.INVESTIGATOR_EMAIL, "inv@mskcc.org");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.LAB_HEAD, "labHead");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.LAB_HEAD_E_MAIL, "email");
         kickoffRequest.addProjectProperty(Constants.ProjectInfo.MAIL_TO, "e1@mskcc.org,e2@mskcc.org");
