@@ -90,6 +90,7 @@ public class SmartPairingRetriever {
                 .stream()
                 .filter(s -> Objects.equals(s.getCmoSampleInfo().getFields().getOrDefault(patientFieldKey, ""),
                         patient.getPatientId()))
+                .filter(s -> s.getRecipe() == request.getRecipe())
                 .collect(Collectors.toList());
     }
 
