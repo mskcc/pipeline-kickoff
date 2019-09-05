@@ -4,7 +4,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.RequestType;
 import org.mskcc.domain.sample.Sample;
-import org.mskcc.kickoff.domain.KickoffExternalSample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.printer.observer.ObserverManager;
 import org.mskcc.kickoff.util.Constants;
@@ -71,9 +70,6 @@ public abstract class ClinicalPatientFilePrinter extends FilePrinter {
                 switch (fieldName) {
                     case Constants.CORRECTED_CMO_ID:
                         fieldValue = Utils.sampleNormalization(fieldValue);
-                        break;
-                    case Constants.INVESTIGATOR_SAMPLE_ID:
-                        fieldValue = fieldValue.replace('-', '_');
                         break;
                     case Constants.CMO_PATIENT_ID:
                         fieldValue = Utils.patientNormalization(fieldValue);
