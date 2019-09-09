@@ -3,9 +3,14 @@ package org.mskcc.kickoff.pairing;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.Patient;
+import org.mskcc.domain.Recipe;
+import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.sample.Sample;
+import org.mskcc.domain.sample.TumorNormalType;
+import org.mskcc.kickoff.domain.KickoffExternalSample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
+import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.util.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +19,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.function.BiPredicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.mskcc.domain.sample.Preservation.*;
@@ -23,13 +30,25 @@ import static org.mskcc.domain.sample.Preservation.*;
 public class SmartPairingRetriever {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+    private static final String DMP_ID_PATTERN = "(P-[0-9]{7})-([TN])([0-9])+-([A-Za-z0-9]+)";
 
     private final BiPredicate<Sample, Sample> pairingInfoValidPredicate;
+    private Map<String, String> dmpToIgoAssay = new HashMap<>();
+    private ReadOnlyExternalSamplesRepository externalSamplesRepository;
+
 
     @Autowired
     public SmartPairingRetriever(@Qualifier("pairingInfoValidPredicate") BiPredicate<Sample, Sample>
-                                         pairingInfoValidPredicate) {
+                                         pairingInfoValidPredicate,
+                                 ReadOnlyExternalSamplesRepository externalSamplesRepository) {
         this.pairingInfoValidPredicate = pairingInfoValidPredicate;
+        this.externalSamplesRepository = externalSamplesRepository;
+
+        dmpToIgoAssay.put("IM3", Recipe.IMPACT_341.getValue());
+        dmpToIgoAssay.put("IM5", Recipe.IMPACT_410.getValue());
+        dmpToIgoAssay.put("IM6", Recipe.IMPACT_468.getValue());
+        dmpToIgoAssay.put("IM7", "IMPACT505");
+        dmpToIgoAssay.put("IH3", Recipe.HEME_PACT_V_3.getValue());
     }
 
     public Map<String, String> retrieve(KickoffRequest request) {
@@ -53,6 +72,7 @@ public class SmartPairingRetriever {
         for (Patient patient : request.getPatients().values()) {
             Set<Sample> normalSamplesFromCurrentRequest = getNormalSamples(patient.getSamples());
             Collection<Sample> normalSamplesFromCurrentProject = getNormalSamplesForProjectForPatient(request, patient);
+            Collection<KickoffExternalSample> dmpNormalsForPatient = getDmpNormalsForPatient(patient.getPatientId());
 
             DEV_LOGGER.info(String.format("Normal samples found for request %s: for patient: %s %s", request.getId(),
                     patient.getPatientId(), normalSamplesFromCurrentRequest));
@@ -68,7 +88,7 @@ public class SmartPairingRetriever {
 
                     String normalCorrectedCmoId = tryToPairNormal(request, pooledNormals,
                             normalSamplesFromCurrentRequest,
-                            normalSamplesFromCurrentProject, tumor);
+                            normalSamplesFromCurrentProject, tumor, dmpNormalsForPatient);
 
                     DEV_LOGGER.info(String.format("Smart pairing found: tumor: %s - normal: %s", tumorCorrectedCmoId,
                             normalCorrectedCmoId));
@@ -82,6 +102,26 @@ public class SmartPairingRetriever {
         }
 
         return smartPairings;
+    }
+
+    private Collection<KickoffExternalSample> getDmpNormalsForPatient(String cmoPatientId) {
+        Collection<ExternalSample> externalSamples = externalSamplesRepository.getByPatientCmoId(cmoPatientId);
+
+        List<KickoffExternalSample> normalExternalSamples = externalSamples.stream()
+                .filter(s -> Objects.equals(s.getTumorNormal(), TumorNormalType.NORMAL.getValue()))
+                .map(s -> KickoffExternalSample.convert(s))
+                .collect(Collectors.toList());
+
+        return normalExternalSamples;
+    }
+
+    private Collection<KickoffExternalSample> getDmpNormalsForPatient(Collection<KickoffExternalSample>
+                                                                              externalSamples, Patient patient) {
+        List<KickoffExternalSample> samplesForPatient = externalSamples.stream()
+                .filter(s -> s.getCmoPatientId().equals(patient.getPatientId()))
+                .collect(Collectors.toList());
+
+        return samplesForPatient;
     }
 
     private List<Sample> getNormalSamplesForProjectForPatient(KickoffRequest request, Patient patient) {
@@ -103,9 +143,12 @@ public class SmartPairingRetriever {
         return request.getAllValidSamples(Sample::isPooledNormal).values();
     }
 
-    private String tryToPairNormal(KickoffRequest request, Collection<Sample> pooledNormals, Collection<Sample>
-            normalSamplesFromCurrentRequest, Collection<Sample> normalSamplesFromCurrentProject, Sample tumor) {
-        String normalCorrectedCmoId = tryToPairNormalWithReqestNormals(normalSamplesFromCurrentRequest, tumor);
+    private String tryToPairNormal(KickoffRequest request,
+                                   Collection<Sample> pooledNormals,
+                                   Collection<Sample> normalSamplesFromCurrentRequest,
+                                   Collection<Sample> normalSamplesFromCurrentProject,
+                                   Sample tumor, Collection<KickoffExternalSample> dmpNormals) {
+        String normalCorrectedCmoId = tryToPairNormalWithRequestNormals(normalSamplesFromCurrentRequest, tumor);
 
         if (!normalFound(normalCorrectedCmoId)) {
             DEV_LOGGER.info("Normal sample not found in request samples. Will look for in project samples");
@@ -114,18 +157,74 @@ public class SmartPairingRetriever {
         }
 
         if (!normalFound(normalCorrectedCmoId)) {
-            DEV_LOGGER.info("Normal sample not found in project samples. Will look for in pooled normals");
+            DEV_LOGGER.info("Normal sample not found in project samples. Will look for in DMP samples");
+            normalCorrectedCmoId = tryToPairNormalWithDMP(dmpNormals, tumor, request);
+        }
+
+        if (!normalFound(normalCorrectedCmoId)) {
+            DEV_LOGGER.info("Normal sample not found in DMP samples. Will look for in pooled normals");
             normalCorrectedCmoId = tryToPairPooledNormal(tumor, pooledNormals);
         }
 
         return normalCorrectedCmoId;
     }
 
+    private String tryToPairNormalWithDMP(Collection<KickoffExternalSample> dmpNormals, Sample tumor, KickoffRequest
+            request) {
+        Optional<KickoffExternalSample> optional = dmpNormals.stream()
+                .filter(s -> assayMatches(s, tumor.getRecipe().getValue()))
+                .findFirst();
+
+        if (optional.isPresent()) {
+            KickoffExternalSample externalSample = optional.get();
+            addToPatient(request, externalSample);
+
+            request.addExternalSample(externalSample);
+
+            return externalSample.getCorrectedCmoSampleId();
+        }
+
+        return Constants.NA_LOWER_CASE;
+    }
+
+    private void addToPatient(KickoffRequest request, KickoffExternalSample externalSample) {
+        Patient patient = request.getPatients().get(externalSample.getPatientId());
+        if (patient == null)
+            patient = request.getPatients().get(externalSample.getCmoSampleInfo().getCmoPatientId());
+        if (patient == null)
+            patient = request.getPatients().get(externalSample.getCmoPatientId());
+
+        if (patient == null)
+            DEV_LOGGER.warn(String.format("Could not find patient with id %s (%s, %s) to add sample %s to it",
+                    externalSample.getPatientId(), externalSample.getCmoPatientId(), externalSample.getCmoSampleInfo
+                            ().getCmoPatientId(),
+                    externalSample));
+        else {
+            patient.addSample(externalSample);
+            DEV_LOGGER.debug(String.format("Normal %s added to patient: %s", externalSample, patient.getPatientId()));
+        }
+    }
+
+    private boolean assayMatches(KickoffExternalSample externalSample, String tumorRecipe) {
+        Pattern pattern = Pattern.compile(DMP_ID_PATTERN);
+        Matcher matcher = pattern.matcher(externalSample.getExternalId());
+
+        if (matcher.matches()) {
+            String assay = matcher.group(4);
+            if (dmpToIgoAssay.containsKey(assay)) {
+                String igoAssay = dmpToIgoAssay.get(assay);
+                return Objects.equals(tumorRecipe, igoAssay);
+            }
+        }
+
+        return false;
+    }
+
     private String tryToPairNormalWithProjectNormals(Collection<Sample> normalSamplesFromCurrentProject, Sample tumor) {
         return getNormal(normalSamplesFromCurrentProject, tumor);
     }
 
-    private String tryToPairNormalWithReqestNormals(Collection<Sample> normalSamplesFromCurrentRequest, Sample tumor) {
+    private String tryToPairNormalWithRequestNormals(Collection<Sample> normalSamplesFromCurrentRequest, Sample tumor) {
         return getNormal(normalSamplesFromCurrentRequest, tumor);
     }
 
@@ -217,6 +316,17 @@ public class SmartPairingRetriever {
     }
 
     private String getNormal(Collection<Sample> normalSamples, Sample tumor) {
+        Collection<Sample> assayCompatibleNormals = getAssayCompatibleNormals(tumor, normalSamples);
+
+        if (assayCompatibleNormals.size() == 0) {
+            String message = String.format("There is no normal sample compatible with tumor's %s recipe %s. Normals " +
+                    "found: %s.", tumor.getIgoId(), tumor
+                    .getRecipe(), getSampleIdsWithRecipes(normalSamples));
+            DEV_LOGGER.warn(message);
+
+            return Constants.NA_LOWER_CASE;
+        }
+
         List<Sample> seqTypeCompatibleNormals = getSeqTypeCompatibleNormals(tumor, normalSamples);
 
         if (seqTypeCompatibleNormals.size() == 0) {
@@ -247,6 +357,18 @@ public class SmartPairingRetriever {
         }
 
         return pairedNormal.getCorrectedCmoSampleId();
+    }
+
+    private String getSampleIdsWithRecipes(Collection<Sample> samples) {
+        return samples.stream()
+                .map(s -> String.format("%s - %s", s.getIgoId(), s.getRecipe()))
+                .collect(Collectors.joining(","));
+    }
+
+    private Collection<Sample> getAssayCompatibleNormals(Sample tumor, Collection<Sample> normalSamples) {
+        return normalSamples.stream()
+                .filter(s -> s.getRecipe() == tumor.getRecipe())
+                .collect(Collectors.toList());
     }
 
     private String getSampleIdsWithSeqTypes(Collection<Sample> samples) {

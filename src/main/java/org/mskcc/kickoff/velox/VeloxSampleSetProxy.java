@@ -109,7 +109,7 @@ public class VeloxSampleSetProxy implements SampleSetProxy {
                     externalId = externalSampleRecord.getStringVal(EXTERNAL_ID, user);
                     ExternalSample externalSample = externalSamplesRepository.getByExternalId(externalId);
 
-                    KickoffExternalSample kickoffExternalSample = convert(externalSample);
+                    KickoffExternalSample kickoffExternalSample = KickoffExternalSample.convert(externalSample);
                     kickoffExternalSample.putRunIfAbsent(externalSample.getRunId());
                     externalSamples.add(kickoffExternalSample);
                 } catch (Exception e) {
@@ -124,26 +124,4 @@ public class VeloxSampleSetProxy implements SampleSetProxy {
         return externalSamples;
     }
 
-    private KickoffExternalSample convert(ExternalSample externalSample) {
-        KickoffExternalSample kickoffExternalSample = new KickoffExternalSample(externalSample.getCounter(),
-                externalSample.getExternalId(), externalSample.getExternalPatientId(), externalSample.getFilePath(),
-                externalSample.getRunId(), externalSample.getSampleClass(), externalSample.getSampleOrigin(),
-                externalSample.getTumorNormal());
-
-        kickoffExternalSample.setBaitVersion(externalSample.getBaitVersion());
-        kickoffExternalSample.setCmoId(externalSample.getCmoId());
-        kickoffExternalSample.setPatientCmoId(externalSample.getPatientCmoId());
-        kickoffExternalSample.setPreservationType(externalSample.getPreservationType());
-        kickoffExternalSample.setOncotreeCode(externalSample.getOncotreeCode());
-        kickoffExternalSample.setSex(externalSample.getSex());
-        kickoffExternalSample.setTissueSite(externalSample.getTissueSite());
-        kickoffExternalSample.setCounter(externalSample.getCounter());
-        kickoffExternalSample.setNucleidAcid(externalSample.getNucleidAcid());
-        kickoffExternalSample.setSpecimenType(externalSample.getSpecimenType());
-
-        DEV_LOGGER.info(String.format("Converted external sample %s to kickoff external sample", externalSample,
-                kickoffExternalSample));
-
-        return kickoffExternalSample;
-    }
 }

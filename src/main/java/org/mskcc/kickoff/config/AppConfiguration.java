@@ -112,7 +112,9 @@ public class AppConfiguration {
     @Value("${external.sample.rest.url}")
     private String externalRestUrl;
     @Value("${external.sample.rest.samples.endpoint}")
-    private String externalRestEndpoint;
+    private String externalRestSamplesEndpoint;
+    @Value("${external.sample.rest.patient.cmo.endpoint}")
+    private String externalRestPatinetCmoEndpoint;
     @Value("${external.sample.rest.username}")
     private String externalSampleRestUsername;
     @Value("${external.sample.rest.password}")
@@ -269,7 +271,8 @@ public class AppConfiguration {
 
     @Bean
     public ReadOnlyExternalSamplesRepository readOnlyExternalSamplesRepository() {
-        return new ServiceReadOnlyExternalSamplesRepository(externalRestUrl, externalRestEndpoint,
+        return new ServiceReadOnlyExternalSamplesRepository(externalRestUrl, externalRestSamplesEndpoint,
+                externalRestPatinetCmoEndpoint,
                 externalRestTemplate(), observerManager);
     }
 
