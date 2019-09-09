@@ -21,10 +21,7 @@ import org.mskcc.kickoff.poolednormals.PooledNormalsRetriever;
 import org.mskcc.kickoff.poolednormals.PooledNormalsRetrieverFactory;
 import org.mskcc.kickoff.process.ForcedProcessingType;
 import org.mskcc.kickoff.process.ProcessingType;
-import org.mskcc.kickoff.retriever.DummyNimblegenResolver;
-import org.mskcc.kickoff.retriever.NimblegenResolver;
-import org.mskcc.kickoff.retriever.SequencerIdentifierRetriever;
-import org.mskcc.kickoff.retriever.SingleRequestRetriever;
+import org.mskcc.kickoff.retriever.*;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
 import org.mskcc.util.VeloxConstants;
@@ -49,6 +46,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private final RequestTypeResolver requestTypeResolver;
     private final NimblegenResolver nimblegenResolver;
     private final Sample2DataRecordMap sample2DataRecordMap;
+    private ReadOnlyExternalSamplesRepository externalSamplesRepository;
     private ProjectInfoRetriever projectInfoRetriever;
     private LocalDateTime kapaProtocolStartDate = LocalDateTime.of(2015, 8, 3, 0, 0, 0);
     private PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory;
@@ -60,7 +58,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                                        ProjectInfoRetriever projectInfoRetriever,
                                        PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory,
                                        NimblegenResolver nimblegenResolver,
-                                       Sample2DataRecordMap sample2DataRecordMap) {
+                                       Sample2DataRecordMap sample2DataRecordMap,
+                                       ReadOnlyExternalSamplesRepository externalSamplesRepository) {
         this.user = user;
         this.dataRecordManager = dataRecordManager;
         this.requestTypeResolver = requestTypeResolver;
@@ -68,6 +67,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         this.pooledNormalsRetrieverFactory = pooledNormalsRetrieverFactory;
         this.nimblegenResolver = nimblegenResolver;
         this.sample2DataRecordMap = sample2DataRecordMap;
+        this.externalSamplesRepository = externalSamplesRepository;
     }
 
     @Override

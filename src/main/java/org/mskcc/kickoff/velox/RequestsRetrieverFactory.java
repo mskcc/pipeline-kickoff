@@ -58,8 +58,10 @@ public class RequestsRetrieverFactory {
         if (sampleSetProjectPredicate.test(projectId))
             return getSampleSetRequestsRetriever(user, dataRecordManager, projectId, veloxPairingsRetriever);
 
-        return new UniRequestsRetriever(user, dataRecordManager, projectInfoRetriever, singleRequestRequestDataPropagator,
-                nimblegenResolver, sample2DataRecordMap, veloxPairingsRetriever, singleRequestPairingValidPredicate);
+        return new UniRequestsRetriever(user, dataRecordManager, projectInfoRetriever,
+                singleRequestRequestDataPropagator,
+                nimblegenResolver, sample2DataRecordMap, veloxPairingsRetriever, singleRequestPairingValidPredicate,
+                externalSamplesRepository);
     }
 
     private RequestsRetriever getSampleSetRequestsRetriever(User user, DataRecordManager dataRecordManager, String
@@ -69,7 +71,8 @@ public class RequestsRetrieverFactory {
         PooledNormalsRetrieverFactory pooledNormRetrFact = new PooledNormalsRetrieverFactory(nimblegenResolver,
                 sample2DataRecordMap);
         SingleRequestRetriever requestsRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager,
-                requestTypeResolver, projectInfoRetriever, pooledNormRetrFact, nimblegenResolver, sample2DataRecordMap);
+                requestTypeResolver, projectInfoRetriever, pooledNormRetrFact, nimblegenResolver,
+                sample2DataRecordMap, externalSamplesRepository);
 
         DataRecord sampleSetRecord = getSampleSetRecord(projectId, dataRecordManager, user);
 
@@ -79,7 +82,8 @@ public class RequestsRetrieverFactory {
         SamplesToRequestsConverter samplesToRequestsConverter = new SamplesToRequestsConverter(requestsRetriever);
         SampleSetRetriever sampleSetRetriever = new SampleSetRetriever(veloxSampleSetProxy, samplesToRequestsConverter);
 
-        return new SampleSetRequestRetriever(sampleSetRequestDataPropagator, sampleSetToRequestConverter, sampleSetRetriever,
+        return new SampleSetRequestRetriever(sampleSetRequestDataPropagator, sampleSetToRequestConverter,
+                sampleSetRetriever,
                 sampleSetRecord, veloxPairingsRetriever, sampleSetPairingValidPredicate);
     }
 

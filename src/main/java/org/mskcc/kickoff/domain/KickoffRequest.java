@@ -260,6 +260,10 @@ public class KickoffRequest extends org.mskcc.domain.Request {
         this.externalSamples = externalSamples;
     }
 
+    public void addExternalSample(KickoffExternalSample kickoffExternalSample) {
+        externalSamples.put(kickoffExternalSample.getIgoId(), kickoffExternalSample);
+    }
+
     public List<KickoffExternalSample> getTumorExternalSamples() {
         return getExternalSamples().values().stream()
                 .filter(s -> s.isTumor())

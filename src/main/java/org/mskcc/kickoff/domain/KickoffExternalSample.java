@@ -1,6 +1,7 @@
 package org.mskcc.kickoff.domain;
 
 import org.mskcc.domain.Run;
+import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.instrument.InstrumentType;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.domain.sample.TumorNormalType;
@@ -12,6 +13,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class KickoffExternalSample extends Sample {
+    private static final org.apache.log4j.Logger DEV_LOGGER = org.apache.log4j.Logger.getLogger(Constants.DEV_LOGGER);
+
     private String externalId;
     private String filePath;
     private String externalPatientId;
@@ -55,6 +58,29 @@ public class KickoffExternalSample extends Sample {
 
     protected KickoffExternalSample() {
         super("");
+    }
+
+    public static KickoffExternalSample convert(ExternalSample externalSample) {
+        KickoffExternalSample kickoffExternalSample = new KickoffExternalSample(externalSample.getCounter(),
+                externalSample.getExternalId(), externalSample.getExternalPatientId(), externalSample.getFilePath(),
+                externalSample.getRunId(), externalSample.getSampleClass(), externalSample.getSampleOrigin(),
+                externalSample.getTumorNormal());
+
+        kickoffExternalSample.setBaitVersion(externalSample.getBaitVersion());
+        kickoffExternalSample.setCmoId(externalSample.getCmoId());
+        kickoffExternalSample.setPatientCmoId(externalSample.getPatientCmoId());
+        kickoffExternalSample.setPreservationType(externalSample.getPreservationType());
+        kickoffExternalSample.setOncotreeCode(externalSample.getOncotreeCode());
+        kickoffExternalSample.setSex(externalSample.getSex());
+        kickoffExternalSample.setTissueSite(externalSample.getTissueSite());
+        kickoffExternalSample.setCounter(externalSample.getCounter());
+        kickoffExternalSample.setNucleidAcid(externalSample.getNucleidAcid());
+        kickoffExternalSample.setSpecimenType(externalSample.getSpecimenType());
+
+        DEV_LOGGER.info(String.format("Converted external sample %s to kickoff external sample", externalSample,
+                kickoffExternalSample));
+
+        return kickoffExternalSample;
     }
 
     @Override

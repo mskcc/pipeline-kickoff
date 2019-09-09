@@ -31,7 +31,8 @@ public class UniRequestsRetriever implements RequestsRetriever {
                                 NimblegenResolver nimblegenResolver,
                                 Sample2DataRecordMap sample2DataRecordMap,
                                 VeloxPairingsRetriever veloxPairingsRetriever,
-                                BiPredicate<Sample, Sample> pairingValidPredicate) {
+                                BiPredicate<Sample, Sample> pairingValidPredicate,
+                                ReadOnlyExternalSamplesRepository externalSamplesRepository) {
         this.user = user;
         this.dataRecordManager = dataRecordManager;
         this.requestDataPropagator = requestDataPropagator;
@@ -39,7 +40,7 @@ public class UniRequestsRetriever implements RequestsRetriever {
         this.singleRequestRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager, new
                 RequestTypeResolver(), projectInfoRetriever,
                 new PooledNormalsRetrieverFactory(nimblegenResolver, sample2DataRecordMap), nimblegenResolver,
-                sample2DataRecordMap);
+                sample2DataRecordMap, externalSamplesRepository);
         this.pairingValidPredicate = pairingValidPredicate;
     }
 
