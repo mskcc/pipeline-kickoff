@@ -73,8 +73,8 @@ public class ServiceReadOnlyExternalSamplesRepository implements ReadOnlyExterna
                 patientCmoId));
 
         if (externalSampleResponse.getStatusCode() != HttpStatus.OK) {
-            String message = String.format("Error while retrieving External Samples for CMO patient id %s not found",
-                    patientCmoId);
+            DEV_LOGGER.warn(String.format("Error while retrieving External Samples for CMO patient id %s not found",
+                    patientCmoId));
             return Collections.emptyList();
         }
 

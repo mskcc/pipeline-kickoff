@@ -9,6 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.*;
+import org.mskcc.domain.sample.PooledNormalSample;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.kickoff.domain.KickoffRequest;
@@ -359,7 +360,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                     String cmoNormalId = pooledNormalRecord.getStringVal(VeloxConstants.OTHER_SAMPLE_ID, user);
                     String igoNormalId = pooledNormalRecord.getStringVal(VeloxConstants.SAMPLE_ID, user);
 
-                    Sample sample = kickoffRequest.putPooledNormalIfAbsent(igoNormalId);
+                    PooledNormalSample sample = new PooledNormalSample(igoNormalId);
 
                     addPooledNormalSeqNames(sample, pooledNormalRecord);
                     sample.setCmoSampleId(cmoNormalId);
@@ -377,11 +378,13 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
                     // If include run ID is 'null' skip.
                     // This could mess up some older projects, so I may have to change this
-                    if (sampleInfo.get(Constants.INCLUDE_RUN_ID) == null) {
+                    if (StringUtils.isEmpty(sampleInfo.get(Constants.INCLUDE_RUN_ID))) {
                         logWarning("Skipping adding pooled normal info from " + sampleInfo.get(Constants.IGO_ID) + "" +
                                 " because I cannot find include run id. ");
                         continue;
                     }
+
+                    kickoffRequest.putPooledNormalIfAbsent(sample);
 
                     // If the sample pooled normal type (ex: FROZEN POOLED NORMAL) is already in the manfiest list
                     // Concatenate the include/ exclude run ids

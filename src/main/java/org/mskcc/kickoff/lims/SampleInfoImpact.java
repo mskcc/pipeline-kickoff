@@ -138,8 +138,6 @@ public class SampleInfoImpact extends SampleInfo {
 
         DEV_LOGGER.info(String.format("All valid runs: %s", allRunIds));
 
-        DEV_LOGGER.info(String.format("All valid runs: %s", allRunIds));
-
         DEV_LOGGER.info(String.format("Looking at sample: %s", this.IGO_ID));
 
         List<String> goodRunIds = new ArrayList<>();
