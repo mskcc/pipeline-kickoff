@@ -82,8 +82,7 @@ public class FileSystemFastqPathsRetriever implements FastqPathsRetriever {
     }
 
     private boolean recipeMatches(KickoffRequest request, String s) {
-        return s.matches("(.*)IGO_" + request.getBaitVersion()
-                .toUpperCase() + "_[ATCG](.*)");
+        return s.matches("(.*)IGO_" + request.getBaitVersion() + "_[ATCG](.*)");
     }
 
     private String getLatestFastqPath(Sample sample, String runId, List<String> fastqPaths, String latestFastqPath) throws IOException {
