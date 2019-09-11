@@ -1,13 +1,12 @@
 package org.mskcc.kickoff.printer.observer;
 
+import com.velox.sapioutils.shared.utilities.Sets;
 import org.junit.Test;
 import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.notify.GenerationError;
 import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.kickoff.validator.InMemoryErrorRepository;
-
-import java.util.Arrays;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -36,7 +35,7 @@ public class FileGenerationStatusManifestFileObserverTest {
         fileGenerationStatusManifestFileObserver.updateFileError(manifestFile, error1);
         fileGenerationStatusManifestFileObserver.updateFileError(manifestFile, error2);
 
-        assertThat(manifestFile.getGenerationErrors(), is(Arrays.asList(error1, error2)));
+        assertThat(manifestFile.getGenerationErrors(), is(Sets.asHashSet(error1, error2)));
     }
 
 

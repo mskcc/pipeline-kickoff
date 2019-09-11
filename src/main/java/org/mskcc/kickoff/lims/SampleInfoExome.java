@@ -10,6 +10,7 @@ import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.retriever.NimblegenResolver;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.util.VeloxConstants;
 
 import java.rmi.RemoteException;
@@ -28,8 +29,9 @@ public class SampleInfoExome extends SampleInfoImpact {
                            DataRecord rec,
                            KickoffRequest kickoffRequest, Sample sample,
                            LocalDateTime kapaProtocolStartDate,
-                           NimblegenResolver nimblegenResolver) {
-        super(apiUser, drm, rec, kickoffRequest, sample, kapaProtocolStartDate, nimblegenResolver);
+                           NimblegenResolver nimblegenResolver,
+                           ErrorRepository errorRepository) {
+        super(apiUser, drm, rec, kickoffRequest, sample, kapaProtocolStartDate, nimblegenResolver, errorRepository);
     }
 
     /*

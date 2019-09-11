@@ -25,6 +25,7 @@ import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.retriever.*;
 import org.mskcc.kickoff.util.Constants;
 import org.mskcc.kickoff.util.Utils;
+import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.util.VeloxConstants;
 
 import java.rmi.RemoteException;
@@ -52,6 +53,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private LocalDateTime kapaProtocolStartDate = LocalDateTime.of(2015, 8, 3, 0, 0, 0);
     private PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory;
     private PooledNormalsRetriever pooledNormalsRetriever;
+    private ErrorRepository errorRepository;
 
     public VeloxSingleRequestRetriever(User user,
                                        DataRecordManager dataRecordManager,
@@ -60,7 +62,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                                        PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory,
                                        NimblegenResolver nimblegenResolver,
                                        Sample2DataRecordMap sample2DataRecordMap,
-                                       ReadOnlyExternalSamplesRepository externalSamplesRepository) {
+                                       ReadOnlyExternalSamplesRepository externalSamplesRepository,
+                                       ErrorRepository errorRepository) {
         this.user = user;
         this.dataRecordManager = dataRecordManager;
         this.requestTypeResolver = requestTypeResolver;
@@ -69,6 +72,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         this.nimblegenResolver = nimblegenResolver;
         this.sample2DataRecordMap = sample2DataRecordMap;
         this.externalSamplesRepository = externalSamplesRepository;
+        this.errorRepository = errorRepository;
     }
 
     @Override
@@ -973,10 +977,10 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         SampleInfo sampleInfo;
         if (kickoffRequest.getRequestType() == RequestType.IMPACT || sample.isPooledNormal()) {
             sampleInfo = new SampleInfoImpact(user, dataRecordManager, dataRecord, kickoffRequest, sample,
-                    kapaProtocolStartDate, nimblegenResolver);
+                    kapaProtocolStartDate, nimblegenResolver, errorRepository);
         } else if (kickoffRequest.getRequestType() == RequestType.EXOME) {
             sampleInfo = new SampleInfoExome(user, dataRecordManager, dataRecord, kickoffRequest, sample,
-                    kapaProtocolStartDate, nimblegenResolver);
+                    kapaProtocolStartDate, nimblegenResolver, errorRepository);
         } else {
             sampleInfo = new SampleInfo(user, dataRecordManager, dataRecord, kickoffRequest, sample);
         }

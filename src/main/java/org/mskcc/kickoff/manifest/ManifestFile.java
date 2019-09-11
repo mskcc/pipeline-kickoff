@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public enum ManifestFile {
     // Pairing file needs to be generated before mapping and grouping because normals from sibling requests smart
@@ -32,7 +34,7 @@ public enum ManifestFile {
 
     private FilePrinter filePrinter;
     private boolean fileGenerated;
-    private List<GenerationError> generationErrors = new ArrayList<>();
+    private Set<GenerationError> generationErrors = new LinkedHashSet<>();
 
     ManifestFile(String name) {
         this.name = name;
@@ -66,7 +68,7 @@ public enum ManifestFile {
         this.fileGenerated = fileGenerated;
     }
 
-    public List<GenerationError> getGenerationErrors() {
+    public Set<GenerationError> getGenerationErrors() {
         return generationErrors;
     }
 

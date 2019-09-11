@@ -9,6 +9,7 @@ import java.util.List;
 @Component
 public class InMemoryErrorRepository implements ErrorRepository {
     private List<GenerationError> errors = new ArrayList<>();
+    private List<GenerationError> warnings = new ArrayList<>();
 
     @Override
     public void add(GenerationError generationError) {
@@ -16,7 +17,17 @@ public class InMemoryErrorRepository implements ErrorRepository {
     }
 
     @Override
+    public void addWarning(GenerationError generationError) {
+        warnings.add(generationError);
+    }
+
+    @Override
     public List<GenerationError> getErrors() {
         return errors;
+    }
+
+    @Override
+    public List<GenerationError> getWarnings() {
+        return warnings;
     }
 }

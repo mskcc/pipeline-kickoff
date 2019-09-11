@@ -9,6 +9,7 @@ import org.mskcc.kickoff.lims.ProjectInfoRetriever;
 import org.mskcc.kickoff.poolednormals.PooledNormalsRetrieverFactory;
 import org.mskcc.kickoff.process.ProcessingType;
 import org.mskcc.kickoff.retriever.*;
+import org.mskcc.kickoff.validator.ErrorRepository;
 
 import java.util.Arrays;
 import java.util.List;
@@ -23,6 +24,7 @@ public class UniRequestsRetriever implements RequestsRetriever {
     private final RequestDataPropagator requestDataPropagator;
     private VeloxPairingsRetriever veloxPairingsRetriever;
     private BiPredicate<Sample, Sample> pairingValidPredicate;
+    private ErrorRepository errorRepository;
 
     public UniRequestsRetriever(User user,
                                 DataRecordManager dataRecordManager,
@@ -32,7 +34,8 @@ public class UniRequestsRetriever implements RequestsRetriever {
                                 Sample2DataRecordMap sample2DataRecordMap,
                                 VeloxPairingsRetriever veloxPairingsRetriever,
                                 BiPredicate<Sample, Sample> pairingValidPredicate,
-                                ReadOnlyExternalSamplesRepository externalSamplesRepository) {
+                                ReadOnlyExternalSamplesRepository externalSamplesRepository,
+                                ErrorRepository errorRepository) {
         this.user = user;
         this.dataRecordManager = dataRecordManager;
         this.requestDataPropagator = requestDataPropagator;
@@ -40,8 +43,9 @@ public class UniRequestsRetriever implements RequestsRetriever {
         this.singleRequestRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager, new
                 RequestTypeResolver(), projectInfoRetriever,
                 new PooledNormalsRetrieverFactory(nimblegenResolver, sample2DataRecordMap), nimblegenResolver,
-                sample2DataRecordMap, externalSamplesRepository);
+                sample2DataRecordMap, externalSamplesRepository, errorRepository);
         this.pairingValidPredicate = pairingValidPredicate;
+        this.errorRepository = errorRepository;
     }
 
     @Override
