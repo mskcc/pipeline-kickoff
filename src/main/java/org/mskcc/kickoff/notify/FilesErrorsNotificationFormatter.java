@@ -5,6 +5,7 @@ import org.mskcc.kickoff.manifest.ManifestFile;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class FilesErrorsNotificationFormatter implements NotificationFormatter {
@@ -21,17 +22,14 @@ public class FilesErrorsNotificationFormatter implements NotificationFormatter {
     public String format() {
         StrBuilder errorComment = new StrBuilder();
 
-        if (!errorRepository.getErrors().isEmpty()) {
-            errorComment.append("Errors:");
-            errorComment.append(newLineStrategy.getNewLineSeparator());
-            for (GenerationError generationError : errorRepository.getErrors()) {
-                errorComment.append(String.format("    -%s", generationError.getMessage()));
-                errorComment.append(newLineStrategy.getNewLineSeparator());
-            }
+        addErrors(errorComment);
+        addWarnings(errorComment);
+        addFileErrors(errorComment);
 
-            errorComment.append(newLineStrategy.getNewLineSeparator());
-        }
+        return errorComment.toString();
+    }
 
+    private void addFileErrors(StrBuilder errorComment) {
         for (ManifestFile manifestFile : ManifestFile.getRequiredFiles()) {
             if (!manifestFile.isFileGenerated()) {
                 errorComment.append(String.format("Required file not created: %s", manifestFile.getName()));
@@ -42,11 +40,31 @@ public class FilesErrorsNotificationFormatter implements NotificationFormatter {
                 errorComment.append(String.format("%s errors:", manifestFile.getName()));
                 errorComment.append(newLineStrategy.getNewLineSeparator());
                 errorComment.append(manifestFile.getGenerationErrors().stream()
-                        .map(e -> String.format("    -%s%s", e.getMessage(), newLineStrategy.getNewLineSeparator()))
+                        .map(e -> e.getMessage().replaceAll("\"", "'"))
+                        .map(e -> String.format("    -%s%s", e, newLineStrategy.getNewLineSeparator()))
                         .collect(Collectors.joining()));
             }
         }
+    }
 
-        return errorComment.toString();
+    private void addWarnings(StrBuilder errorComment) {
+        addToComment(errorComment, "Warnings:", errorRepository.getWarnings());
+    }
+
+    private void addToComment(StrBuilder errorComment, String type, List<GenerationError> errors) {
+        if (!errors.isEmpty()) {
+            errorComment.append(type);
+            errorComment.append(newLineStrategy.getNewLineSeparator());
+            for (GenerationError generationError : errors) {
+                errorComment.append(String.format("    -%s", generationError.getMessage()));
+                errorComment.append(newLineStrategy.getNewLineSeparator());
+            }
+
+            errorComment.append(newLineStrategy.getNewLineSeparator());
+        }
+    }
+
+    private void addErrors(StrBuilder errorComment) {
+        addToComment(errorComment, "Errors:", errorRepository.getErrors());
     }
 }

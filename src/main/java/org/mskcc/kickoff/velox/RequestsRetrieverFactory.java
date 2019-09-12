@@ -61,7 +61,7 @@ public class RequestsRetrieverFactory {
         return new UniRequestsRetriever(user, dataRecordManager, projectInfoRetriever,
                 singleRequestRequestDataPropagator,
                 nimblegenResolver, sample2DataRecordMap, veloxPairingsRetriever, singleRequestPairingValidPredicate,
-                externalSamplesRepository);
+                externalSamplesRepository, errorRepository);
     }
 
     private RequestsRetriever getSampleSetRequestsRetriever(User user, DataRecordManager dataRecordManager, String
@@ -72,7 +72,7 @@ public class RequestsRetrieverFactory {
                 sample2DataRecordMap);
         SingleRequestRetriever requestsRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager,
                 requestTypeResolver, projectInfoRetriever, pooledNormRetrFact, nimblegenResolver,
-                sample2DataRecordMap, externalSamplesRepository);
+                sample2DataRecordMap, externalSamplesRepository, errorRepository);
 
         DataRecord sampleSetRecord = getSampleSetRecord(projectId, dataRecordManager, user);
 

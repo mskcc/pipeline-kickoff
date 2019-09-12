@@ -10,6 +10,9 @@ import org.mskcc.domain.sample.TumorNormalType;
 import org.mskcc.kickoff.domain.KickoffExternalSample;
 import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.logger.PmLogPriority;
+import org.mskcc.kickoff.manifest.ManifestFile;
+import org.mskcc.kickoff.notify.GenerationError;
+import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.util.Constants;
@@ -35,7 +38,7 @@ public class SmartPairingRetriever {
     private final BiPredicate<Sample, Sample> pairingInfoValidPredicate;
     private Map<String, String> dmpToIgoAssay = new HashMap<>();
     private ReadOnlyExternalSamplesRepository externalSamplesRepository;
-
+    private Map<String, Collection<KickoffExternalSample>> cmoPatientId2ExtSamples = new HashMap<>();
 
     @Autowired
     public SmartPairingRetriever(@Qualifier("pairingInfoValidPredicate") BiPredicate<Sample, Sample>
@@ -72,23 +75,27 @@ public class SmartPairingRetriever {
         for (Patient patient : request.getPatients().values()) {
             Set<Sample> normalSamplesFromCurrentRequest = getNormalSamples(patient.getSamples());
             Collection<Sample> normalSamplesFromCurrentProject = getNormalSamplesForProjectForPatient(request, patient);
-            Collection<KickoffExternalSample> dmpNormalsForPatient = getDmpNormalsForPatient(patient.getPatientId());
 
+            String cmoPatientId = patient.getPatientId();
             DEV_LOGGER.info(String.format("Normal samples found for request %s: for patient: %s %s", request.getId(),
-                    patient.getPatientId(), normalSamplesFromCurrentRequest));
+                    cmoPatientId, normalSamplesFromCurrentRequest));
 
             DEV_LOGGER.info(String.format("Normal samples found for project %s: for patient: %s %s", request
                             .getProjectId(),
-                    patient.getPatientId(), normalSamplesFromCurrentProject));
+                    cmoPatientId, normalSamplesFromCurrentProject));
 
-            for (Sample tumor : getTumorSamples(patient.getSamples())) {
+            Set<Sample> tumorSamples = getTumorSamples(patient.getSamples());
+            if (tumorSamples.size() == 0)
+                DEV_LOGGER.warn(String.format("No tumor samples found for patient %s", cmoPatientId));
+
+            for (Sample tumor : tumorSamples) {
                 try {
                     String tumorCorrectedCmoId = tumor.getCorrectedCmoSampleId();
                     validateSampleId(tumor, tumorCorrectedCmoId);
 
                     String normalCorrectedCmoId = tryToPairNormal(request, pooledNormals,
                             normalSamplesFromCurrentRequest,
-                            normalSamplesFromCurrentProject, tumor, dmpNormalsForPatient);
+                            normalSamplesFromCurrentProject, tumor, cmoPatientId);
 
                     DEV_LOGGER.info(String.format("Smart pairing found: tumor: %s - normal: %s", tumorCorrectedCmoId,
                             normalCorrectedCmoId));
@@ -105,23 +112,26 @@ public class SmartPairingRetriever {
     }
 
     private Collection<KickoffExternalSample> getDmpNormalsForPatient(String cmoPatientId) {
-        Collection<ExternalSample> externalSamples = externalSamplesRepository.getByPatientCmoId(cmoPatientId);
+        try {
+            if (!cmoPatientId2ExtSamples.containsKey(cmoPatientId)) {
+                Collection<ExternalSample> externalSamples = externalSamplesRepository.getByPatientCmoId(cmoPatientId);
 
-        List<KickoffExternalSample> normalExternalSamples = externalSamples.stream()
-                .filter(s -> Objects.equals(s.getTumorNormal(), TumorNormalType.NORMAL.getValue()))
-                .map(s -> KickoffExternalSample.convert(s))
-                .collect(Collectors.toList());
+                List<KickoffExternalSample> normalExternalSamples = externalSamples.stream()
+                        .filter(s -> Objects.equals(s.getTumorNormal(), TumorNormalType.NORMAL.getValue()))
+                        .map(s -> KickoffExternalSample.convert(s))
+                        .collect(Collectors.toList());
 
-        return normalExternalSamples;
-    }
+                cmoPatientId2ExtSamples.put(cmoPatientId, normalExternalSamples);
 
-    private Collection<KickoffExternalSample> getDmpNormalsForPatient(Collection<KickoffExternalSample>
-                                                                              externalSamples, Patient patient) {
-        List<KickoffExternalSample> samplesForPatient = externalSamples.stream()
-                .filter(s -> s.getCmoPatientId().equals(patient.getPatientId()))
-                .collect(Collectors.toList());
+                return normalExternalSamples;
+            }
 
-        return samplesForPatient;
+            return cmoPatientId2ExtSamples.get(cmoPatientId);
+        } catch (Exception e) {
+            ManifestFile.PAIRING.addGenerationError(new GenerationError("Unable to retrieve External Samples: " + e
+                    .getMessage(), ErrorCode.EXTERNAL_SAMPLES_RETRIEVAL_ERROR));
+            throw e;
+        }
     }
 
     private List<Sample> getNormalSamplesForProjectForPatient(KickoffRequest request, Patient patient) {
@@ -147,7 +157,7 @@ public class SmartPairingRetriever {
                                    Collection<Sample> pooledNormals,
                                    Collection<Sample> normalSamplesFromCurrentRequest,
                                    Collection<Sample> normalSamplesFromCurrentProject,
-                                   Sample tumor, Collection<KickoffExternalSample> dmpNormals) {
+                                   Sample tumor, String cmoPatientId) {
         String normalCorrectedCmoId = tryToPairNormalWithRequestNormals(normalSamplesFromCurrentRequest, tumor);
 
         if (!normalFound(normalCorrectedCmoId)) {
@@ -158,10 +168,15 @@ public class SmartPairingRetriever {
 
         if (!normalFound(normalCorrectedCmoId)) {
             DEV_LOGGER.info("Normal sample not found in project samples. Will look for in DMP samples");
+            Collection<KickoffExternalSample> dmpNormals = getDmpNormalsForPatient(cmoPatientId);
             normalCorrectedCmoId = tryToPairNormalWithDMP(dmpNormals, tumor, request);
         }
 
         if (!normalFound(normalCorrectedCmoId)) {
+            pooledNormals = getPooledNormals(request);
+            DEV_LOGGER.info(String.format("Pooled normal samples found for request %s: %s", request.getId(),
+                    pooledNormals));
+
             DEV_LOGGER.info("Normal sample not found in DMP samples. Will look for in pooled normals");
             normalCorrectedCmoId = tryToPairPooledNormal(tumor, pooledNormals);
         }

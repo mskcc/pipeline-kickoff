@@ -11,8 +11,11 @@ import org.mskcc.domain.RequestSpecies;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.domain.KickoffRequest;
+import org.mskcc.kickoff.notify.GenerationError;
+import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.retriever.NimblegenResolver;
 import org.mskcc.kickoff.retriever.RecordNimblegenResolver;
+import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.util.Constants;
 import org.mskcc.util.VeloxConstants;
 
@@ -54,6 +57,8 @@ public class SampleInfoImpact extends SampleInfo {
     private String CAPTURE_NAME; // = "#EMPTY";
     private String SPIKE_IN_GENES; // = "na";
 
+    private ErrorRepository errorRepository;
+
     /**
      * This is the method that CreateManifestSheet calls.<br>First it looks at parent class's method, then uses new
      * method "getSpreadOutInfo" and "addPoolNormalDefaults"
@@ -68,10 +73,12 @@ public class SampleInfoImpact extends SampleInfo {
                             KickoffRequest kickoffRequest,
                             Sample sample,
                             LocalDateTime kapaProtocolStartDate,
-                            NimblegenResolver nimblegenResolver) {
+                            NimblegenResolver nimblegenResolver,
+                            ErrorRepository errorRepository) {
         super(apiUser, drm, sampleRecord, kickoffRequest, sample);
         this.kapaProtocolStartDate = kapaProtocolStartDate;
         this.nimblegenResolver = nimblegenResolver;
+        this.errorRepository = errorRepository;
 
         if (nimblegenResolver.shouldRetrieve())
             getSpreadOutInfo(apiUser, drm, sampleRecord, kickoffRequest, sample);
@@ -136,7 +143,7 @@ public class SampleInfoImpact extends SampleInfo {
             allRunIds.add(run.getId());
         }
 
-        DEV_LOGGER.info(String.format("All valid runs: %s", allRunIds));
+        DEV_LOGGER.info(String.format("All valid runs for request: %s", allRunIds));
 
         DEV_LOGGER.info(String.format("Looking at sample: %s", this.IGO_ID));
 
@@ -158,11 +165,17 @@ public class SampleInfoImpact extends SampleInfo {
         // Now try to match everything up
         if (qcRecs == null || qcValue == null || qcRunID == null) {
             logWarning(String.format("No sample specific qc for ctrl %s AKA %s.", this.CMO_SAMPLE_ID, this.IGO_ID));
+            errorRepository.addWarning(new GenerationError(String.format("There are no QCs for Pooled normal %s",
+                    IGO_ID), ErrorCode.POOLEDNORMAL_RUN_INVALID));
+
             return null;
         }
 
         if (qcRecs.size() == 0 || qcValue.size() == 0 || qcRunID.size() == 0) {
             logWarning(String.format("No sample specific qc for ctrl %s AKA %s.", this.CMO_SAMPLE_ID, this.IGO_ID));
+            errorRepository.addWarning(new GenerationError(String.format("There are no QCs for Pooled normal %s",
+                    IGO_ID), ErrorCode.POOLEDNORMAL_RUN_INVALID));
+
             return null;
         }
 
@@ -170,7 +183,7 @@ public class SampleInfoImpact extends SampleInfo {
 
         // Go through each one, if it is 1) not "Failed" and 2) in current list of allRunIds
         for (int i = 0; i < qcRecs.size(); i++) {
-            DEV_LOGGER.info(String.format("Qc record: %s", qcRecs.get(i)));
+            DEV_LOGGER.info(String.format("Qc record: %s", qcRecs.get(i).getRecordId()));
 
             String qcVal = (String) qcValue.get(i);
             if (!qcVal.startsWith("Failed")) {
@@ -179,10 +192,13 @@ public class SampleInfoImpact extends SampleInfo {
                 String runName = pathList[(pathList.length - 1)];
                 String pattern = "^([a-zA-Z0-9]+_[\\d]{4})([a-zA-Z\\d\\-_]+)";
                 String shortRunID = runName.replaceAll(pattern, "$1");
-                DEV_LOGGER.info(String.format("Short run id: %s", shortRunID));
+                DEV_LOGGER.info(String.format("Short run id for pooled normal: %s", shortRunID));
 
                 if (allRunIds.contains(shortRunID)) {
                     goodRunIds.add(shortRunID);
+                } else {
+                    DEV_LOGGER.debug(String.format("Omitting run %s for sample %s because this run is not part of " +
+                            "request", shortRunID, IGO_ID));
                 }
             }
         }
@@ -191,6 +207,10 @@ public class SampleInfoImpact extends SampleInfo {
             Collections.sort(goodRunIds);
             return StringUtils.join(goodRunIds, ";");
         }
+
+        errorRepository.addWarning(new GenerationError(String.format("There is no QC for Pooled normal %s within " +
+                "sample's runs: %s", IGO_ID, allRunIds), ErrorCode.POOLEDNORMAL_RUN_INVALID));
+
         return "";
     }
 
