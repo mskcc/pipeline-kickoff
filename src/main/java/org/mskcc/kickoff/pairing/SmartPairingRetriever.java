@@ -162,8 +162,7 @@ public class SmartPairingRetriever {
 
         if (!normalFound(normalCorrectedCmoId)) {
             DEV_LOGGER.info("Normal sample not found in request samples. Will look for in project samples");
-            normalCorrectedCmoId = tryToPairNormalWithProjectNormals(normalSamplesFromCurrentProject, tumor);
-            addNormalToPatientIfNeeded(request, normalCorrectedCmoId);
+            normalCorrectedCmoId = tryToPairNormalWithProjectNormals(normalSamplesFromCurrentProject, tumor, request);
         }
 
         if (!normalFound(normalCorrectedCmoId)) {
@@ -235,24 +234,29 @@ public class SmartPairingRetriever {
         return false;
     }
 
-    private String tryToPairNormalWithProjectNormals(Collection<Sample> normalSamplesFromCurrentProject, Sample tumor) {
-        return getNormal(normalSamplesFromCurrentProject, tumor);
+    private String tryToPairNormalWithProjectNormals(Collection<Sample> normalSamplesFromCurrentProject, Sample
+            tumor, KickoffRequest request) {
+        Sample normal = getNormal(normalSamplesFromCurrentProject, tumor);
+        addNormalToPatientIfNeeded(request, normal);
+
+        return normal == null ? Constants.NA_LOWER_CASE : normal.getCorrectedCmoSampleId();
     }
 
     private String tryToPairNormalWithRequestNormals(Collection<Sample> normalSamplesFromCurrentRequest, Sample tumor) {
-        return getNormal(normalSamplesFromCurrentRequest, tumor);
-    }
+        Sample normal = getNormal(normalSamplesFromCurrentRequest, tumor);
+        return normal == null ? Constants.NA_LOWER_CASE : normal.getCorrectedCmoSampleId();
+    }   
 
     private boolean normalFound(String normalCorrectedCmoId) {
         return !Objects.equals(normalCorrectedCmoId, Constants.NA_LOWER_CASE);
     }
 
-    private void addNormalToPatientIfNeeded(KickoffRequest request, String normalCorrectedCmoId) {
-        if (normalFound(normalCorrectedCmoId)) {
-            String normCorrCmoId = normalCorrectedCmoId;
-            Sample normal = request.getValidNormalsForProject().values().stream()
-                    .filter(s -> Objects.equals(s.getCorrectedCmoSampleId(), normCorrCmoId))
-                    .findFirst().get();
+    private boolean normalFound(Sample sample) {
+        return sample != null;
+    }
+
+    private void addNormalToPatientIfNeeded(KickoffRequest request, Sample normal) {
+        if (normalFound(normal)) {
             Patient patient = request.getPatients().get(normal.getPatientId());
             if (patient == null)
                 patient = request.getPatients().get(normal.getCmoSampleInfo().getCmoPatientId());
@@ -330,7 +334,7 @@ public class SmartPairingRetriever {
         return ffpePooledNormal.map(Sample::getCorrectedCmoSampleId).orElse(Constants.NA_LOWER_CASE);
     }
 
-    private String getNormal(Collection<Sample> normalSamples, Sample tumor) {
+    private Sample getNormal(Collection<Sample> normalSamples, Sample tumor) {
         Collection<Sample> assayCompatibleNormals = getAssayCompatibleNormals(tumor, normalSamples);
 
         if (assayCompatibleNormals.size() == 0) {
@@ -339,7 +343,7 @@ public class SmartPairingRetriever {
                     .getRecipe(), getSampleIdsWithRecipes(normalSamples));
             DEV_LOGGER.warn(message);
 
-            return Constants.NA_LOWER_CASE;
+            return null;
         }
 
         List<Sample> seqTypeCompatibleNormals = getSeqTypeCompatibleNormals(tumor, normalSamples);
@@ -350,7 +354,7 @@ public class SmartPairingRetriever {
                     .getInstrumentTypes(), getSampleIdsWithSeqTypes(normalSamples));
             DEV_LOGGER.warn(message);
 
-            return Constants.NA_LOWER_CASE;
+            return null;
         }
 
         String tumorPreservation = tumor.get(Constants.SPECIMEN_PRESERVATION_TYPE);
@@ -371,7 +375,7 @@ public class SmartPairingRetriever {
             pairedNormal = seqTypeCompatibleNormals.get(0);
         }
 
-        return pairedNormal.getCorrectedCmoSampleId();
+        return pairedNormal;
     }
 
     private String getSampleIdsWithRecipes(Collection<Sample> samples) {
