@@ -63,7 +63,7 @@ public class VeloxPairingsRetriever {
 
                 } catch (Exception e) {
                     throw new RuntimeException(String.format("Unable to retrieve pairing with Record id: %s ",
-                            pairingRecord.getRecordId()));
+                            pairingRecord.getRecordId()), e);
                 }
             }
 

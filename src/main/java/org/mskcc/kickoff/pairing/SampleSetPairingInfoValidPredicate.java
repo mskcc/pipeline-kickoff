@@ -21,9 +21,8 @@ public class SampleSetPairingInfoValidPredicate implements BiPredicate<Sample, S
 
     @Override
     public boolean test(Sample sample, Sample sample2) {
-        boolean isValid = pairingInfoValidPredicate.test(sample, sample2) && baitSetValidPredicate.test(sample.get
-                (Constants
-                        .BAIT_VERSION), sample2.get(Constants.BAIT_VERSION));
+        boolean isValid = pairingInfoValidPredicate.test(sample, sample2) && baitSetValidPredicate.test(sample
+                .getBaitVersion(), sample2.getBaitVersion());
 
         if (!isValid)
             LOGGER.warn(String.format("Pairing between sample %s and sample %s is not valid", sample.getIgoId(),
