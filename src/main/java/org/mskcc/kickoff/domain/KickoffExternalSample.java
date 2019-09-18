@@ -1,5 +1,6 @@
 package org.mskcc.kickoff.domain;
 
+import org.mskcc.domain.Recipe;
 import org.mskcc.domain.Run;
 import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.instrument.InstrumentType;
@@ -81,6 +82,11 @@ public class KickoffExternalSample extends Sample {
                 kickoffExternalSample));
 
         return kickoffExternalSample;
+    }
+
+    @Override
+    public Recipe getRecipe() {
+        return Recipe.getRecipeByValue(baitVersion);
     }
 
     @Override
@@ -263,6 +269,7 @@ public class KickoffExternalSample extends Sample {
         this.oncotreeCode = oncotreeCode;
     }
 
+    @Override
     public String getBaitVersion() {
         return baitVersion;
     }

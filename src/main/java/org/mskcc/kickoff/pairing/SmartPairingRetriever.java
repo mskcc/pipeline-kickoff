@@ -172,7 +172,6 @@ public class SmartPairingRetriever {
         }
 
         if (!normalFound(normalCorrectedCmoId)) {
-            pooledNormals = getPooledNormals(request);
             DEV_LOGGER.info(String.format("Pooled normal samples found for request %s: %s", request.getId(),
                     pooledNormals));
 
