@@ -14,6 +14,7 @@ import org.mskcc.kickoff.domain.KickoffRequest;
 import org.mskcc.kickoff.process.NormalProcessingType;
 import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.validator.ErrorRepository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +41,7 @@ public class SmartPairingRetrieverTest {
     private BiPredicate<Sample, Sample> pairingInfoValidPredicate = (s1, s2) -> Objects.equals(s1.getSeqNames(),
             s2.getSeqNames());
     private SmartPairingRetriever smartPairingRetriever = new SmartPairingRetriever(pairingInfoValidPredicate,
-            extSamplesRepoMock);
+            extSamplesRepoMock, mock(ErrorRepository.class));
     private KickoffRequest request;
     private int id = 0;
 
@@ -312,8 +313,10 @@ public class SmartPairingRetrieverTest {
         String pat1Norm3 = addNormalSample(patient1, NOVASEQ, FFPE, TISSUE_SITE_1, RECIPE_IMPACT468);
 
         List<ExternalSample> extSamples = new ArrayList<>();
-        extSamples = addToExternalSamples("P-1234567-N01-IM5", "C-345345-NW-d", extSamples);
-        extSamples = addToExternalSamples("P-1234567-N02-IM5", "C-654654-NW-d", extSamples);
+        extSamples = addToExternalSamples("P-1234567-N01-IM5", "C-345345-N01-d", extSamples, RECIPE_IMPACT410);
+        extSamples = addToExternalSamples("P-1234567-N02-IM5", "C-345345-N02-d", extSamples, Recipe
+                .HEME_PACT_V_3.getValue());
+        extSamples = addToExternalSamples("P-2345678-N02-IM5", "C-654654-NW-d", extSamples, RECIPE_IMPACT410);
 
         when(extSamplesRepoMock.getByPatientCmoId(PATIEND_ID_1)).thenReturn(extSamples);
 
@@ -349,7 +352,7 @@ public class SmartPairingRetrieverTest {
                 .put(pat1Tum3, pat1Norm2)
                 .put(pat1Tum4, pooledNormal1)
                 .put(pat1Tum5, pooledNormal1)
-                .put(pat1Tum6, "C-345345-NW-d")
+                .put(pat1Tum6, "C-345345-N01-d")
 
                 .put(pat2Tum1, pat2Norm1)
                 .put(pat2Tum2, pat2Norm2)
@@ -367,11 +370,12 @@ public class SmartPairingRetrieverTest {
     }
 
     private List<ExternalSample> addToExternalSamples(String externalId, String cmoId, List<ExternalSample>
-            extSamples) {
+            extSamples, String baitVersion) {
         ExternalSample externalSample = new ExternalSample(1, externalId, "P-1234567", "/abc/def/bla.bam", "DTH5432",
                 SampleClass
                         .NORMAL.getValue(), SampleOrigin.WHOLE_BLOOD.getValue(), TumorNormalType.NORMAL.getValue());
         externalSample.setCmoId(cmoId);
+        externalSample.setBaitVersion(baitVersion);
         extSamples.add(externalSample);
 
         return extSamples;
@@ -381,14 +385,14 @@ public class SmartPairingRetrieverTest {
     public void whenNoIgoSamplesAndOneMatchingDmpNormal_shouldPairWithMatchingDmpNormal() throws Exception {
         //given
         List<ExternalSample> pat1ExtSamples = new ArrayList<>();
-        pat1ExtSamples.add(getExternalSample("P-1234567-N01-IM6", "C-345345-NW-d"));
-        pat1ExtSamples.add(getExternalSample("P-1234567-N01-IM5", "C-345345-NW-d"));
+        pat1ExtSamples.add(getExternalSample("P-1234567-N01-IM6", "C-345345-N01-d", RECIPE_IMPACT468));
+        pat1ExtSamples.add(getExternalSample("P-1234567-N01-IM5", "C-345345-N02-d", RECIPE_IMPACT410));
 
         when(extSamplesRepoMock.getByPatientCmoId(PATIEND_ID_1)).thenReturn(pat1ExtSamples);
 
         List<ExternalSample> pat2ExtSamples = new ArrayList<>();
-        pat1ExtSamples.add(getExternalSample("P-1234567-N01-IM6", "C-345345-NW-d"));
-        pat1ExtSamples.add(getExternalSample("P-1234567-N01-IM5", "C-345345-NW-d"));
+        pat1ExtSamples.add(getExternalSample("P-1234567-N01-IM6", "C-453456-N01-d", RECIPE_IMPACT468));
+        pat1ExtSamples.add(getExternalSample("P-1234567-N01-IM5", "C-453456-N02-d", RECIPE_IMPACT410));
 
         when(extSamplesRepoMock.getByPatientCmoId(PATIEND_ID_2)).thenReturn(pat2ExtSamples);
 
@@ -400,16 +404,17 @@ public class SmartPairingRetrieverTest {
 
         //then
         assertThat(pairings.size()).isEqualTo(1);
-        Map<String, String> expected = Maps.newHashMap(tumorCorrectedCmoId, "C-345345-NW-d");
+        Map<String, String> expected = Maps.newHashMap(tumorCorrectedCmoId, "C-345345-N01-d");
 
         assertThat(pairings).containsAllEntriesOf(expected);
     }
 
-    private ExternalSample getExternalSample(String externalId, String cmoId) {
+    private ExternalSample getExternalSample(String externalId, String cmoId, String baitVersion) {
         ExternalSample matchingExtSample = new ExternalSample(1, externalId, "P-12345", "/abc/def/bla.bam", "DTH5432",
                 SampleClass
                         .NORMAL.getValue(), SampleOrigin.WHOLE_BLOOD.getValue(), TumorNormalType.NORMAL.getValue());
         matchingExtSample.setCmoId(cmoId);
+        matchingExtSample.setBaitVersion(baitVersion);
         return matchingExtSample;
     }
 

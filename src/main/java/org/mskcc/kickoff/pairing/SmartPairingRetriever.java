@@ -3,7 +3,6 @@ package org.mskcc.kickoff.pairing;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.Patient;
-import org.mskcc.domain.Recipe;
 import org.mskcc.domain.external.ExternalSample;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.domain.sample.TumorNormalType;
@@ -16,14 +15,13 @@ import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.retriever.ReadOnlyExternalSamplesRepository;
 import org.mskcc.kickoff.retriever.RequestDataPropagator;
 import org.mskcc.kickoff.util.Constants;
+import org.mskcc.kickoff.validator.ErrorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.function.BiPredicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.mskcc.domain.sample.Preservation.*;
@@ -36,22 +34,18 @@ public class SmartPairingRetriever {
     private static final String DMP_ID_PATTERN = "(P-[0-9]{7})-([TN])([0-9])+-([A-Za-z0-9]+)";
 
     private final BiPredicate<Sample, Sample> pairingInfoValidPredicate;
-    private Map<String, String> dmpToIgoAssay = new HashMap<>();
     private ReadOnlyExternalSamplesRepository externalSamplesRepository;
     private Map<String, Collection<KickoffExternalSample>> cmoPatientId2ExtSamples = new HashMap<>();
+    private ErrorRepository errorRepository;
 
     @Autowired
     public SmartPairingRetriever(@Qualifier("pairingInfoValidPredicate") BiPredicate<Sample, Sample>
                                          pairingInfoValidPredicate,
-                                 ReadOnlyExternalSamplesRepository externalSamplesRepository) {
+                                 ReadOnlyExternalSamplesRepository externalSamplesRepository,
+                                 ErrorRepository errorRepository) {
         this.pairingInfoValidPredicate = pairingInfoValidPredicate;
         this.externalSamplesRepository = externalSamplesRepository;
-
-        dmpToIgoAssay.put("IM3", Recipe.IMPACT_341.getValue());
-        dmpToIgoAssay.put("IM5", Recipe.IMPACT_410.getValue());
-        dmpToIgoAssay.put("IM6", Recipe.IMPACT_468.getValue());
-        dmpToIgoAssay.put("IM7", "IMPACT505");
-        dmpToIgoAssay.put("IH3", Recipe.HEME_PACT_V_3.getValue());
+        this.errorRepository = errorRepository;
     }
 
     public Map<String, String> retrieve(KickoffRequest request) {
@@ -85,8 +79,11 @@ public class SmartPairingRetriever {
                     cmoPatientId, normalSamplesFromCurrentProject));
 
             Set<Sample> tumorSamples = getTumorSamples(patient.getSamples());
-            if (tumorSamples.size() == 0)
-                DEV_LOGGER.warn(String.format("No tumor samples found for patient %s", cmoPatientId));
+            if (tumorSamples.size() == 0) {
+                String msg = String.format("No tumor samples found for patient %s", cmoPatientId);
+                DEV_LOGGER.warn(msg);
+                errorRepository.addWarning(new GenerationError(msg, ErrorCode.NO_TUMORS));
+            }
 
             for (Sample tumor : tumorSamples) {
                 try {
@@ -219,18 +216,7 @@ public class SmartPairingRetriever {
     }
 
     private boolean assayMatches(KickoffExternalSample externalSample, String tumorRecipe) {
-        Pattern pattern = Pattern.compile(DMP_ID_PATTERN);
-        Matcher matcher = pattern.matcher(externalSample.getExternalId());
-
-        if (matcher.matches()) {
-            String assay = matcher.group(4);
-            if (dmpToIgoAssay.containsKey(assay)) {
-                String igoAssay = dmpToIgoAssay.get(assay);
-                return Objects.equals(tumorRecipe, igoAssay);
-            }
-        }
-
-        return false;
+        return Objects.equals(externalSample.getBaitVersion(), tumorRecipe);
     }
 
     private String tryToPairNormalWithProjectNormals(Collection<Sample> normalSamplesFromCurrentProject, Sample
