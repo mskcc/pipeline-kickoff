@@ -213,7 +213,8 @@ public class ManifestFilesGeneratorTestConfiguration extends AppConfiguration {
 
     @Bean
     public SmartPairingRetriever smartPairingRetriever() {
-        return new SmartPairingRetriever(pairingInfoValidPredicate(), readOnlyExternalSamplesRepository());
+        return new SmartPairingRetriever(pairingInfoValidPredicate(), readOnlyExternalSamplesRepository(),
+                errorRepository());
     }
 
     @Bean
