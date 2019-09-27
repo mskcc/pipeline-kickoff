@@ -79,7 +79,7 @@ public class SmartPairingRetriever {
                     cmoPatientId, normalSamplesFromCurrentProject));
 
             Set<Sample> tumorSamples = getTumorSamples(patient.getSamples());
-            if (tumorSamples.size() == 0) {
+            if (tumorSamples.size() == 0 && !patient.getPatientId().contains("POOLED")) {
                 String msg = String.format("No tumor samples found for patient %s", cmoPatientId);
                 DEV_LOGGER.warn(msg);
                 errorRepository.addWarning(new GenerationError(msg, ErrorCode.NO_TUMORS));
