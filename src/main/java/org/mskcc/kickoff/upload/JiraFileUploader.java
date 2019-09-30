@@ -18,9 +18,7 @@ import org.mskcc.kickoff.printer.ErrorCode;
 import org.mskcc.kickoff.upload.jira.PmJiraUserRetriever;
 import org.mskcc.kickoff.upload.jira.domain.JiraIssue;
 import org.mskcc.kickoff.upload.jira.domain.JiraUser;
-import org.mskcc.kickoff.upload.jira.state.GenerateFilesStatus;
 import org.mskcc.kickoff.upload.jira.state.IssueStatus;
-import org.mskcc.kickoff.upload.jira.state.RegenerateFilesStatus;
 import org.mskcc.kickoff.upload.jira.state.StatusFactory;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.util.Constants;
@@ -37,11 +35,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static java.util.Collections.emptyList;
 
@@ -401,7 +398,12 @@ public class JiraFileUploader implements FileUploader {
         Promise<SearchResult> searchResultPromise = searchClient.searchJql(jql);
         SearchResult searchResult = searchResultPromise.claim();
         Iterable<Issue> issues = searchResult.getIssues();
-        return issues;
+
+        Set<Issue> exactSummaryIssues = StreamSupport.stream(issues.spliterator(), false)
+                .filter(i -> Objects.equals(i.getSummary(), summary))
+                .collect(Collectors.toSet());
+
+        return exactSummaryIssues;
     }
 
     private Optional<String> getIssueKeyFromSummary(String summary) {
