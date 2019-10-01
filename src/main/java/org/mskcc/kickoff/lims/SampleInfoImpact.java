@@ -22,6 +22,8 @@ import org.mskcc.util.VeloxConstants;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.mskcc.util.VeloxConstants.CMO_SAMPLE_CLASS;
@@ -37,6 +39,7 @@ public class SampleInfoImpact extends SampleInfo {
 
     private static final HashSet<String> poolNameList = new HashSet<>();
     private static final DecimalFormat df = new DecimalFormat("#.##");
+    private static final String SEQ_RUN_FOLDER_PATTERN = "[A-Za-z0-9]+_([A-Za-z0-9]+_[A-Za-z0-9]+)_[A-Za-z0-9]+";
     private static SetMultimap<DataRecord, String> pooledNormals = HashMultimap.create();
     // Consensus BaitSet
     private static String ConsensusBaitSet;
@@ -56,7 +59,6 @@ public class SampleInfoImpact extends SampleInfo {
     private String CAPTURE_CONCENTRATION; // = "#EMPTY";
     private String CAPTURE_NAME; // = "#EMPTY";
     private String SPIKE_IN_GENES; // = "na";
-
     private ErrorRepository errorRepository;
 
     /**
@@ -147,7 +149,7 @@ public class SampleInfoImpact extends SampleInfo {
 
         DEV_LOGGER.info(String.format("Looking at sample: %s", this.IGO_ID));
 
-        List<String> goodRunIds = new ArrayList<>();
+        Set<String> runIds = new TreeSet<>();
 
         // get decendants of sequencing qc type, check to make sure it isn't failed
         // then check to see if it is in the all Rund Ids set
@@ -162,23 +164,36 @@ public class SampleInfoImpact extends SampleInfo {
             DEV_LOGGER.warn("Exception thrown while retrieving information about pooled normal runs", e);
         }
 
-        // Now try to match everything up
-        if (qcRecs == null || qcValue == null || qcRunID == null) {
-            logWarning(String.format("No sample specific qc for ctrl %s AKA %s.", this.CMO_SAMPLE_ID, this.IGO_ID));
-            errorRepository.addWarning(new GenerationError(String.format("There are no QCs for Pooled normal %s",
-                    IGO_ID), ErrorCode.POOLEDNORMAL_RUN_INVALID));
-
-            return null;
+        if (!qcsPresent(qcRecs, qcValue, qcRunID)) {
+            logWarning(String.format("No sample specific qc for ctrl %s AKA %s. Will Try to retrieve run ids from " +
+                    "Flow Cell Lanes", this.CMO_SAMPLE_ID, this.IGO_ID));
+            runIds = tryToFindRunByFlowCell(rec, apiUser, drm);
+        } else {
+            runIds = getRunsFromQc(qcRecs, qcValue, qcRunID);
         }
 
-        if (qcRecs.size() == 0 || qcValue.size() == 0 || qcRunID.size() == 0) {
-            logWarning(String.format("No sample specific qc for ctrl %s AKA %s.", this.CMO_SAMPLE_ID, this.IGO_ID));
-            errorRepository.addWarning(new GenerationError(String.format("There are no QCs for Pooled normal %s",
-                    IGO_ID), ErrorCode.POOLEDNORMAL_RUN_INVALID));
+        if (runIds.size() > 0) {
+            Iterator<String> iterator = runIds.iterator();
+            while (iterator.hasNext()) {
+                String runId = iterator.next();
+                if (!allRunIds.contains(runId)) {
+                    iterator.remove();
+                    DEV_LOGGER.debug(String.format("Omitting run %s for sample %s because this run is not part of " +
+                            "request", runId, IGO_ID));
+                }
+            }
 
-            return null;
+            return StringUtils.join(runIds, ";");
         }
 
+        errorRepository.addWarning(new GenerationError(String.format("There is no QC for Pooled normal %s within " +
+                "sample's runs: %s", IGO_ID, allRunIds), ErrorCode.POOLEDNORMAL_RUN_INVALID));
+
+        return "";
+    }
+
+    private Set<String> getRunsFromQc(List<DataRecord> qcRecs, List<Object> qcValue, List<Object> qcRunID) {
+        Set<String> runIds = new TreeSet<>();
         DEV_LOGGER.info(String.format("%d Qc records found", qcRecs.size()));
 
         // Go through each one, if it is 1) not "Failed" and 2) in current list of allRunIds
@@ -193,25 +208,50 @@ public class SampleInfoImpact extends SampleInfo {
                 String pattern = "^([a-zA-Z0-9]+_[\\d]{4})([a-zA-Z\\d\\-_]+)";
                 String shortRunID = runName.replaceAll(pattern, "$1");
                 DEV_LOGGER.info(String.format("Short run id for pooled normal: %s", shortRunID));
-
-                if (allRunIds.contains(shortRunID)) {
-                    goodRunIds.add(shortRunID);
-                } else {
-                    DEV_LOGGER.debug(String.format("Omitting run %s for sample %s because this run is not part of " +
-                            "request", shortRunID, IGO_ID));
-                }
+                runIds.add(shortRunID);
             }
         }
 
-        if (goodRunIds.size() > 0) {
-            Collections.sort(goodRunIds);
-            return StringUtils.join(goodRunIds, ";");
+        return runIds;
+    }
+
+    private boolean qcsPresent(List<DataRecord> qcRecs, List<Object> qcValue, List<Object> qcRunID) {
+        return qcRecs != null && qcValue != null && qcRunID != null && qcRecs.size() > 0 && qcValue.size() > 0 &&
+                qcRunID.size() > 0;
+    }
+
+    private Set<String> tryToFindRunByFlowCell(DataRecord rec, User apiUser, DataRecordManager drm) {
+        Set<String> runIds = new HashSet<>();
+
+        try {
+            List<DataRecord> flowCellLanes = rec.getDescendantsOfType(VeloxConstants.FLOW_CELL_LANE, apiUser);
+            for (DataRecord flowCellLane : flowCellLanes) {
+                List<DataRecord> flowCells = flowCellLane.getParentsOfType("FlowCell", apiUser);
+                for (DataRecord flowCell : flowCells) {
+                    List<DataRecord> illuminaSeqExperiments = flowCell.getParentsOfType("IlluminaSeqExperiment",
+                            apiUser);
+                    for (DataRecord illSeqExp : illuminaSeqExperiments) {
+                        try {
+                            String runFolder = illSeqExp.getStringVal("SequencerRunFolder", apiUser);
+                            String[] split = runFolder.split("/");
+                            String run = split[split.length - 1];
+                            Pattern p = Pattern.compile(SEQ_RUN_FOLDER_PATTERN);
+                            Matcher m = p.matcher(run);
+                            if (m.find()) {
+                                runIds.add(m.group(1));
+                            }
+                        } catch (Exception e) {
+                            DEV_LOGGER.warn("Unable to retrieve run id from IlluminaSeqExperiment " + illSeqExp
+                                    .getRecordId(), e);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            DEV_LOGGER.warn("Unable to retrieve run id from Flow Cell Lanes", e);
         }
 
-        errorRepository.addWarning(new GenerationError(String.format("There is no QC for Pooled normal %s within " +
-                "sample's runs: %s", IGO_ID, allRunIds), ErrorCode.POOLEDNORMAL_RUN_INVALID));
-
-        return "";
+        return runIds;
     }
 
     String optionallySetDefault(String currentVal, String defaultVal) {

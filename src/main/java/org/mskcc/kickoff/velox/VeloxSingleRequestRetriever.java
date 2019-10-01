@@ -433,6 +433,10 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
                     addPoolSeqQc(kickoffRequest, dataRecordRequest, Collections.singleton(pooledNormalRecord));
                     addPoolRunsToSample(kickoffRequest, sample);
+
+                    for (String runId : sample.getValidRunIds()) {
+                        sample.addSeqName(getSeqName(runId));
+                    }
                 }
             }
         } catch (Exception e) {
