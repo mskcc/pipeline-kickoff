@@ -431,6 +431,7 @@ public class SmartPairingRetrieverTest {
         pooledNormalSample.setCmoSampleId(pooledNormalCorrectedId);
         pooledNormalSample.put(Constants.SPECIMEN_PRESERVATION_TYPE, preservationType.toString());
         pooledNormalSample.addSeqName(instrumentType.getValue());
+        pooledNormalSample.setRecipe(Recipe.IMPACT_468.getValue());
 
         return pooledNormalSample;
     }

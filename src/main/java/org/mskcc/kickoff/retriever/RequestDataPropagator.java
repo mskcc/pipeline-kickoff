@@ -289,25 +289,10 @@ public class RequestDataPropagator implements DataPropagator {
                 String baitVersion = sample.get(Constants.BAIT_VERSION);
                 if (!StringUtils.isEmpty(baitVersion)) {
                     if (request.getRequestType() == RequestType.EXOME) {
-                        // First check xenograft, if yes, then if bait version is Agilent (manual bait version for
-                        // exomes) change to xenograft version of Agilent
-                        if (request.getSpecies() == RequestSpecies.XENOGRAFT && baitVersion.equals(Constants
-                                .MANUAL_EXOME_BAIT_VERSION_HUMAN)) {
-                            baitVersion = Constants.MANUAL_EXOME_XENOGRAFT_BAIT_VERSION_HUMAN_MOUSE;
-                            bvChanged = true;
-                        }
-                        String bv_sp = baitVersion;
+                        String bv_sp;
                         if (Objects.equals(findDesignFile(request, baitVersion), Constants.NA)) {
-                            // Add species to end of baitVersion
-                            String humanAbrevSpecies = Constants.HUMAN_ABREV;
-                            String mouseAbrevSpecies = Constants.MOUSE_ABREV;
-                            if (request.getSpecies() == RequestSpecies.HUMAN) {
-                                bv_sp = baitVersion + "_" + humanAbrevSpecies;
-                            } else if (request.getSpecies() == RequestSpecies.MOUSE) {
-                                bv_sp = baitVersion + "_" + mouseAbrevSpecies;
-                            } else if (request.getSpecies() == RequestSpecies.XENOGRAFT) {
-                                bv_sp = baitVersion + "_" + humanAbrevSpecies + "_" + mouseAbrevSpecies;
-                            }
+                            bv_sp = baitVersion;
+
                             if (!Objects.equals(bv_sp, baitVersion) && !Objects.equals(findDesignFile(request, bv_sp)
                                     , Constants.NA)) {
                                 request.setBaitVersion(bv_sp);

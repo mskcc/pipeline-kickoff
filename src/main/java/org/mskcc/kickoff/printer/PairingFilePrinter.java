@@ -43,7 +43,8 @@ public class PairingFilePrinter extends FilePrinter {
         Map<String, String> pairingInfo = getPairingInfo(request);
         populatePairingSampleIds(request, pairingInfo);
 
-        Set<String> normalCMOids = request.getAllValidSamples(s -> !s.isTumor()).values().stream()
+        Set<String> normalCMOids = request.getAllValidSamples(s -> !s.isTumor() && !s.isPooledNormal()).values()
+                .stream()
                 .map(Sample::getCorrectedCmoSampleId)
                 .collect(Collectors.toSet());
 
@@ -77,12 +78,6 @@ public class PairingFilePrinter extends FilePrinter {
                 .collect(Collectors.toSet()));
     }
 
-    private void notifyNormalUnmatched(String unmatchedNorm) {
-        GenerationError generationError = new GenerationError(String.format("No tumor sample for normal %s",
-                unmatchedNorm), ErrorCode.UNMATCHED_NORMAL);
-        observerManager.notifyObserversOfError(ManifestFile.PAIRING, generationError);
-    }
-
     private void notifyIfTumorUnmatched(String tum, String norm) {
         if (Constants.NA_LOWER_CASE.equals(norm)) {
             GenerationError generationError = new GenerationError(String.format("No normal sample for tumor %s", tum),
@@ -102,7 +97,6 @@ public class PairingFilePrinter extends FilePrinter {
                 pW.write(String.format("%s\t%s\n", sampleNormalization(unmatchedNorm), Constants.NA_LOWER_CASE));
                 if (!unmatchedNorm.matches("%POOLEDNORMAL%"))
                     request.addPairingSampleId(unmatchedNorm);
-                notifyNormalUnmatched(unmatchedNorm);
             }
         }
     }

@@ -34,12 +34,15 @@ public class VeloxProjectProxy implements RequestProxy {
     private DataRecordManager dataRecordManager;
     private User user;
     private RequestsRetriever requestsRetriever;
+    private String fastqDir;
 
     public VeloxProjectProxy(VeloxConnectionData veloxConnectionData, ProjectFilesArchiver projectFilesArchiver,
-                             RequestsRetrieverFactory requestsRetrieverFactory) {
+                             RequestsRetrieverFactory requestsRetrieverFactory,
+                             String fastqDir) {
         this.veloxConnectionData = veloxConnectionData;
         this.projectFilesArchiver = projectFilesArchiver;
         this.requestsRetrieverFactory = requestsRetrieverFactory;
+        this.fastqDir = fastqDir;
     }
 
     public static void resolvePairings(KickoffRequest kickoffRequest) {
@@ -62,7 +65,7 @@ public class VeloxProjectProxy implements RequestProxy {
             KickoffRequest request = VeloxStandalone.run(connection, new VeloxTask<KickoffRequest>() {
                 @Override
                 public KickoffRequest performTask() throws VeloxStandaloneException {
-                    return retrieveRequest(projectId, connection);
+                    return retrieveRequest(projectId, connection, fastqDir);
                 }
             });
 
@@ -113,10 +116,11 @@ public class VeloxProjectProxy implements RequestProxy {
         }
     }
 
-    private KickoffRequest retrieveRequest(String projectId, VeloxConnection connection) {
+    private KickoffRequest retrieveRequest(String projectId, VeloxConnection connection, String fastqDir) {
         try {
             retrieveInstruments();
-            requestsRetriever = requestsRetrieverFactory.getRequestsRetriever(user, dataRecordManager, projectId);
+            requestsRetriever = requestsRetrieverFactory.getRequestsRetriever(user, dataRecordManager, projectId,
+                    fastqDir);
             KickoffRequest kickoffRequest = requestsRetriever.retrieve(projectId, new NormalProcessingType
                     (projectFilesArchiver));
 

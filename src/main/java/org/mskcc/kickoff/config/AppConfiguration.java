@@ -195,7 +195,8 @@ public class AppConfiguration {
 
     @Bean
     public RequestProxy requestProxy() {
-        return new VeloxProjectProxy(veloxConnectionData(), projectFilesArchiver(), requestsRetrieverFactory());
+        return new VeloxProjectProxy(veloxConnectionData(), projectFilesArchiver(), requestsRetrieverFactory(),
+                String.format("%s/hiseq/FASTQ/", fastqPath));
     }
 
     @Bean

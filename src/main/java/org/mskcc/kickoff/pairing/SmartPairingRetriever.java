@@ -79,7 +79,8 @@ public class SmartPairingRetriever {
                     cmoPatientId, normalSamplesFromCurrentProject));
 
             Set<Sample> tumorSamples = getTumorSamples(patient.getSamples());
-            if (tumorSamples.size() == 0 && !patient.getPatientId().contains("POOLED")) {
+            if (tumorSamples.size() == 0 && !patient.getPatientId().contains("POOLED") && !StringUtils.isEmpty
+                    (cmoPatientId)) {
                 String msg = String.format("No tumor samples found for patient %s", cmoPatientId);
                 DEV_LOGGER.warn(msg);
                 errorRepository.addWarning(new GenerationError(msg, ErrorCode.NO_TUMORS));
@@ -275,10 +276,21 @@ public class SmartPairingRetriever {
             return Constants.NA_LOWER_CASE;
         }
 
-        if (isFfpe(tumor))
-            return tryToMatchFfpePooledNormal(seqTypeCompatiblePooledNormals);
+        Collection<Sample> assayCompatibleNormals = getAssayCompatibleNormals(tumor, seqTypeCompatiblePooledNormals);
 
-        return tryToMatchFrozenPooledNormal(seqTypeCompatiblePooledNormals);
+        if (assayCompatibleNormals.isEmpty()) {
+            String message = String.format("There is no pooled normal sample compatible with tumor's %s recipe " +
+                    "types: %s. Pooled Normals found: %s.", tumor.getIgoId(), tumor
+                    .getRecipe(), getSampleIdsWithRecipes(pooledNormals));
+            DEV_LOGGER.warn(message);
+
+            return Constants.NA_LOWER_CASE;
+        }
+
+        if (isFfpe(tumor))
+            return tryToMatchFfpePooledNormal(assayCompatibleNormals);
+
+        return tryToMatchFrozenPooledNormal(assayCompatibleNormals);
     }
 
     private boolean isFfpe(Sample sample) {

@@ -51,28 +51,29 @@ public class RequestsRetrieverFactory {
         this.errorRepository = errorRepository;
     }
 
-    public RequestsRetriever getRequestsRetriever(User user, DataRecordManager dataRecordManager, String projectId)
+    public RequestsRetriever getRequestsRetriever(User user, DataRecordManager dataRecordManager, String projectId,
+                                                  String fastqDir)
             throws RequestNotFoundException {
         VeloxPairingsRetriever veloxPairingsRetriever = new VeloxPairingsRetriever(user, errorRepository);
 
         if (sampleSetProjectPredicate.test(projectId))
-            return getSampleSetRequestsRetriever(user, dataRecordManager, projectId, veloxPairingsRetriever);
+            return getSampleSetRequestsRetriever(user, dataRecordManager, projectId, veloxPairingsRetriever, fastqDir);
 
         return new UniRequestsRetriever(user, dataRecordManager, projectInfoRetriever,
                 singleRequestRequestDataPropagator,
                 nimblegenResolver, sample2DataRecordMap, veloxPairingsRetriever, singleRequestPairingValidPredicate,
-                externalSamplesRepository, errorRepository);
+                externalSamplesRepository, errorRepository, fastqDir);
     }
 
     private RequestsRetriever getSampleSetRequestsRetriever(User user, DataRecordManager dataRecordManager, String
-            projectId, VeloxPairingsRetriever veloxPairingsRetriever) {
+            projectId, VeloxPairingsRetriever veloxPairingsRetriever, String fastqDir) {
         RequestTypeResolver requestTypeResolver = new RequestTypeResolver();
 
         PooledNormalsRetrieverFactory pooledNormRetrFact = new PooledNormalsRetrieverFactory(nimblegenResolver,
                 sample2DataRecordMap);
         SingleRequestRetriever requestsRetriever = new VeloxSingleRequestRetriever(user, dataRecordManager,
                 requestTypeResolver, projectInfoRetriever, pooledNormRetrFact, nimblegenResolver,
-                sample2DataRecordMap, externalSamplesRepository, errorRepository);
+                sample2DataRecordMap, externalSamplesRepository, errorRepository, fastqDir);
 
         DataRecord sampleSetRecord = getSampleSetRecord(projectId, dataRecordManager, user);
 
