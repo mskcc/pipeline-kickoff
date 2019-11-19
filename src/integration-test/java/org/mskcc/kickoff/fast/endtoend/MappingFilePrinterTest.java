@@ -95,7 +95,7 @@ public class MappingFilePrinterTest {
 
     @Before public void setUp() throws Exception {
         veloxProjectProxy = new VeloxProjectProxy(getVeloxConnectionData(connectionFile), archiverMock,
-                requestsRetrieverFactory);
+                requestsRetrieverFactory, fastq_path);
         VeloxConnectionData veloxConnectionData = getVeloxConnectionData(connectionFileTest);
         connection = new VeloxConnection(
                 veloxConnectionData.getHost(),

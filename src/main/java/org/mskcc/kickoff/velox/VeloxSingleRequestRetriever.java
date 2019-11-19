@@ -5,11 +5,14 @@ import com.velox.api.datarecord.DataRecordManager;
 import com.velox.api.datarecord.IoError;
 import com.velox.api.datarecord.NotFound;
 import com.velox.api.user.User;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.mskcc.domain.*;
+import org.mskcc.domain.instrument.InstrumentType;
 import org.mskcc.domain.sample.PooledNormalSample;
+import org.mskcc.domain.sample.Preservation;
 import org.mskcc.domain.sample.Sample;
 import org.mskcc.kickoff.config.Arguments;
 import org.mskcc.kickoff.domain.KickoffRequest;
@@ -28,11 +31,14 @@ import org.mskcc.kickoff.util.Utils;
 import org.mskcc.kickoff.validator.ErrorRepository;
 import org.mskcc.util.VeloxConstants;
 
+import java.io.IOException;
 import java.rmi.RemoteException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.mskcc.kickoff.config.Arguments.forced;
@@ -40,6 +46,7 @@ import static org.mskcc.kickoff.config.Arguments.forced;
 public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private static final Logger PM_LOGGER = Logger.getLogger(Constants.PM_LOGGER);
     private static final Logger DEV_LOGGER = Logger.getLogger(Constants.DEV_LOGGER);
+    private static final String PROJECT_POOLEDNORMALS = "Project_POOLEDNORMALS";
 
     private final User user;
     private final DataRecordManager dataRecordManager;
@@ -54,6 +61,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
     private PooledNormalsRetrieverFactory pooledNormalsRetrieverFactory;
     private PooledNormalsRetriever pooledNormalsRetriever;
     private ErrorRepository errorRepository;
+    private String fastqDir;
 
     public VeloxSingleRequestRetriever(User user,
                                        DataRecordManager dataRecordManager,
@@ -63,7 +71,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                                        NimblegenResolver nimblegenResolver,
                                        Sample2DataRecordMap sample2DataRecordMap,
                                        ReadOnlyExternalSamplesRepository externalSamplesRepository,
-                                       ErrorRepository errorRepository) {
+                                       ErrorRepository errorRepository,
+                                       String fastqDir) {
         this.user = user;
         this.dataRecordManager = dataRecordManager;
         this.requestTypeResolver = requestTypeResolver;
@@ -73,6 +82,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         this.sample2DataRecordMap = sample2DataRecordMap;
         this.externalSamplesRepository = externalSamplesRepository;
         this.errorRepository = errorRepository;
+        this.fastqDir = fastqDir;
     }
 
     @Override
@@ -106,7 +116,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
             addPoolRunsToSamples(kickoffRequest);
             addSeqNames(kickoffRequest);
             addSampleInfo(kickoffRequest, kickoffRequest.getValidNonPooledNormalSamples().values(), nimblegenResolver);
-            processPooledNormals(kickoffRequest, dataRecordRequest);
+            processPooledNormals(kickoffRequest, dataRecordRequest, sampleIds);
             kickoffRequest.setProjectInfo(getProjectInfo(kickoffRequest));
 
             return kickoffRequest;
@@ -350,7 +360,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         return false;
     }
 
-    private void processPooledNormals(KickoffRequest kickoffRequest, DataRecord dataRecordRequest) {
+    private void processPooledNormals(KickoffRequest kickoffRequest, DataRecord dataRecordRequest, List<String>
+            sampleIds) {
         try {
             PooledNormalsRetriever pooledNormalsRetriever = getPooledNormalsRetriever(kickoffRequest);
             Map<DataRecord, Collection<String>> pooledNormals = pooledNormalsRetriever.getAllPooledNormals
@@ -431,6 +442,8 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                         sample.setProperties(sampleInfo);
                     }
 
+                    sample.setRecipe(sample.get(Constants.BAIT_VERSION));
+
                     addPoolSeqQc(kickoffRequest, dataRecordRequest, Collections.singleton(pooledNormalRecord));
                     addPoolRunsToSample(kickoffRequest, sample);
 
@@ -438,10 +451,94 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
                         sample.addSeqName(getSeqName(runId));
                     }
                 }
+
             }
+
+            addPooledNormalsFromIllumina(dataRecordRequest, sampleIds, kickoffRequest);
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
         }
+    }
+
+    private void addPooledNormalsFromIllumina(DataRecord dataRecordRequest, List<String> sampleIds, KickoffRequest
+            kickoffRequest) throws IoError, NotFound, IOException, InterruptedException {
+        Set<String> flowCellIds = getFlowCellIds(dataRecordRequest, sampleIds);
+
+        for (String flowCellId : flowCellIds) {
+            String cmd = String.format("ls -d %s/*%s*/%s/Sample_*", fastqDir, flowCellId, PROJECT_POOLEDNORMALS);
+
+            Process pr = new ProcessBuilder("/bin/bash", "-c", cmd).start();
+            pr.waitFor();
+
+            if (pr.exitValue() == 0) {
+                String fastqPathsStr = StringUtils.chomp(IOUtils.toString(pr.getInputStream()));
+                String[] fastqPaths = fastqPathsStr.split("\n");
+
+                for (String fastqPath : fastqPaths) {
+                    try {
+                        PooledNormalSample pooledNormalSample = new PooledNormalSample(fastqPath);
+
+                        if (fastqPath.contains(Constants.FFPEPOOLEDNORMAL)) {
+                            pooledNormalSample.put(Constants.SPECIMEN_PRESERVATION_TYPE, Preservation.FFPE.toString());
+                            pooledNormalSample.setCorrectedCmoId(Constants.FFPEPOOLEDNORMAL);
+                        } else if (fastqPath.contains(Constants.FROZENPOOLEDNORMAL)) {
+                            pooledNormalSample.put(Constants.SPECIMEN_PRESERVATION_TYPE, Preservation.FROZEN.toString
+                                    ());
+
+                            pooledNormalSample.setCorrectedCmoId(Constants.FROZENPOOLEDNORMAL);
+                        } else
+                            continue;
+
+                        String[] split = fastqPath.split("/");
+                        String sampleId = split[split.length - 1];
+                        setRecipe(sampleId, pooledNormalSample);
+                        pooledNormalSample.addSeqName(InstrumentType.ALL_COMPATIBLE_NA_NORMAL.getValue());
+                        String fullRunId = split[split.length - 3];
+                        addRun(pooledNormalSample, fullRunId);
+                        kickoffRequest.putPooledNormalIfAbsent(pooledNormalSample);
+                    } catch (Exception e) {
+                        DEV_LOGGER.warn(String.format("Error while retrieving pooled normal for fastq: %s",
+                                fastqPath), e);
+                    }
+                }
+            }
+        }
+    }
+
+    private void setRecipe(String sampleId, PooledNormalSample pooledNormalSample) {
+        Pattern p = Pattern.compile("^.*IGO_(.*)_[GACT]+");
+        Matcher m = p.matcher(sampleId);
+
+        if (m.matches()) {
+            String recipe = m.group(1);
+            pooledNormalSample.setRecipe(Recipe.getRecipeByValue(recipe).getValue());
+        }
+    }
+
+    private void addRun(PooledNormalSample pooledNormalSample, String fullRunId) {
+        String pattern = "^([a-zA-Z0-9]+_[\\d]{4})([a-zA-Z\\d\\-_]+)";
+        String shortRunID = fullRunId.replaceAll(pattern, "$1");
+        Run run = new Run(shortRunID);
+        run.setValid(true);
+        pooledNormalSample.putRunIfAbsent(run);
+    }
+
+    private Set<String> getFlowCellIds(DataRecord dataRecordRequest, List<String> sampleIds) throws IoError,
+            RemoteException, NotFound {
+        Set<String> flowCellIds = new HashSet<>();
+        List<DataRecord> samplesToProcess = getSamplesToProcess(dataRecordRequest, sampleIds);
+
+        for (DataRecord toProcess : samplesToProcess) {
+            List<DataRecord> illuminaSeqExperiments = SampleInfoImpact.getIlluminaSeqExperiments
+                    (toProcess, user);
+
+            for (DataRecord illuminaSeqExperiment : illuminaSeqExperiments) {
+                String flowcellId = illuminaSeqExperiment.getStringVal("FlowcellId", user);
+                flowCellIds.add(flowcellId);
+            }
+        }
+
+        return flowCellIds;
     }
 
     private PooledNormalsRetriever getPooledNormalsRetriever(KickoffRequest kickoffRequest) {
@@ -501,13 +598,7 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
 
     private void processSamples(KickoffRequest kickoffRequest, DataRecord dataRecordRequest, List<String> sampleIds) {
         try {
-            List<DataRecord> childSamplesToProcess = new ArrayList<>();
-            List<DataRecord> childSamples = new LinkedList<>(Arrays.asList(getAliquots(dataRecordRequest)));
-            for (DataRecord childSample : childSamples) {
-                String igoId = childSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
-                if (sampleIds.contains(igoId))
-                    childSamplesToProcess.add(childSample);
-            }
+            List<DataRecord> childSamplesToProcess = getSamplesToProcess(dataRecordRequest, sampleIds);
 
             for (DataRecord dataRecordSample : childSamplesToProcess) {
                 processSample(kickoffRequest, dataRecordSample);
@@ -515,6 +606,18 @@ public class VeloxSingleRequestRetriever implements SingleRequestRetriever {
         } catch (Exception e) {
             DEV_LOGGER.error(e.getMessage(), e);
         }
+    }
+
+    private List<DataRecord> getSamplesToProcess(DataRecord dataRecordRequest, List<String> sampleIds) throws
+            IoError, RemoteException, NotFound {
+        List<DataRecord> childSamplesToProcess = new ArrayList<>();
+        List<DataRecord> childSamples = new LinkedList<>(Arrays.asList(getAliquots(dataRecordRequest)));
+        for (DataRecord childSample : childSamples) {
+            String igoId = childSample.getStringVal(VeloxConstants.SAMPLE_ID, user);
+            if (sampleIds.contains(igoId))
+                childSamplesToProcess.add(childSample);
+        }
+        return childSamplesToProcess;
     }
 
     private void processSample(KickoffRequest kickoffRequest, DataRecord dataRecordSample) throws Exception {

@@ -94,6 +94,25 @@ public class SampleInfoImpact extends SampleInfo {
         return pooledNormals.asMap();
     }
 
+    public static List<DataRecord> getIlluminaSeqExperiments(DataRecord rec, User apiUser) {
+        List<DataRecord> illuminaSeqExperiments = new ArrayList<>();
+
+        try {
+            List<DataRecord> flowCellLanes = rec.getDescendantsOfType(VeloxConstants.FLOW_CELL_LANE, apiUser);
+            for (DataRecord flowCellLane : flowCellLanes) {
+                List<DataRecord> flowCells = flowCellLane.getParentsOfType("FlowCell", apiUser);
+                for (DataRecord flowCell : flowCells) {
+                    illuminaSeqExperiments.addAll(flowCell.getParentsOfType("IlluminaSeqExperiment",
+                            apiUser));
+                }
+            }
+        } catch (Exception e) {
+            DEV_LOGGER.warn("Unable to retrieve IlluminaSeqExperiments from record " + rec.getRecordId(), e);
+        }
+
+        return illuminaSeqExperiments;
+    }
+
     /**
      * BLAH
      **/
@@ -167,7 +186,7 @@ public class SampleInfoImpact extends SampleInfo {
         if (!qcsPresent(qcRecs, qcValue, qcRunID)) {
             logWarning(String.format("No sample specific qc for ctrl %s AKA %s. Will Try to retrieve run ids from " +
                     "Flow Cell Lanes", this.CMO_SAMPLE_ID, this.IGO_ID));
-            runIds = tryToFindRunByFlowCell(rec, apiUser, drm);
+            runIds = tryToFindRunByFlowCell(rec, apiUser);
         } else {
             runIds = getRunsFromQc(qcRecs, qcValue, qcRunID);
         }
@@ -220,31 +239,25 @@ public class SampleInfoImpact extends SampleInfo {
                 qcRunID.size() > 0;
     }
 
-    private Set<String> tryToFindRunByFlowCell(DataRecord rec, User apiUser, DataRecordManager drm) {
+    private Set<String> tryToFindRunByFlowCell(DataRecord rec, User apiUser) {
         Set<String> runIds = new HashSet<>();
 
         try {
-            List<DataRecord> flowCellLanes = rec.getDescendantsOfType(VeloxConstants.FLOW_CELL_LANE, apiUser);
-            for (DataRecord flowCellLane : flowCellLanes) {
-                List<DataRecord> flowCells = flowCellLane.getParentsOfType("FlowCell", apiUser);
-                for (DataRecord flowCell : flowCells) {
-                    List<DataRecord> illuminaSeqExperiments = flowCell.getParentsOfType("IlluminaSeqExperiment",
-                            apiUser);
-                    for (DataRecord illSeqExp : illuminaSeqExperiments) {
-                        try {
-                            String runFolder = illSeqExp.getStringVal("SequencerRunFolder", apiUser);
-                            String[] split = runFolder.split("/");
-                            String run = split[split.length - 1];
-                            Pattern p = Pattern.compile(SEQ_RUN_FOLDER_PATTERN);
-                            Matcher m = p.matcher(run);
-                            if (m.find()) {
-                                runIds.add(m.group(1));
-                            }
-                        } catch (Exception e) {
-                            DEV_LOGGER.warn("Unable to retrieve run id from IlluminaSeqExperiment " + illSeqExp
-                                    .getRecordId(), e);
-                        }
+            List<DataRecord> illuminaSeqExperiments = getIlluminaSeqExperiments(rec, apiUser);
+
+            for (DataRecord illSeqExp : illuminaSeqExperiments) {
+                try {
+                    String runFolder = illSeqExp.getStringVal("SequencerRunFolder", apiUser);
+                    String[] split = runFolder.split("/");
+                    String run = split[split.length - 1];
+                    Pattern p = Pattern.compile(SEQ_RUN_FOLDER_PATTERN);
+                    Matcher m = p.matcher(run);
+                    if (m.find()) {
+                        runIds.add(m.group(1));
                     }
+                } catch (Exception e) {
+                    DEV_LOGGER.warn("Unable to retrieve run id from IlluminaSeqExperiment " + illSeqExp
+                            .getRecordId(), e);
                 }
             }
         } catch (Exception e) {

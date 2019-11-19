@@ -90,6 +90,7 @@ public class FileManifestGenerator implements ManifestGenerator {
             resolveExomeRequestType(kickoffRequest);
 
             saveFiles(kickoffRequest);
+            uploadFiles(projectId, kickoffRequest);
         } catch (RequestNotFoundException | ProjectRetrievalException e) {
             DEV_LOGGER.error(e.getMessage(), e);
             errorRepository.add(new GenerationError(e.getMessage(), ErrorCode.PROJECT_RETRIEVE_ERROR));
@@ -99,8 +100,6 @@ public class FileManifestGenerator implements ManifestGenerator {
             setFilePermissions(kickoffRequest);
             sendEmailIfFileNotCreated(projectId);
         }
-
-        uploadFiles(projectId, kickoffRequest);
     }
 
     private void uploadFiles(String projectId, KickoffRequest kickoffRequest) {

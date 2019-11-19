@@ -104,7 +104,7 @@ public class SampleSetIntegrationTest {
                 RecordNimblegenResolver(),
                 new Sample2DataRecordMap());
         return new VeloxProjectProxy(getVeloxConnectionData(connectionFile), archiverMock,
-                requestsRetrieverFactory);
+                requestsRetrieverFactory, "");
     }
 
     @After
