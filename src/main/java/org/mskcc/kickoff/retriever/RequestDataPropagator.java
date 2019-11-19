@@ -314,10 +314,9 @@ public class RequestDataPropagator implements DataPropagator {
                         String message = String.format("Inconsistent bait version: " +
                                         "bait version for current sample %s: %s, bait version for request so far: %s",
                                 sample.getIgoId(), baitVersion, request.getBaitVersion());
-                        Utils.setExitLater(true);
-                        PM_LOGGER.log(Level.ERROR, message);
-                        DEV_LOGGER.log(Level.ERROR, message);
-                        errorRepository.add(new GenerationError(message, ErrorCode.BAIT_SET_NOT_COMPATIBLE));
+                        PM_LOGGER.log(Level.WARN, message);
+                        DEV_LOGGER.log(Level.WARN, message);
+                        errorRepository.addWarning(new GenerationError(message, ErrorCode.BAIT_SET_NOT_COMPATIBLE));
                     } else if (Objects.equals(request.getBaitVersion(), Constants.EMPTY)) {
                         request.setBaitVersion(baitVersion);
                     }
